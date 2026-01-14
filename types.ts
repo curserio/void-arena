@@ -36,6 +36,12 @@ export enum ShipType {
   DREADNOUGHT = 'DREADNOUGHT'
 }
 
+export enum ControlScheme {
+  TWIN_STICK = 'TWIN_STICK',
+  TAP_TO_AIM = 'TAP_TO_AIM',
+  KEYBOARD_MOUSE = 'KEYBOARD_MOUSE'
+}
+
 // PowerUp ID strings for flexibility
 export type PowerUpId = 'OVERDRIVE' | 'OMNI' | 'PIERCE' | 'SPEED' | 'HEALTH' | 'SHIELD';
 
@@ -162,4 +168,9 @@ export interface PersistentData {
   currentXp: number;
   xpToNextLevel: number;
   acquiredUpgradeIds: string[]; // Store IDs to reconstruct upgrades
+  
+  // Settings
+  settings: {
+    controlScheme: ControlScheme;
+  };
 }

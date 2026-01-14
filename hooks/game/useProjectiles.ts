@@ -33,13 +33,17 @@ export const useProjectiles = (
         lastFireTimeRef.current = 0;
     }, []);
 
-    const fireWeapon = useCallback((time: number, isOverdrive: boolean, isOmni: boolean, isPierce: boolean, targets: Entity[], aimDir: Vector2D) => {
+    const fireWeapon = useCallback((time: number, isOverdrive: boolean, isOmni: boolean, isPierce: boolean, targets: Entity[], aimDir: Vector2D, triggerActive: boolean) => {
         const pStats = statsRef.current;
         const fr = isOverdrive ? pStats.fireRate * 2.5 : pStats.fireRate;
 
-        // Check for manual aim (threshold to avoid jitter)
+        // Manual aim magnitude check
         const isManualAim = Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1;
-        const shouldFire = isManualAim || (autoAttack && targets.length > 0);
+        
+        // Firing Condition:
+        // 1. Manual Aim is active AND Trigger is held (Key/Mouse/Stick)
+        // 2. OR AutoAttack is enabled AND no manual aim AND enemies nearby
+        const shouldFire = (isManualAim && triggerActive) || (autoAttack && !isManualAim && targets.length > 0);
 
         if (shouldFire && (time - lastFireTimeRef.current > 1000 / fr)) {
             let fireAngle = 0;
@@ -50,7 +54,7 @@ export const useProjectiles = (
                 fireAngle = Math.atan2(aimDir.y, aimDir.x);
                 hasTarget = true;
             } else {
-                // Auto-Aim Logic
+                // Auto-Aim Logic (Nearest Neighbor)
                 let nearest: Entity | null = null;
                 let minDist = TARGETING_RADIUS;
 

@@ -1,26 +1,33 @@
 
-import { GameState, PersistentData, ShipType, WeaponType } from './types';
+import { GameState, PersistentData, ShipType, WeaponType, ControlScheme } from './types';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
 import UpgradeMenu from './components/UpgradeMenu';
 import GarageMenu from './components/GarageMenu';
 import UpgradesList from './components/UpgradesList';
+import SettingsMenu from './components/SettingsMenu';
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { GAME_ZOOM } from './constants';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+
+const isTouchDevice = () => {
+  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+};
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.START);
   const [isPaused, setIsPaused] = useState(false);
   const [showGarage, setShowGarage] = useState(false);
   const [showUpgradesList, setShowUpgradesList] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Initialize Persistent Data
+  // Initialize Persistent Data with Auto-Detection
   const [persistentData, setPersistentData] = useState<PersistentData>(() => {
     const saved = localStorage.getItem('stellar_survivor_v11_rpg');
-    return saved ? JSON.parse(saved) : {
-      credits: 0, // Removed debug millions
+    let data = saved ? JSON.parse(saved) : {
+      credits: 0,
       metaLevels: {},
       unlockedShips: [ShipType.INTERCEPTOR],
       equippedShip: ShipType.INTERCEPTOR,
@@ -29,8 +36,16 @@ const App: React.FC = () => {
       currentLevel: 1,
       currentXp: 0,
       xpToNextLevel: 250,
-      acquiredUpgradeIds: []
+      acquiredUpgradeIds: [],
     };
+
+    // Ensure settings exist (Migration or New)
+    if (!data.settings) {
+      data.settings = {
+        controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE
+      };
+    }
+    return data;
   });
   
   const [offeredUpgrades, setOfferedUpgrades] = useState<any[]>([]);
@@ -38,10 +53,10 @@ const App: React.FC = () => {
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
   // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
-  const isGamePaused = isPaused || showGarage || showUpgradesList;
+  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings;
 
   const {
-    stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef,
+    stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
     enemiesRef, projectilesRef, pickupsRef, particlesRef
@@ -79,6 +94,24 @@ const App: React.FC = () => {
   const requestRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
 
+  // --- MOUSE & KEYBOARD STATE ---
+  const keysPressed = useRef<Set<string>>(new Set());
+  const mousePos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  const isMouseDown = useRef(false);
+
+  // --- REFS FOR GAME LOOP (Prevent Stale Closures) ---
+  const persistentDataRef = useRef(persistentData);
+  const isPausedRef = useRef(isPaused);
+  const gameStateRef = useRef(gameState);
+  const autoAttackRef = useRef(autoAttack);
+  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings);
+
+  useEffect(() => { persistentDataRef.current = persistentData; }, [persistentData]);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { autoAttackRef.current = autoAttack; }, [autoAttack]);
+  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings; }, [showGarage, showUpgradesList, showSettings]);
+
   const frame = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
     const dt = Math.max(0, Math.min(0.05, (time - lastTimeRef.current) / 1000));
@@ -89,6 +122,56 @@ const App: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const currentScheme = persistentDataRef.current.settings.controlScheme;
+    const isPausedNow = isPausedRef.current || showMenusRef.current;
+    const currentState = gameStateRef.current;
+    const isAutoAttack = autoAttackRef.current;
+
+    // --- KEYBOARD/MOUSE INPUT LOGIC ---
+    if (currentScheme === ControlScheme.KEYBOARD_MOUSE && !isPausedNow && currentState === GameState.PLAYING) {
+        // 1. Movement
+        let dx = 0; let dy = 0;
+        if (keysPressed.current.has('KeyW') || keysPressed.current.has('ArrowUp')) dy -= 1;
+        if (keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown')) dy += 1;
+        if (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft')) dx -= 1;
+        if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
+        
+        // Normalize
+        const len = Math.sqrt(dx*dx + dy*dy);
+        if (len > 0) {
+            joystickDirRef.current = { x: dx/len, y: dy/len };
+        } else {
+            joystickDirRef.current = { x: 0, y: 0 };
+        }
+
+        // 2. Aiming (Corrected for Camera Position)
+        // Calculate player position on screen
+        const screenCX = window.innerWidth / 2;
+        const screenCY = window.innerHeight / 2;
+        // Player position in world relative to camera
+        const relX = (playerPosRef.current.x - cameraPosRef.current.x);
+        const relY = (playerPosRef.current.y - cameraPosRef.current.y);
+        // Scaled to zoom
+        const playerScreenX = screenCX + relX * GAME_ZOOM;
+        const playerScreenY = screenCY + relY * GAME_ZOOM;
+
+        const vx = mousePos.current.x - playerScreenX;
+        const vy = mousePos.current.y - playerScreenY;
+        const dist = Math.sqrt(vx*vx + vy*vy);
+        
+        if (dist > 0) {
+            aimDirRef.current = { x: vx/dist, y: vy/dist };
+        }
+
+        // 3. Firing (Click OR "Auto Attack" toggle which acts as Always Fire)
+        triggerRef.current = isMouseDown.current || isAutoAttack;
+    } 
+    else if ((currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && !isPausedNow) {
+        // For joysticks/touch, trigger is implicit if aiming is active (magnitude check done in useProjectiles)
+        triggerRef.current = true; 
+    }
+
+    // Call update through ref to always get latest closure if needed, though we passed necessary refs already
     updateRef.current(time, dt);
 
     const vOX = canvas.width / 2 - cameraPosRef.current.x;
@@ -107,14 +190,13 @@ const App: React.FC = () => {
       cameraPosRef.current,
       statsRef.current,
       joystickDirRef.current,
-      aimDirRef.current, // Pass Aim Direction for Reticle rendering
+      aimDirRef.current, 
       time,
       lastPlayerHitTime.current
     );
 
     requestRef.current = requestAnimationFrame(frame);
   };
-
 
 useEffect(() => {
   const handleResize = () => {
@@ -126,11 +208,29 @@ useEffect(() => {
   window.addEventListener('resize', handleResize);
   handleResize();
 
+  // Input Listeners
+  const onKeyDown = (e: KeyboardEvent) => keysPressed.current.add(e.code);
+  const onKeyUp = (e: KeyboardEvent) => keysPressed.current.delete(e.code);
+  const onMouseMove = (e: MouseEvent) => mousePos.current = { x: e.clientX, y: e.clientY };
+  const onMouseDown = () => isMouseDown.current = true;
+  const onMouseUp = () => isMouseDown.current = false;
+
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mousedown', onMouseDown);
+  window.addEventListener('mouseup', onMouseUp);
+
   lastTimeRef.current = performance.now();
   requestRef.current = requestAnimationFrame(frame);
 
   return () => {
     window.removeEventListener('resize', handleResize);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mousedown', onMouseDown);
+    window.removeEventListener('mouseup', onMouseUp);
     if (requestRef.current) cancelAnimationFrame(requestRef.current);
   };
 }, []);
@@ -159,6 +259,75 @@ const handleManualAbort = () => {
   setIsPaused(false);
 };
 
+// --- TAP TO AIM LOGIC ---
+const aimTouchIdRef = useRef<number | null>(null);
+
+const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const dx = clientX - cx;
+  const dy = clientY - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  
+  if (dist > 0) {
+    // Normalize vector
+    aimDirRef.current = { x: dx / dist, y: dy / dist };
+  }
+}, [aimDirRef]);
+
+const handleAimLayerTouchStart = useCallback((e: React.TouchEvent) => {
+  if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return;
+  const touch = e.changedTouches[0];
+  aimTouchIdRef.current = touch.identifier;
+  handleTapAimInput(touch.clientX, touch.clientY);
+}, [persistentData.settings, handleTapAimInput]);
+
+const handleAimLayerTouchMove = useCallback((e: React.TouchEvent) => {
+  if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return;
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === aimTouchIdRef.current) {
+       handleTapAimInput(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+       break;
+    }
+  }
+}, [persistentData.settings, handleTapAimInput]);
+
+const handleAimLayerTouchEnd = useCallback((e: React.TouchEvent) => {
+  if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return;
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === aimTouchIdRef.current) {
+       aimTouchIdRef.current = null;
+       aimDirRef.current = { x: 0, y: 0 }; 
+       break;
+    }
+  }
+}, [persistentData.settings, aimDirRef]);
+
+// Mouse fallbacks for aiming layer (ONLY for Tap to Aim mode)
+// In Keyboard/Mouse mode, global listeners handle this.
+const handleAimLayerMouseDown = useCallback((e: React.MouseEvent) => {
+    if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return;
+    aimTouchIdRef.current = 999;
+    handleTapAimInput(e.clientX, e.clientY);
+}, [persistentData.settings, handleTapAimInput]);
+
+const handleAimLayerMouseMove = useCallback((e: React.MouseEvent) => {
+    if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return;
+    if (aimTouchIdRef.current === 999) {
+        handleTapAimInput(e.clientX, e.clientY);
+    }
+}, [persistentData.settings, handleTapAimInput]);
+
+const handleAimLayerMouseUp = useCallback(() => {
+    if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return;
+    if (aimTouchIdRef.current === 999) {
+        aimTouchIdRef.current = null;
+        aimDirRef.current = { x: 0, y: 0 };
+    }
+}, [persistentData.settings, aimDirRef]);
+
+const currentScheme = persistentData.settings?.controlScheme || ControlScheme.TWIN_STICK;
+
 return (
   <div className="relative w-full h-screen overflow-hidden bg-slate-950 font-sans select-none touch-none">
     <canvas ref={canvasRef} className="absolute inset-0" />
@@ -169,6 +338,9 @@ return (
         <div className="flex flex-col gap-5 w-full max-w-xs mt-12">
           <button onClick={initGame} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
           <button onClick={() => setShowGarage(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">CMD GARAGE</button>
+          <button onClick={() => setShowSettings(true)} className="py-4 bg-slate-900 text-slate-400 font-bold text-lg rounded-2xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <i className="fa-solid fa-gear" /> SETTINGS
+          </button>
         </div>
         <div className="mt-12 text-amber-400 font-black text-xl flex items-center gap-2">
           <i className="fas fa-coins" />
@@ -186,9 +358,20 @@ return (
         <div className="flex flex-col gap-5 w-full max-w-xs px-6">
           <button onClick={() => setIsPaused(false)} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 shadow-xl">RESUME</button>
           <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">CMD GARAGE</button>
+          <button onClick={() => setShowSettings(true)} className="py-4 bg-slate-900 text-slate-400 font-bold text-lg rounded-2xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
+            <i className="fa-solid fa-gear" /> SETTINGS
+          </button>
           <button onClick={handleManualAbort} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95">SAVE & EXIT</button>
         </div>
       </div>
+    )}
+
+    {showSettings && (
+      <SettingsMenu 
+        data={persistentData}
+        onUpdate={setPersistentData}
+        onClose={() => setShowSettings(false)}
+      />
     )}
 
     {showGarage && (
@@ -224,18 +407,36 @@ return (
 
     {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isGamePaused && (
       <>
-        {/* Left Side: AIM Joystick - Reduced height to prevent covering top UI */}
-        <Joystick 
-            className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" 
-            onMove={(dir) => aimDirRef.current = dir} 
-        />
-        
-        {/* Right Side: MOVE Joystick - Reduced height */}
-        <Joystick 
-            className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" 
-            onMove={(dir) => joystickDirRef.current = dir} 
-        />
+        {/* INPUT LAYER: TAP TO AIM (Only visible in that mode) */}
+        {currentScheme === ControlScheme.TAP_TO_AIM && (
+          <div 
+             className="absolute inset-0 z-30 touch-none cursor-crosshair"
+             onTouchStart={handleAimLayerTouchStart}
+             onTouchMove={handleAimLayerTouchMove}
+             onTouchEnd={handleAimLayerTouchEnd}
+             onMouseDown={handleAimLayerMouseDown}
+             onMouseMove={handleAimLayerMouseMove}
+             onMouseUp={handleAimLayerMouseUp}
+          />
+        )}
 
+        {/* CONTROLS: LEFT SIDE (Only for Twin Stick) */}
+        {currentScheme === ControlScheme.TWIN_STICK && (
+            <Joystick 
+                className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" 
+                onMove={(dir) => aimDirRef.current = dir} 
+            />
+        )}
+        
+        {/* CONTROLS: RIGHT SIDE (Movement - Twin Stick & Tap Aim) */}
+        {(currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && (
+             <Joystick 
+                className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" 
+                onMove={(dir) => joystickDirRef.current = dir} 
+            />
+        )}
+
+        {/* HUD is always visible */}
         <HUD
           stats={stats}
           score={score}

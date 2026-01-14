@@ -1,0 +1,93 @@
+
+import React from 'react';
+import { ControlScheme, PersistentData } from '../types';
+
+interface SettingsMenuProps {
+  data: PersistentData;
+  onUpdate: (newData: PersistentData) => void;
+  onClose: () => void;
+}
+
+const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onClose }) => {
+  const currentScheme = data.settings?.controlScheme || ControlScheme.TWIN_STICK;
+
+  const setScheme = (scheme: ControlScheme) => {
+    onUpdate({
+      ...data,
+      settings: {
+        ...data.settings,
+        controlScheme: scheme
+      }
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[300] p-6 animate-in fade-in duration-200">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-cyan-400 text-3xl font-black italic uppercase tracking-tighter">System Config</h2>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Fire Control Systems</h3>
+          
+          <div className="grid grid-cols-1 gap-4">
+            <button 
+              onClick={() => setScheme(ControlScheme.TWIN_STICK)}
+              className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.TWIN_STICK ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
+            >
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TWIN_STICK ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                 <i className="fa-solid fa-gamepad text-xl" />
+               </div>
+               <div className="text-left">
+                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TWIN_STICK ? 'text-white' : 'text-slate-400'}`}>Twin Stick</div>
+                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                   Left Stick: Aim & Fire<br/>Right Stick: Movement
+                 </div>
+               </div>
+            </button>
+
+            <button 
+              onClick={() => setScheme(ControlScheme.TAP_TO_AIM)}
+              className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.TAP_TO_AIM ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
+            >
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TAP_TO_AIM ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                 <i className="fa-solid fa-fingerprint text-xl" />
+               </div>
+               <div className="text-left">
+                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TAP_TO_AIM ? 'text-white' : 'text-slate-400'}`}>Touch Targeting</div>
+                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                   Tap/Hold Screen: Aim & Fire<br/>Right Stick: Movement
+                 </div>
+               </div>
+            </button>
+
+            <button 
+              onClick={() => setScheme(ControlScheme.KEYBOARD_MOUSE)}
+              className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
+            >
+               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                 <i className="fa-solid fa-computer-mouse text-xl" />
+               </div>
+               <div className="text-left">
+                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'text-white' : 'text-slate-400'}`}>Keyboard & Mouse</div>
+                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                   Mouse: Aim (Click/Toggle to Fire)<br/>WASD/Arrows: Movement
+                 </div>
+               </div>
+            </button>
+          </div>
+        </div>
+
+        <button 
+          onClick={onClose}
+          className="w-full py-4 bg-white text-slate-950 font-black text-xl rounded-xl uppercase tracking-widest active:scale-95 transition-all shadow-lg"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default SettingsMenu;
