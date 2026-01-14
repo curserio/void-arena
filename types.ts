@@ -13,7 +13,7 @@ export enum EntityType {
   PLAYER = 'PLAYER',
   ENEMY_SCOUT = 'ENEMY_SCOUT',
   ENEMY_STRIKER = 'ENEMY_STRIKER',
-  ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT', // New enemy type
+  ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT',
   ASTEROID = 'ASTEROID',
   BULLET = 'BULLET',
   ENEMY_BULLET = 'ENEMY_BULLET',
@@ -72,7 +72,7 @@ export interface Entity {
   isCharging?: boolean;
   chargeProgress?: number;
   angle?: number;
-  isFiring?: boolean; // For laser scout beam duration
+  isFiring?: boolean;
 }
 
 export interface Upgrade {
@@ -125,6 +125,7 @@ export interface PlayerStats {
   credits: number;
   shipType: ShipType;
   acquiredUpgrades: Upgrade[];
+  invulnerableUntil: number; // Added for hit mitigation
   buffs: {
     overdriveUntil: number;
     omniUntil: number;

@@ -1,5 +1,7 @@
-import React, { useRef, useCallback } from 'react';
-import React, { Entity, EntityType, Vector2D, PlayerStats, PowerUpType, XP_PER_GEM } from '../../types';
+
+import { useRef, useCallback } from 'react';
+import { Entity, EntityType, Vector2D, PlayerStats, PowerUpType } from '../../types';
+import { XP_PER_GEM } from '../../constants';
 
 export const usePickups = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -16,8 +18,6 @@ export const usePickups = (
         const baseVal = enemy.type === EntityType.ENEMY_LASER_SCOUT ? 500 : (enemy.isMelee ? 250 : 100);
         const level = enemy.level || 1;
 
-        // We pass the score value out, or handle it in main loop. 
-        // Pickups are entities.
         drops.push({
             id: Math.random().toString(36), type: EntityType.XP_GEM,
             pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 14, health: 1, maxHealth: 1, color: '#06b6d4',
@@ -42,7 +42,7 @@ export const usePickups = (
         }
 
         pickupsRef.current.push(...drops);
-        return baseVal * level; // Return score gain
+        return baseVal * level; 
     }, []);
 
     const updatePickups = useCallback((dt: number) => {

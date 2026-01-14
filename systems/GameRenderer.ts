@@ -1,13 +1,14 @@
+
 import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, PowerUpType, ShipType } from '../types';
 import { SHIPS, GAME_ZOOM, WORLD_SIZE } from '../constants';
 
 // --- Helpers ---
 const getAsteroidPoints = (seed: number, radius: number) => {
     const points: Vector2D[] = [];
-    const segments = 10;
+    const segments = 12;
     for (let i = 0; i < segments; i++) {
         const angle = (i / segments) * Math.PI * 2;
-        const noise = Math.sin(seed * 123.45 + angle * 67.89) * 0.3 + 1;
+        const noise = Math.sin(seed * 123.45 + angle * 67.89) * 0.35 + 1;
         points.push({
             x: Math.cos(angle) * radius * noise,
             y: Math.sin(angle) * radius * noise
@@ -60,45 +61,59 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         if (e.type === EntityType.ASTEROID) {
             const isRecentlyHit = (time - (e.lastHitTime || 0)) < 80;
             const pts = getAsteroidPoints(e.seed || 0, e.radius);
+            
             ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
             for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
             ctx.closePath();
+            
             const grad = ctx.createRadialGradient(-e.radius * 0.3, -e.radius * 0.3, 0.1, 0, 0, Math.max(0.1, e.radius));
-            grad.addColorStop(0, isRecentlyHit ? '#ffffff' : '#64748b'); grad.addColorStop(1, isRecentlyHit ? '#ffffff' : '#1e293b');
+            grad.addColorStop(0, isRecentlyHit ? '#ffffff' : '#4b5563'); 
+            grad.addColorStop(1, isRecentlyHit ? '#ffffff' : '#111827');
             ctx.fillStyle = grad; ctx.fill();
-            ctx.strokeStyle = isRecentlyHit ? '#ffffff' : '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+            
+            ctx.strokeStyle = isRecentlyHit ? '#ffffff' : '#6b7280'; 
+            ctx.lineWidth = 2; ctx.stroke();
+            
+            // Texture/Cracks
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x * 0.5, pts[0].y * 0.5);
+            ctx.lineTo(pts[4].x * 0.2, pts[4].y * 0.2);
+            ctx.stroke();
+
             ctx.restore();
             return;
         }
 
         // OTHER ENEMIES
-        const isRecentlyHit = (time - (e.lastHitTime || 0)) < 80;
+        const hitAge = time - (e.lastHitTime || 0);
+        const isRecentlyHit = hitAge < 80;
         const isShieldHit = (time - (e.lastShieldHitTime || 0)) < 120;
-        const isElite = (e.level || 1) > 4;
+        const isElite = (e.level || 1) >= 5;
 
-        // Draw Health Bars & Labels
+        // Health Bars & Stats
         ctx.save();
         const hudY = -e.radius - 20;
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        // Only draw text if near camera center or if simplified? 
-        // Drawing text is expensive. Maybe only if hovered or elite? 
-        // For now keep original logic but optimized.
-        // Actually, let's keep it.
-        ctx.fillStyle = isElite ? '#f0f' : '#fff';
-        // ctx.shadowBlur = 0; // Disable shadow for text/bars to save perf?
-        // Original had global shadow from restore? No.
+        
+        if (isElite) {
+            ctx.shadowBlur = 10; ctx.shadowColor = '#f0f';
+            ctx.fillStyle = '#f0f';
+            ctx.font = 'black 14px Arial';
+            ctx.fillText("ELITE", 0, hudY - 25);
+        }
 
-        ctx.fillText(`Lv.${e.level}`, 0, hudY - 15); // Simplified label
-
-        const barW = 60; const barH = 5; const barX = -barW / 2;
-        ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(barX, hudY - 5, barW, barH);
+        const barW = Math.max(40, e.radius * 2); 
+        const barH = 4; const barX = -barW / 2;
+        ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(barX, hudY - 5, barW, barH);
         const hpRatio = Math.max(0, e.health / e.maxHealth);
-        ctx.fillStyle = '#ef4444'; ctx.fillRect(barX, hudY - 5, barW * hpRatio, barH);
+        ctx.fillStyle = hpRatio < 0.3 ? '#f87171' : '#ef4444'; 
+        ctx.fillRect(barX, hudY - 5, barW * hpRatio, barH);
+        
         if (e.maxShield && e.maxShield > 0) {
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(barX, hudY, barW, barH);
+            ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(barX, hudY, barW, barH);
             const shRatio = Math.max(0, (e.shield || 0) / e.maxShield);
-            ctx.fillStyle = '#22d3ee'; ctx.fillRect(barX, hudY, barW * shRatio, barH);
+            ctx.fillStyle = '#06fdfd'; ctx.fillRect(barX, hudY, barW * shRatio, barH);
         }
         ctx.restore();
 
@@ -109,44 +124,41 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             if (e.isCharging) {
                 const prog = e.chargeProgress || 0;
                 ctx.strokeStyle = `rgba(255, 0, 0, ${0.1 + prog * 0.6})`;
-                ctx.lineWidth = 1 + prog * 2;
-                ctx.setLineDash([15, 8]);
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1000, 0); ctx.stroke();
+                ctx.lineWidth = 1 + prog * 3;
+                ctx.setLineDash([20, 10]);
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1200, 0); ctx.stroke();
             }
             if (e.isFiring) {
                 const prog = e.chargeProgress || 0;
-                const width = 25 * (1 - prog);
-                ctx.shadowBlur = 40; ctx.shadowColor = '#f00';
+                const width = 30 * (1 - prog);
+                ctx.shadowBlur = 50; ctx.shadowColor = '#f00';
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(0, -width / 2, 1000, width);
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                ctx.fillRect(0, -width, 1000, width * 2);
+                ctx.fillRect(0, -width / 2, 1200, width);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+                ctx.fillRect(0, -width, 1200, width * 2);
             }
             ctx.restore();
         }
 
-        // Body Rotation
+        // Body Rotation and Draw
         if (e.type === EntityType.ENEMY_LASER_SCOUT && (e.isCharging || e.isFiring)) {
             ctx.rotate((e.angle || 0) + Math.PI / 2);
         } else {
             ctx.rotate(Math.atan2(e.vel.y, e.vel.x) + Math.PI / 2);
         }
 
-        // Draw Body
-        ctx.shadowBlur = 15; ctx.shadowColor = e.color;
-        if (isShieldHit) ctx.fillStyle = '#99f6ff';
-        else ctx.fillStyle = isRecentlyHit ? '#ffffff' : e.color;
+        ctx.shadowBlur = isElite ? 25 : 15; 
+        ctx.shadowColor = e.color;
+        
+        if (isShieldHit) ctx.fillStyle = '#ffffff';
+        else if (isRecentlyHit) ctx.fillStyle = '#ff0000';
+        else ctx.fillStyle = e.color;
 
         if (e.type === EntityType.ENEMY_SCOUT) {
             ctx.beginPath();
             ctx.moveTo(0, -e.radius); ctx.lineTo(-e.radius * 0.8, e.radius * 0.5);
             ctx.lineTo(-e.radius * 0.3, e.radius * 0.3); ctx.lineTo(0, e.radius * 0.8);
             ctx.lineTo(e.radius * 0.3, e.radius * 0.3); ctx.lineTo(e.radius * 0.8, e.radius * 0.5);
-            ctx.closePath(); ctx.fill();
-        } else if (e.type === EntityType.ENEMY_LASER_SCOUT) {
-            ctx.beginPath();
-            ctx.moveTo(0, -e.radius * 1.2); ctx.lineTo(-e.radius * 0.5, e.radius * 0.5);
-            ctx.lineTo(0, e.radius * 0.2); ctx.lineTo(e.radius * 0.5, e.radius * 0.5);
             ctx.closePath(); ctx.fill();
         } else {
             ctx.beginPath();
@@ -158,12 +170,11 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
 
         // Shield Aura
         if (e.shield !== undefined && e.shield > 0) {
-            const sPulse = 1 + Math.sin(time * 0.01) * 0.05;
-            const shRad = e.radius * 1.25 * sPulse;
-            ctx.shadowBlur = isShieldHit ? 30 : 10;
-            ctx.shadowColor = isShieldHit ? '#0ff' : '#22d3ee';
-            ctx.strokeStyle = isShieldHit ? '#fff' : 'rgba(34, 211, 238, 0.4)';
-            ctx.lineWidth = 2;
+            const shRad = e.radius * 1.3;
+            ctx.shadowBlur = isShieldHit ? 30 : 15;
+            ctx.shadowColor = isShieldHit ? '#fff' : '#06fdfd';
+            ctx.strokeStyle = isShieldHit ? '#fff' : 'rgba(6, 253, 253, 0.5)';
+            ctx.lineWidth = 3;
             ctx.beginPath(); ctx.arc(0, 0, shRad, 0, Math.PI * 2); ctx.stroke();
         }
 
@@ -173,39 +184,55 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
 
 const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[], time: number) => {
     projectiles.forEach(e => {
+        if (e.health <= 0) return;
+
         ctx.save();
         ctx.translate(e.pos.x, e.pos.y);
 
-        if (e.type === EntityType.BULLET) {
-            const bulletAngle = e.isCharging ? (e.angle || 0) : Math.atan2(e.vel.y, e.vel.x);
-            ctx.rotate(bulletAngle + Math.PI / 2);
+        const angle = e.isCharging ? (e.angle || 0) : Math.atan2(e.vel.y, e.vel.x);
+        
+        // Render Trail
+        if (!e.isCharging && e.type === EntityType.BULLET && e.weaponType !== WeaponType.LASER) {
+            ctx.save();
+            ctx.rotate(angle + Math.PI);
+            const trailLen = 40;
+            const tGrad = ctx.createLinearGradient(0, 0, trailLen, 0);
+            tGrad.addColorStop(0, e.color);
+            tGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = tGrad;
+            ctx.globalAlpha = 0.6;
+            ctx.fillRect(0, -e.radius/2, trailLen, e.radius);
+            ctx.restore();
+        }
 
+        ctx.rotate(angle + Math.PI / 2);
+
+        if (e.type === EntityType.BULLET) {
             if (e.weaponType === WeaponType.LASER) {
                 if (e.isCharging) {
                     const prog = e.chargeProgress || 0;
-                    ctx.shadowBlur = 10 + prog * 30; ctx.shadowColor = '#fff';
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-                    // Simplify: Draw 1 ring instead of loop
-                    ctx.beginPath(); ctx.arc(0, -35, Math.max(0, 22 * prog), 0, Math.PI * 2); ctx.fill();
-                    // Actually stick to original look roughly
-                    const sphereGrad = ctx.createRadialGradient(0, -35, 0.1, 0, -35, Math.max(0.2, 22 * prog));
+                    ctx.shadowBlur = 20 + prog * 40; ctx.shadowColor = '#fff';
+                    const sphereGrad = ctx.createRadialGradient(0, -35, 0.1, 0, -35, Math.max(1, 25 * prog));
                     sphereGrad.addColorStop(0, '#fff'); sphereGrad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = sphereGrad; ctx.fill();
+                    ctx.fillStyle = sphereGrad; ctx.beginPath(); ctx.arc(0, -35, Math.max(1, 25 * prog), 0, Math.PI*2); ctx.fill();
                 } else {
                     ctx.shadowBlur = 50; ctx.shadowColor = '#a855f7';
-                    ctx.fillStyle = '#fff'; ctx.fillRect(-12, -150, 24, 300);
+                    ctx.fillStyle = '#fff'; ctx.fillRect(-15, -200, 30, 400);
                 }
             } else if (e.weaponType === WeaponType.MISSILE) {
-                ctx.shadowBlur = 15; ctx.shadowColor = e.color;
-                ctx.fillStyle = e.color; ctx.fillRect(-7, -18, 14, 36);
+                ctx.shadowBlur = 20; ctx.shadowColor = e.color;
+                ctx.fillStyle = e.color; ctx.fillRect(-8, -20, 16, 40);
+                // Engine fire
+                ctx.fillStyle = '#fff'; ctx.fillRect(-4, 20, 8, 10);
             } else {
                 ctx.shadowBlur = 15; ctx.shadowColor = e.color;
-                ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = e.color; ctx.lineWidth = 3; ctx.stroke();
             }
         } else if (e.type === EntityType.ENEMY_BULLET) {
-            ctx.rotate(Math.atan2(e.vel.y, e.vel.x) + Math.PI / 2);
             ctx.shadowBlur = 20; ctx.shadowColor = '#f97316';
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2; ctx.stroke();
         }
         ctx.restore();
     });
@@ -218,24 +245,24 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
 
         if (e.type === EntityType.DAMAGE_NUMBER) {
             const prog = (e.duration || 0) / (e.maxDuration || 0.8);
-            const scale = prog < 0.2 ? 1 + (0.2 - prog) * 2.5 : 1;
             ctx.globalAlpha = 1 - Math.pow(prog, 2);
-            ctx.scale(scale, scale);
+            ctx.scale(1 + (1-prog)*0.5, 1 + (1-prog)*0.5);
             ctx.fillStyle = e.color || '#ffffff';
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.font = '900 32px Arial, sans-serif';
+            ctx.lineWidth = 4;
+            ctx.font = '900 36px Arial, sans-serif';
             ctx.textAlign = 'center';
             const txt = e.value?.toString() || '0';
             ctx.strokeText(txt, 0, 0);
             ctx.fillText(txt, 0, 0);
         } else if (e.type === EntityType.EXPLOSION) {
             const prog = (e.duration || 0) / (e.maxDuration || 1);
-            const r = Math.max(0.1, e.radius * (0.3 + Math.pow(prog, 0.5) * 0.7));
-            const grad = ctx.createRadialGradient(0, 0, 0.1, 0, 0, r);
+            const r = Math.max(1, e.radius * (0.2 + Math.pow(prog, 0.5) * 0.8));
+            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
             grad.addColorStop(0, `rgba(255, 255, 255, ${1 - prog})`);
-            grad.addColorStop(0.5, `rgba(255, 100, 0, ${(1 - prog) * 0.5})`);
-            grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            grad.addColorStop(0.3, `rgba(255, 200, 50, ${(1 - prog) * 0.8})`);
+            grad.addColorStop(0.7, `rgba(255, 50, 0, ${(1 - prog) * 0.4})`);
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
             ctx.fillStyle = grad;
             ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
         }
@@ -254,31 +281,51 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     // Shield
     if (stats.currentShield >= 1.0) {
         const shieldRatio = stats.currentShield / stats.maxShield;
-        const r = 55 * (1 + Math.sin(time * 0.01) * 0.03);
-        ctx.strokeStyle = shieldRatio < 0.3 ? `rgba(255, 0, 0, ${0.4 + Math.sin(time * 0.02) * 0.3})` : 'rgba(34, 211, 238, 0.5)';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 20; ctx.shadowColor = shieldRatio < 0.3 ? '#f00' : '#0ff';
+        const r = 58 * (1 + Math.sin(time * 0.01) * 0.04);
+        ctx.strokeStyle = shieldRatio < 0.25 ? `rgba(255, 50, 50, ${0.5 + Math.sin(time * 0.02) * 0.3})` : 'rgba(34, 211, 238, 0.6)';
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 25; ctx.shadowColor = shieldRatio < 0.25 ? '#ff0000' : '#00ffff';
         ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.stroke();
+        
+        // Hex pattern simulation
+        if (shieldRatio > 0.1) {
+            ctx.globalAlpha = 0.1;
+            ctx.fillStyle = '#22d3ee';
+            ctx.beginPath(); ctx.arc(0, 0, r - 5, 0, Math.PI * 2); ctx.fill();
+            ctx.globalAlpha = 1.0;
+        }
     }
 
     const sColor = SHIPS.find(s => s.type === stats.shipType)?.color || '#22d3ee';
-    ctx.shadowBlur = 25; ctx.shadowColor = sColor;
+    ctx.shadowBlur = 30; ctx.shadowColor = sColor;
+    
+    // Thrusters visual
+    if (Math.abs(joystickDir.x) > 0.1 || Math.abs(joystickDir.y) > 0.1) {
+        ctx.fillStyle = '#fff';
+        const tLen = 15 + Math.random() * 15;
+        ctx.fillRect(-10, 20, 5, tLen);
+        ctx.fillRect(5, 20, 5, tLen);
+    }
+
     ctx.fillStyle = isHitActive ? '#ffffff' : sColor;
     ctx.beginPath();
-    ctx.moveTo(0, -26); ctx.lineTo(-22, 22); ctx.lineTo(0, 12); ctx.lineTo(22, 22);
+    ctx.moveTo(0, -30); ctx.lineTo(-25, 25); ctx.lineTo(0, 15); ctx.lineTo(25, 25);
     ctx.closePath(); ctx.fill();
+    
+    // Cockpit
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(0, -5, 8, 12, 0, 0, Math.PI*2); ctx.fill();
+
     ctx.restore();
 };
 
 export const renderGame = (
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
-    // Separate Lists
     enemies: Entity[],
     projectiles: Entity[],
     pickups: Entity[],
     particles: Entity[],
-    // Player
     playerPos: Vector2D,
     cameraPos: Vector2D,
     stats: PlayerStats,
@@ -296,21 +343,25 @@ export const renderGame = (
     ctx.save();
     ctx.translate(sCX, sCY);
     if (isHitActive) {
-        const shakeAmount = hitIntensity * 15;
+        const shakeAmount = hitIntensity * 20;
         ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
     }
     ctx.scale(GAME_ZOOM, GAME_ZOOM);
     ctx.translate(-cameraPos.x, -cameraPos.y);
 
-    // 1. Boundary
+    // 1. Boundary Neon Wall
     ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 10;
-    ctx.shadowBlur = 30;
+    ctx.lineWidth = 12;
+    ctx.shadowBlur = 40;
     ctx.shadowColor = '#06b6d4';
     ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    
+    // Internal boundary glow
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(-20, -20, WORLD_SIZE + 40, WORLD_SIZE + 40);
 
     // 2. Render Layers
-    // Order matters for overlap
     renderPickups(ctx, pickups, time);
     renderEnemies(ctx, enemies, time);
     renderProjectiles(ctx, projectiles, time);

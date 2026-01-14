@@ -24,14 +24,14 @@ const UpgradeMenu: React.FC<UpgradeMenuProps> = ({ upgrades, onSelect }) => {
               className="flex items-center gap-4 p-4 bg-slate-900 border border-slate-700 rounded-xl hover:border-cyan-500 hover:bg-slate-800 transition-all group text-left"
             >
               <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700 group-hover:bg-cyan-900/30 group-hover:border-cyan-500 transition-colors">
-                <i className={`fas ${upgrade.icon} text-cyan-400 text-xl`} />
+                <i className={`fa-solid ${upgrade.icon} text-cyan-400 text-xl`} />
               </div>
               <div className="flex-1">
                 <h3 className="text-white font-bold text-lg">{upgrade.name}</h3>
                 <p className="text-slate-400 text-sm leading-tight">{upgrade.description}</p>
               </div>
               <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <i className="fas fa-chevron-right text-cyan-500" />
+                <i className="fa-solid fa-chevron-right text-cyan-500" />
               </div>
             </button>
           ))}

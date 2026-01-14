@@ -1,6 +1,7 @@
-import React, { useRef, useCallback } from 'react';
-import React, { Entity, EntityType, Vector2D } from '../../types';
-import React, { WORLD_SIZE } from '../../constants';
+
+import { useRef, useCallback } from 'react';
+import { Entity, EntityType, Vector2D } from '../../types';
+import { WORLD_SIZE } from '../../constants';
 
 export const useEnemies = (
     playerPosRef: React.MutableRefObject<Vector2D>
@@ -12,7 +13,6 @@ export const useEnemies = (
         enemiesRef.current = [];
         spawnTimerRef.current = 0;
 
-        // Initial Asteroids
         for (let i = 0; i < 20; i++) {
             const r = 35 + Math.random() * 45;
             enemiesRef.current.push({
@@ -75,7 +75,6 @@ export const useEnemies = (
     }, [playerPosRef]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
-        // Spawn Logic
         spawnTimerRef.current += dt;
         if (spawnTimerRef.current > Math.max(0.4, 1.4 - (gameTime / 180))) {
             spawnEnemy(gameTime);
@@ -83,7 +82,7 @@ export const useEnemies = (
         }
 
         const nextEnemies: Entity[] = [];
-        const enemyBulletsToSpawn: Entity[] = []; // Collect new bullets to spawn
+        const enemyBulletsToSpawn: Entity[] = []; 
 
         enemiesRef.current.forEach(e => {
             let alive = true;
@@ -93,12 +92,9 @@ export const useEnemies = (
                 const baseSpd = (e.type === EntityType.ENEMY_STRIKER ? 100 : 70) * (1 + ((e.level || 1) * 0.05));
                 let sepX = 0, sepY = 0;
 
-                // Separation boid logic - optimization: only check nearby enemies? 
-                // For now, simple O(N^2) check against other enemies is expensive if N is large.
-                // But we are in "execution" so I should implement what was there, maybe slightly optimized.
                 enemiesRef.current.forEach(other => {
                     if (other.id === e.id) return;
-                    if (Math.abs(other.pos.x - e.pos.x) > 100 || Math.abs(other.pos.y - e.pos.y) > 100) return; // Simple bounding box pre-check
+                    if (Math.abs(other.pos.x - e.pos.x) > 100 || Math.abs(other.pos.y - e.pos.y) > 100) return; 
                     const odx = e.pos.x - other.pos.x, ody = e.pos.y - other.pos.y, od = Math.hypot(odx, ody);
                     if (od < 80) { sepX += (odx / od) * (80 - od) * 1.5; sepY += (ody / od) * (80 - od) * 1.5; }
                 });
@@ -122,9 +118,6 @@ export const useEnemies = (
                     }
                     if (e.isFiring) {
                         e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0;
-                        // Hit check currently happens in Renderer or here?
-                        // In original code it was in update loop.
-                        // We should expose the "hit player" event.
                         if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                     }
                 } else if (e.isMelee) {

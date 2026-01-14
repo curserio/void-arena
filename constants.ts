@@ -32,9 +32,10 @@ export const INITIAL_STATS: PlayerStats = {
   weaponType: WeaponType.PLASMA,
   pierceCount: 1,
   hasShield: true,
-  credits: 1000000, // Установлено 1M для отладки
+  credits: 5000, 
   shipType: ShipType.INTERCEPTOR,
   acquiredUpgrades: [],
+  invulnerableUntil: 0,
   buffs: {
     overdriveUntil: 0,
     omniUntil: 0,
@@ -89,32 +90,28 @@ export const UPGRADES: Upgrade[] = [
 ];
 
 export const META_UPGRADES: MetaUpgrade[] = [
-  // General (Global)
-  { id: 'meta_hp', name: 'Reinforced Hull', description: 'Increases hull integrity by +15% per level. Critical for surviving deep space.', icon: 'fa-shield-heart', maxLevel: 100, costBase: 250, costStep: 150 },
-  { id: 'meta_dmg', name: 'Reactor Sync', description: 'Global +10% DMG boost for all installed weapon systems.', icon: 'fa-fire', maxLevel: 100, costBase: 400, costStep: 250 },
-  { id: 'meta_speed', name: 'Engine Overclock', description: 'Increases vessel maximum sub-light speed by +10% per level.', icon: 'fa-gauge-high', maxLevel: 30, costBase: 350, costStep: 200 },
+  { id: 'meta_hp', name: 'Reinforced Hull', description: 'Increases hull integrity by +15% per level.', icon: 'fa-shield-heart', maxLevel: 100, costBase: 250, costStep: 150 },
+  { id: 'meta_dmg', name: 'Reactor Sync', description: 'Global +10% DMG boost for all systems.', icon: 'fa-fire', maxLevel: 100, costBase: 400, costStep: 250 },
+  { id: 'meta_speed', name: 'Engine Overclock', description: 'Increases vessel speed by +10% per level.', icon: 'fa-gauge-high', maxLevel: 30, costBase: 350, costStep: 200 },
   { id: 'meta_shield_max', name: 'Shield Capacitors', description: 'Increases energy shield capacity by +20% per level.', icon: 'fa-shield-halved', maxLevel: 50, costBase: 400, costStep: 300 },
-  { id: 'meta_magnet', name: 'Gravity Well', description: 'Expands the extraction radius for XP and Credits by +25%.', icon: 'fa-magnet', maxLevel: 50, costBase: 300, costStep: 200 },
+  { id: 'meta_magnet', name: 'Gravity Well', description: 'Expands extraction radius by +25%.', icon: 'fa-magnet', maxLevel: 50, costBase: 300, costStep: 200 },
   
-  // Plasma Specific
-  { id: 'meta_plas_dmg', name: 'Ion Chambers', description: 'Refines plasma compression, adding +15% damage to every bolt.', icon: 'fa-burst', maxLevel: 100, costBase: 150, costStep: 100, weaponType: WeaponType.PLASMA },
-  { id: 'meta_plas_count', name: 'Multi-Barrel', description: 'Installs additional weapon barrels. Maximum 3 simultaneous bolts.', icon: 'fa-grip-lines-vertical', maxLevel: 2, costBase: 5000, costStep: 15000, weaponType: WeaponType.PLASMA },
-  { id: 'meta_plas_spd', name: 'Rail Accelerators', description: 'Increases projectile velocity by +15% for better accuracy.', icon: 'fa-bolt', maxLevel: 10, costBase: 500, costStep: 800, weaponType: WeaponType.PLASMA },
+  { id: 'meta_plas_dmg', name: 'Ion Chambers', description: 'Refines plasma compression (+15% dmg).', icon: 'fa-burst', maxLevel: 100, costBase: 150, costStep: 100, weaponType: WeaponType.PLASMA },
+  { id: 'meta_plas_count', name: 'Multi-Barrel', description: 'Additional weapon barrels (Max 3).', icon: 'fa-grip-lines-vertical', maxLevel: 2, costBase: 5000, costStep: 15000, weaponType: WeaponType.PLASMA },
+  { id: 'meta_plas_spd', name: 'Rail Accelerators', description: 'Increases projectile velocity (+15%).', icon: 'fa-bolt', maxLevel: 10, costBase: 500, costStep: 800, weaponType: WeaponType.PLASMA },
   
-  // Missile Specific
-  { id: 'meta_msl_dmg', name: 'Guidance Core', description: 'Advanced AI targeting increases missile yield by +20%.', icon: 'fa-bullseye', maxLevel: 100, costBase: 300, costStep: 200, weaponType: WeaponType.MISSILE },
-  { id: 'meta_msl_rad', name: 'HE Warheads', description: 'Expands the explosion radius of missiles by +30%.', icon: 'fa-circle-dot', maxLevel: 20, costBase: 1200, costStep: 1500, weaponType: WeaponType.MISSILE },
+  { id: 'meta_msl_dmg', name: 'Guidance Core', description: 'Increases missile yield (+20%).', icon: 'fa-bullseye', maxLevel: 100, costBase: 300, costStep: 200, weaponType: WeaponType.MISSILE },
+  { id: 'meta_msl_rad', name: 'HE Warheads', description: 'Expands explosion radius (+30%).', icon: 'fa-circle-dot', maxLevel: 20, costBase: 1200, costStep: 1500, weaponType: WeaponType.MISSILE },
   
-  // Laser Specific
-  { id: 'meta_lsr_burn', name: 'Gamma Pulses', description: 'Increases laser damage output by +25%.', icon: 'fa-sun', maxLevel: 100, costBase: 500, costStep: 350, weaponType: WeaponType.LASER },
-  { id: 'meta_lsr_pierce', name: 'Focus Lens', description: 'Allows beam to burn through 1 additional enemy.', icon: 'fa-arrows-to-eye', maxLevel: 10, costBase: 3000, costStep: 4500, weaponType: WeaponType.LASER }
+  { id: 'meta_lsr_burn', name: 'Gamma Pulses', description: 'Increases laser damage output (+25%).', icon: 'fa-sun', maxLevel: 100, costBase: 500, costStep: 350, weaponType: WeaponType.LASER },
+  { id: 'meta_lsr_pierce', name: 'Focus Lens', description: 'Allows beam to burn through 1 extra enemy.', icon: 'fa-arrows-to-eye', maxLevel: 10, costBase: 3000, costStep: 4500, weaponType: WeaponType.LASER }
 ];
 
 export const SHIPS: ShipConfig[] = [
   {
     type: ShipType.INTERCEPTOR,
     name: 'Ghost-7',
-    description: 'A lightweight scout ship. [HP: 80 | Shield: 30 | Speed: 250]. Features fast shield recovery (3.0/s).',
+    description: 'Light scout. High shield recovery.',
     baseStats: { speed: 250, maxHealth: 80, maxShield: 30, shieldRegen: 3 },
     cost: 0,
     color: '#22d3ee'
@@ -122,7 +119,7 @@ export const SHIPS: ShipConfig[] = [
   {
     type: ShipType.CRUISER,
     name: 'Valkyrie',
-    description: 'The standard of military fleet. [HP: 200 | Shield: 60 | Speed: 190]. Reinforced shielding (5.0/s).',
+    description: 'Military fleet standard. Balanced.',
     baseStats: { speed: 190, maxHealth: 200, maxShield: 60, shieldRegen: 5 },
     cost: 25000,
     color: '#a855f7'
@@ -130,7 +127,7 @@ export const SHIPS: ShipConfig[] = [
   {
     type: ShipType.DREADNOUGHT,
     name: 'Behemoth',
-    description: 'The ultimate space fortress. [HP: 600 | Shield: 150 | Speed: 140]. Industrial shields (10.0/s).',
+    description: 'Ultimate space fortress. Durable.',
     baseStats: { speed: 140, maxHealth: 600, maxShield: 150, shieldRegen: 10 },
     cost: 120000,
     color: '#facc15'

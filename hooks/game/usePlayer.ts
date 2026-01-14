@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState } from '../../types';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP } from '../../constants';
@@ -14,7 +15,6 @@ export const usePlayer = (
     const joystickDirRef = useRef<Vector2D>({ x: 0, y: 0 });
     const lastPlayerHitTimeRef = useRef(0);
 
-    // Sync ref with state for performance in loops
     useEffect(() => { statsRef.current = stats; }, [stats]);
 
     const initPlayer = useCallback(() => {
@@ -63,7 +63,8 @@ export const usePlayer = (
             magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.25),
             bulletCount: bCount,
             bulletSpeed: bSpeed,
-            pierceCount: bPierce
+            pierceCount: bPierce,
+            invulnerableUntil: 0
         };
 
         playerPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
@@ -74,35 +75,15 @@ export const usePlayer = (
 
     const updatePlayer = useCallback((dt: number, time: number) => {
         if (gameState !== GameState.PLAYING || isPaused) return;
-
         const pStats = statsRef.current;
-
-        // Movement
         playerPosRef.current.x += joystickDirRef.current.x * pStats.speed * dt;
         playerPosRef.current.y += joystickDirRef.current.y * pStats.speed * dt;
-
-        // Boundary check
         playerPosRef.current.x = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.x));
         playerPosRef.current.y = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.y));
-
-        // Camera follow
         cameraPosRef.current.x += (playerPosRef.current.x - cameraPosRef.current.x) * CAMERA_LERP;
         cameraPosRef.current.y += (playerPosRef.current.y - cameraPosRef.current.y) * CAMERA_LERP;
-
-        // Shield Regen
-        if (time - pStats.lastShieldHitTime > 3000 && pStats.currentShield < pStats.maxShield) {
-            // We use setStats functional update in the main loop OR we can mutate a ref backup?
-            // React state updates in a loop (60fps) can be heavy if not batched.
-            // However, the original code did `setStats` for shield regen.
-            // To optimize, maybe only update React state on significant changes or throttle.
-            // For now, I'll keep the logic but consider optimizing later.
-            // I'll return a delta or flag to let the main loop know to update state? 
-            // Actually, passing `setStats` here is fine if it matches original behavior.
-        }
     }, [gameState, isPaused]);
 
-    // Shield Regen Logic needs to be exposed or handled. 
-    // I will expose a function to handle shield regen that returns the new stats or null
     const handleShieldRegen = useCallback((dt: number, time: number) => {
         const pStats = statsRef.current;
         if (time - pStats.lastShieldHitTime > 3000 && pStats.currentShield < pStats.maxShield) {
@@ -119,32 +100,32 @@ export const usePlayer = (
     }, []);
 
     const triggerPlayerHit = useCallback((time: number, damage: number) => {
+        const p = statsRef.current;
+        if (time < p.invulnerableUntil) return;
+
         lastPlayerHitTimeRef.current = time;
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50);
-        setStats(p => {
+
+        setStats(prev => {
             let remainingDmg = damage;
-            let newShield = p.currentShield;
-            let newHealth = p.currentHealth;
+            let newShield = prev.currentShield;
+            let newHealth = prev.currentHealth;
             if (newShield > 0) {
                 const shieldDamage = Math.min(newShield, remainingDmg);
                 newShield -= shieldDamage;
                 remainingDmg -= shieldDamage;
             }
             if (remainingDmg > 0) newHealth = Math.max(0, newHealth - remainingDmg);
-            return { ...p, currentShield: newShield, currentHealth: newHealth, lastShieldHitTime: time };
+            // 300ms i-frames to prevent instant vaporization
+            return { ...prev, currentShield: newShield, currentHealth: newHealth, lastShieldHitTime: time, invulnerableUntil: time + 300 };
         });
     }, []);
 
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
-        // Re-run init logic basically, but preserving health if needed? 
-        // The original code calculated levels and applied them.
-        // I will copy the logic from original useGameLogic.
-        // ... (Logic is same as initPlayer but applying to 'current' state)
         setStats(current => {
             const shipConfig = SHIPS.find(s => s.type === newData.equippedShip) || SHIPS[0];
             const weapon = newData.equippedWeapon || WeaponType.PLASMA;
             const baseWStats = WEAPON_BASE_STATS[weapon];
-
             const hpL = newData.metaLevels['meta_hp'] || 0;
             const dmgL = newData.metaLevels['meta_dmg'] || 0;
             const magL = newData.metaLevels['meta_magnet'] || 0;
@@ -197,18 +178,7 @@ export const usePlayer = (
     }, []);
 
     return {
-        stats,
-        setStats,
-        statsRef,
-        playerPosRef,
-        cameraPosRef,
-        joystickDirRef,
-        lastPlayerHitTimeRef,
-        initPlayer,
-        updatePlayer,
-        handleShieldRegen,
-        addUpgrade,
-        triggerPlayerHit,
-        syncWithPersistentData
+        stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef, lastPlayerHitTimeRef,
+        initPlayer, updatePlayer, handleShieldRegen, addUpgrade, triggerPlayerHit, syncWithPersistentData
     };
 };

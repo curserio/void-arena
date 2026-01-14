@@ -1,6 +1,7 @@
-import React, { useRef, useCallback, useState } from 'react';
-import React, { Entity, EntityType, Vector2D, WeaponType, PlayerStats } from '../../types';
-import React, { TARGETING_RADIUS, BULLET_MAX_DIST } from '../../constants';
+
+import { useRef, useCallback, useState } from 'react';
+import { Entity, EntityType, Vector2D, WeaponType, PlayerStats } from '../../types';
+import { TARGETING_RADIUS, BULLET_MAX_DIST } from '../../constants';
 
 export const useProjectiles = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -23,9 +24,6 @@ export const useProjectiles = (
             let nearest: Entity | null = null;
             let minDist = TARGETING_RADIUS;
 
-            // Find target - Optimization: Only look for nearest within limited range
-            // Since we pass 'targets' which might be all enemies, this iterates them all.
-            // In clean arch, we might want to pass a Spatial Hash or Quadtree, but for now array is fine.
             targets.forEach(e => {
                 const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
                 if (d < minDist) { minDist = d; nearest = e; }
@@ -76,16 +74,16 @@ export const useProjectiles = (
     const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[]) => {
         const pStats = statsRef.current;
         const nextProjs: Entity[] = [];
-        const newExplosions: Entity[] = [];
 
         projectilesRef.current.forEach(e => {
-            let alive = true;
+            let alive = e.health > 0;
+            if (!alive) return;
+
             if (e.type === EntityType.BULLET) {
                 if (e.weaponType === WeaponType.LASER && e.isCharging) {
                     e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0;
                     e.pos = { ...playerPosRef.current };
 
-                    // Update angle to nearest target while charging
                     let nearest: Entity | null = null; let minD = TARGETING_RADIUS;
                     targets.forEach(en => { const d = Math.hypot(en.pos.x - e.pos.x, en.pos.y - e.pos.y); if (d < minD) { minD = d; nearest = en; } });
                     if (nearest) { const target = nearest as Entity; e.angle = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x); }
@@ -116,10 +114,9 @@ export const useProjectiles = (
         });
 
         projectilesRef.current = nextProjs;
-        return { newExplosions };
+        return { newExplosions: [] };
     }, [playerPosRef, statsRef]);
 
-    // Use this to add enemy bullets or explosions
     const addProjectiles = useCallback((newProjs: Entity[]) => {
         projectilesRef.current.push(...newProjs);
     }, []);

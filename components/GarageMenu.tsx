@@ -11,88 +11,41 @@ interface GarageMenuProps {
   onApplyEffect?: (effect: (s: PlayerStats) => PlayerStats) => void;
 }
 
-const WEAPON_DESCRIPTIONS: Record<WeaponType, string> = {
-  [WeaponType.PLASMA]: "High rate of fire, multi-shot capabilities. Best for crowd control and agile enemies.",
-  [WeaponType.MISSILE]: "Heavy explosive damage with area of effect. Slow fire rate but clears clusters efficiently.",
-  [WeaponType.LASER]: "High-precision beam that pierces through multiple targets. High concentrated damage."
-};
-
 const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, onUpdate, onApplyEffect }) => {
   const totalCredits = useMemo(() => data.credits + sessionCredits, [data.credits, sessionCredits]);
 
   const buyMeta = (upgrade: MetaUpgrade) => {
     const currentLevel = data.metaLevels[upgrade.id] || 0;
     if (currentLevel >= upgrade.maxLevel) return;
-    
     const cost = upgrade.costBase + (currentLevel * upgrade.costStep);
     if (totalCredits >= cost) {
-      let remainingToSpend = cost;
-      let spentFromSession = Math.min(sessionCredits, remainingToSpend);
+      let spentFromSession = Math.min(sessionCredits, cost);
       let newPersistentCredits = data.credits - (cost - spentFromSession);
-      
-      onUpdate({
-        ...data,
-        credits: newPersistentCredits,
-        metaLevels: { ...data.metaLevels, [upgrade.id]: currentLevel + 1 }
-      }, spentFromSession);
+      onUpdate({ ...data, credits: newPersistentCredits, metaLevels: { ...data.metaLevels, [upgrade.id]: currentLevel + 1 } }, spentFromSession);
     }
   };
 
   const buyShip = (ship: ShipConfig) => {
-    if (data.unlockedShips.includes(ship.type)) {
-      onUpdate({ ...data, equippedShip: ship.type }, 0);
-      return;
-    }
+    if (data.unlockedShips.includes(ship.type)) { onUpdate({ ...data, equippedShip: ship.type }, 0); return; }
     if (totalCredits >= ship.cost) {
       let spentFromSession = Math.min(sessionCredits, ship.cost);
       let newPersistentCredits = data.credits - (ship.cost - spentFromSession);
-      onUpdate({
-        ...data,
-        credits: newPersistentCredits,
-        unlockedShips: [...data.unlockedShips, ship.type],
-        equippedShip: ship.type
-      }, spentFromSession);
+      onUpdate({ ...data, credits: newPersistentCredits, unlockedShips: [...data.unlockedShips, ship.type], equippedShip: ship.type }, spentFromSession);
     }
   };
 
   const handleWeaponAction = (w: WeaponType) => {
     const unlocked = (data.unlockedWeapons || [WeaponType.PLASMA]).includes(w);
-    if (unlocked) {
-      onUpdate({ ...data, equippedWeapon: w }, 0);
-    } else {
+    if (unlocked) { onUpdate({ ...data, equippedWeapon: w }, 0); } 
+    else {
       const price = WEAPON_PRICES[w] || 0;
       if (totalCredits >= price) {
         let spentFromSession = Math.min(sessionCredits, price);
         let newPersistentCredits = data.credits - (price - spentFromSession);
-        onUpdate({
-          ...data,
-          credits: newPersistentCredits,
-          unlockedWeapons: [...(data.unlockedWeapons || [WeaponType.PLASMA]), w],
-          equippedWeapon: w
-        }, spentFromSession);
+        onUpdate({ ...data, credits: newPersistentCredits, unlockedWeapons: [...(data.unlockedWeapons || [WeaponType.PLASMA]), w], equippedWeapon: w }, spentFromSession);
       }
     }
   };
-
-  const buyConsumable = (type: 'repair' | 'shield') => {
-    const cost = type === 'repair' ? 500 : 300;
-    if (totalCredits >= cost) {
-      let spentFromSession = Math.min(sessionCredits, cost);
-      let newPersistentCredits = data.credits - (cost - spentFromSession);
-      
-      onUpdate({ ...data, credits: newPersistentCredits }, spentFromSession);
-      
-      if (onApplyEffect) {
-        onApplyEffect((s) => ({
-          ...s,
-          currentHealth: type === 'repair' ? s.maxHealth : s.currentHealth,
-          currentShield: type === 'shield' ? s.maxShield : s.currentShield
-        }));
-      }
-    }
-  };
-
-  const unlockedWeapons = data.unlockedWeapons || [WeaponType.PLASMA];
 
   return (
     <div className="fixed inset-0 bg-slate-950 flex flex-col z-[300] p-6 overflow-y-auto custom-scrollbar">
@@ -101,18 +54,15 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
           <h2 className="text-cyan-400 text-3xl font-black italic uppercase tracking-tighter">Command Garage</h2>
           <div className="flex items-center gap-4 mt-1">
             <div className="flex items-center gap-2 text-amber-400 font-bold bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
-              <i className="fas fa-coins" />
-              <span>{Math.floor(totalCredits).toLocaleString()} TOTAL CREDITS</span>
+              <i className="fa-solid fa-coins" />
+              <span>{Math.floor(totalCredits).toLocaleString()} CREDITS</span>
             </div>
           </div>
         </div>
-        <button onClick={onClose} className="bg-cyan-600 text-white px-8 py-4 rounded-2xl font-black uppercase shadow-lg shadow-cyan-600/30 active:scale-95 transition-all">
-          Resume Mission
-        </button>
+        <button onClick={onClose} className="bg-cyan-600 text-white px-8 py-4 rounded-2xl font-black uppercase shadow-lg shadow-cyan-600/30 active:scale-95 transition-all">Resume Mission</button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Ships Column */}
         <div className="lg:col-span-3 flex flex-col gap-4">
           <h3 className="text-white font-bold uppercase tracking-widest text-xs opacity-50 px-2">Vessel Hangar</h3>
           <div className="flex flex-col gap-4">
@@ -128,71 +78,35 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                     </div>
                     <div className="w-6 h-6 rounded-full shrink-0 shadow-lg" style={{ backgroundColor: s.color }} />
                   </div>
-                  {!isUnlocked && (
-                    <div className="text-amber-500 text-[10px] font-black">PRICE: {s.cost.toLocaleString()} C</div>
-                  )}
-                  <button 
-                    disabled={!isUnlocked && totalCredits < s.cost}
-                    onClick={() => buyShip(s)}
-                    className={`w-full py-2.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all ${isEquipped ? 'bg-cyan-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-amber-600 text-white'}`}
-                  >
+                  {!isUnlocked && <div className="text-amber-500 text-[10px] font-black">PRICE: {s.cost.toLocaleString()} C</div>}
+                  <button disabled={!isUnlocked && totalCredits < s.cost} onClick={() => buyShip(s)} className={`w-full py-2.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all ${isEquipped ? 'bg-cyan-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-amber-600 text-white'}`}>
                     {isEquipped ? 'ACTIVE' : isUnlocked ? 'SELECT' : 'PURCHASE'}
                   </button>
                 </div>
               );
             })}
           </div>
-
-          <h3 className="text-white font-bold uppercase tracking-widest text-xs opacity-50 px-2 mt-4">Field Support</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <button 
-              onClick={() => buyConsumable('repair')}
-              disabled={totalCredits < 500}
-              className="bg-emerald-600/20 border border-emerald-500/30 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
-            >
-              <i className="fas fa-wrench text-emerald-400" />
-              <span className="text-[10px] font-black text-white uppercase">Repair</span>
-              <span className="text-[9px] text-emerald-400 font-bold">500 C</span>
-            </button>
-            <button 
-              onClick={() => buyConsumable('shield')}
-              disabled={totalCredits < 300}
-              className="bg-blue-600/20 border border-blue-500/30 p-3 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
-            >
-              <i className="fas fa-shield-halved text-blue-400" />
-              <span className="text-[10px] font-black text-white uppercase">Refill SP</span>
-              <span className="text-[9px] text-blue-400 font-bold">300 C</span>
-            </button>
-          </div>
         </div>
 
-        {/* Weapons Column */}
         <div className="lg:col-span-6 flex flex-col gap-4">
           <h3 className="text-white font-bold uppercase tracking-widest text-xs opacity-50 px-2">Tech Systems</h3>
           <div className="flex flex-col gap-6">
             {[WeaponType.PLASMA, WeaponType.MISSILE, WeaponType.LASER].map(w => {
-              const isUnlocked = unlockedWeapons.includes(w);
+              const isUnlocked = (data.unlockedWeapons || [WeaponType.PLASMA]).includes(w);
               const isEquipped = (data.equippedWeapon || WeaponType.PLASMA) === w;
               const price = WEAPON_PRICES[w];
               const specificMetas = META_UPGRADES.filter(m => m.weaponType === w);
-
               return (
                 <div key={w} className={`p-6 border rounded-3xl flex flex-col gap-4 transition-all ${isEquipped ? 'border-amber-500 bg-amber-500/5' : 'border-slate-800 bg-slate-900/40'}`}>
                    <div className="flex justify-between items-center">
                     <div className="flex-1 pr-4">
                       <span className="text-white text-xl font-black italic uppercase tracking-tighter">{w} SYSTEM</span>
-                      <p className="text-slate-500 text-[10px] mt-1 italic leading-relaxed">{WEAPON_DESCRIPTIONS[w]}</p>
                     </div>
-                    <button 
-                      disabled={!isUnlocked && totalCredits < price}
-                      onClick={() => handleWeaponAction(w)}
-                      className={`px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all shrink-0 ${isEquipped ? 'bg-amber-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-cyan-600 text-white'}`}
-                    >
+                    <button disabled={!isUnlocked && totalCredits < price} onClick={() => handleWeaponAction(w)} className={`px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all shrink-0 ${isEquipped ? 'bg-amber-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-cyan-600 text-white'}`}>
                       {isEquipped ? 'EQUIPPED' : isUnlocked ? 'SELECT' : `UNLOCK: ${price.toLocaleString()} C`}
                     </button>
                    </div>
-                   
-                   {isUnlocked ? (
+                   {isUnlocked && (
                      <div className="mt-2 pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
                        {specificMetas.map(mu => {
                          const level = data.metaLevels[mu.id] || 0;
@@ -204,21 +118,12 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                                 <span className="text-cyan-400 text-[10px] font-black uppercase tracking-tight">{mu.name}</span>
                                 <span className="text-slate-500 text-[9px] font-black">LV {level}/{mu.maxLevel}</span>
                               </div>
-                              <p className="text-slate-600 text-[8px] font-bold uppercase leading-tight">{mu.description}</p>
-                              <button 
-                                disabled={isMax || totalCredits < cost}
-                                onClick={() => buyMeta(mu)}
-                                className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}
-                              >
+                              <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(mu)} className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}>
                                 {isMax ? 'MAXED' : `${cost.toLocaleString()} C`}
                               </button>
                            </div>
                          );
                        })}
-                     </div>
-                   ) : (
-                     <div className="bg-slate-950/50 p-6 rounded-2xl text-center border border-dashed border-slate-800">
-                       <p className="text-slate-700 text-[10px] font-black uppercase tracking-widest">System Offline: Hardware Purchase Required</p>
                      </div>
                    )}
                 </div>
@@ -227,7 +132,6 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
           </div>
         </div>
 
-        {/* Global Tech Column */}
         <div className="lg:col-span-3 flex flex-col gap-4">
           <h3 className="text-white font-bold uppercase tracking-widest text-xs opacity-50 px-2">Core Avionics</h3>
           <div className="flex flex-col gap-4">
@@ -239,24 +143,14 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                 <div key={u.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col gap-3 shadow-sm hover:border-slate-700 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)] border border-slate-700">
-                      <i className={`fas ${u.icon}`} />
+                      <i className={`fa-solid ${u.icon}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-white font-black text-[11px] uppercase truncate tracking-tight">{u.name}</h4>
                       <div className="text-slate-500 text-[8px] font-bold">LV {level} / {u.maxLevel}</div>
                     </div>
                   </div>
-                  <div className="text-[9px] text-slate-500 font-bold uppercase leading-tight italic">{u.description}</div>
-                  <div className="flex gap-1">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div key={i} className={`h-1 flex-1 rounded-full ${i < (level / u.maxLevel * 10) ? 'bg-cyan-500 shadow-[0_0_5px_rgba(34,211,238,0.5)]' : 'bg-slate-800'}`} />
-                    ))}
-                  </div>
-                  <button 
-                    disabled={isMax || totalCredits < cost}
-                    onClick={() => buyMeta(u)}
-                    className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-cyan-600 text-white shadow-lg active:scale-95'}`}
-                  >
+                  <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(u)} className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-cyan-600 text-white shadow-lg active:scale-95'}`}>
                     {isMax ? 'MAXED' : `UPGRADE: ${cost.toLocaleString()} C`}
                   </button>
                 </div>

@@ -14,7 +14,7 @@ const UpgradesList: React.FC<UpgradesListProps> = ({ acquired, onClose }) => {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-cyan-400 text-2xl font-black italic uppercase">System Manifest</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-             <i className="fas fa-times text-xl" />
+             <i className="fa-solid fa-times text-xl" />
           </button>
         </div>
 
@@ -28,7 +28,7 @@ const UpgradesList: React.FC<UpgradesListProps> = ({ acquired, onClose }) => {
               {acquired.map((u, i) => (
                 <div key={`${u.id}-${i}`} className="flex items-center gap-4 p-3 bg-slate-950/50 border border-slate-800 rounded-xl">
                   <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-cyan-400 border border-slate-800">
-                    <i className={`fas ${u.icon}`} />
+                    <i className={`fa-solid ${u.icon}`} />
                   </div>
                   <div>
                     <h3 className="text-white font-bold text-sm uppercase tracking-tight">{u.name}</h3>

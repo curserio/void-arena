@@ -1,3 +1,4 @@
+
 import { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D } from '../../types';
 
