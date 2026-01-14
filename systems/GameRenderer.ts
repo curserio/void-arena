@@ -304,9 +304,10 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 ctx.strokeStyle = e.color; ctx.lineWidth = 3; ctx.stroke();
             }
         } else if (e.type === EntityType.ENEMY_BULLET) {
-            ctx.shadowBlur = 20; ctx.shadowColor = '#f97316';
+            // Use e.color for dynamic bullet colors (Miniboss = Red, Elite = Purple)
+            ctx.shadowBlur = 20; ctx.shadowColor = e.color || '#f97316';
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = '#f97316'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.strokeStyle = e.color || '#f97316'; ctx.lineWidth = 2; ctx.stroke();
         }
         ctx.restore();
     });

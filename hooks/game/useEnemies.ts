@@ -247,17 +247,35 @@ export const useEnemies = (
                     if (d < 600) {
                          if (time - (e.lastShotTime || 0) > 2500 + (e.aiSeed || 0) * 500) {
                             e.lastShotTime = time;
+                            
+                            // Determine Bullet Properties based on Enemy Rank
+                            let bRadius = 7;
+                            let bColor = '#f97316'; // Orange (Normal)
+                            let bSpeed = 320;
+                            
+                            if (e.isMiniboss) {
+                                bRadius = 14; 
+                                bColor = '#ef4444'; // Red (Boss)
+                                bSpeed = 400;
+                            } else if (e.isElite) {
+                                bRadius = 9;
+                                bColor = '#d946ef'; // Purple (Elite)
+                                bSpeed = 350;
+                            }
+
                             const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
                             enemyBulletsToSpawn.push({ 
                                 id: Math.random().toString(36), 
                                 type: EntityType.ENEMY_BULLET, 
                                 pos: { ...e.pos }, 
-                                vel: { x: Math.cos(a) * 320, y: Math.sin(a) * 320 }, 
-                                radius: 7, 
+                                vel: { x: Math.cos(a) * bSpeed, y: Math.sin(a) * bSpeed }, 
+                                radius: bRadius, 
                                 health: 1, 
                                 maxHealth: 1, 
-                                color: '#f97316', 
-                                level: e.level 
+                                color: bColor, 
+                                level: e.level,
+                                isElite: e.isElite,
+                                isMiniboss: e.isMiniboss
                             });
                         }
                     }

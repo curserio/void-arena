@@ -236,8 +236,8 @@ export const useCollision = (
                             e.lastMeleeHitTime = time;
                             
                             let baseHit = 15 + (e.level || 1) * 4;
-                            if (e.isMiniboss) baseHit *= 3; // Miniboss hits like a truck
-                            else if (e.isElite) baseHit *= 1.5;
+                            if (e.isMiniboss) baseHit *= 3.5; // Huge damage
+                            else if (e.isElite) baseHit *= 1.8;
 
                             triggerPlayerHit(time, baseHit);
                         }
@@ -257,8 +257,8 @@ export const useCollision = (
                         
                         if (angleDiff < 0.15) {
                             let beamDmg = 12 + (e.level || 1) * 3;
-                            if (e.isMiniboss) beamDmg *= 2.5;
-                            else if (e.isElite) beamDmg *= 1.5;
+                            if (e.isMiniboss) beamDmg *= 3.0;
+                            else if (e.isElite) beamDmg *= 1.8;
 
                             triggerPlayerHit(time, beamDmg);
                         }
@@ -273,7 +273,12 @@ export const useCollision = (
                     const dist = Math.hypot(p.pos.x - playerPosRef.current.x, p.pos.y - playerPosRef.current.y);
                     if (dist < 22 + p.radius) { 
                         p.health = 0;
-                        triggerPlayerHit(time, 10 + (p.level || 1) * 2.5);
+                        let bulletDmg = 10 + (p.level || 1) * 2.5;
+                        
+                        if (p.isMiniboss) bulletDmg *= 3.0;
+                        else if (p.isElite) bulletDmg *= 1.8;
+
+                        triggerPlayerHit(time, bulletDmg);
                     }
                 }
             }
