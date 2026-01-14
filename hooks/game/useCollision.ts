@@ -1,6 +1,6 @@
 
 import React, { useCallback, useRef, useEffect } from 'react';
-import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState } from '../../types';
+import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState, Vector2D } from '../../types';
 import { UPGRADES, LASER_LENGTH } from '../../constants';
 import { POWER_UPS } from '../../systems/PowerUpSystem';
 import { SpatialHashGrid } from '../../systems/SpatialHashGrid';
@@ -18,301 +18,272 @@ const checkCircleCollision = (a: Entity, b: Entity) => {
 };
 
 // Distance from point P to line segment VW
-const distToSegmentSq = (p: {x:number, y:number}, v: {x:number, y:number}, w: {x:number, y:number}) => {
-    const l2 = (w.x - v.x)*(w.x - v.x) + (w.y - v.y)*(w.y - v.y);
-    if (l2 === 0) return (p.x - v.x)*(p.x - v.x) + (p.y - v.y)*(p.y - v.y);
-    
-    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
-    t = Math.max(0, Math.min(1, t));
-    
-    const px = v.x + t * (w.x - v.x);
-    const py = v.y + t * (w.y - v.y);
-    
-    return (p.x - px)*(p.x - px) + (p.y - py)*(p.y - py);
+const distToSegmentSq = (p: Vector2D, v: Vector2D, w: Vector2D) => {
+  const l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
+  if (l2 === 0) return (p.x - v.x) ** 2 + (p.y - v.y) ** 2;
+  let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  const distSq = (p.x - (v.x + t * (w.x - v.x))) ** 2 + (p.y - (v.y + t * (w.y - v.y))) ** 2;
+  return distSq;
 };
 
-// Fix: Use React namespace correctly by importing React
 export const useCollision = (
     enemiesRef: React.MutableRefObject<Entity[]>,
     projectilesRef: React.MutableRefObject<Entity[]>,
     pickupsRef: React.MutableRefObject<Entity[]>,
-    playerPosRef: React.MutableRefObject<{ x: number, y: number }>,
+    playerPosRef: React.MutableRefObject<Vector2D>,
     statsRef: React.MutableRefObject<PlayerStats>,
     triggerPlayerHit: (time: number, damage: number) => void,
-    spawnDrops: (enemy: Entity) => number, 
-    spawnDamageText: (pos: { x: number, y: number }, damage: number, color?: string) => void,
-    addParticles: (particles: Entity[]) => void,
+    spawnDrops: (enemy: Entity) => number,
+    spawnDamageText: (pos: Vector2D, dmg: number, color: string) => void,
+    spawnExplosion: (pos: Vector2D, radius: number, color: string) => void,
+    addParticles: (p: Entity[]) => void,
     setScore: React.Dispatch<React.SetStateAction<number>>,
     setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
-    setOfferedUpgrades: (u: Upgrade[]) => void,
+    setOfferedUpgrades: (u: any[]) => void,
     setGameState: (s: GameState) => void,
     persistentData: PersistentData
 ) => {
-    // Persistent Spatial Grid
-    const gridRef = useRef<SpatialHashGrid>(new SpatialHashGrid());
+    const gridRef = useRef<SpatialHashGrid>(new SpatialHashGrid(250));
 
     const checkCollisions = useCallback((time: number, dt: number) => {
-        const pStats = statsRef.current;
+        const grid = gridRef.current;
+        grid.clear();
+
         const enemies = enemiesRef.current;
         const projectiles = projectilesRef.current;
         const pickups = pickupsRef.current;
-        const isInvulnerable = time < pStats.invulnerableUntil;
-        const grid = gridRef.current;
+        const playerPos = playerPosRef.current;
+        const pStats = statsRef.current;
 
-        // 0. Update Spatial Grid (Insert Enemies)
-        // O(M) operation, very fast
-        grid.clear();
-        for (let i = 0; i < enemies.length; i++) {
-            if (enemies[i].health > 0) {
-                grid.insert(enemies[i]);
-            }
-        }
+        // 1. Insert Enemies into Grid
+        enemies.forEach(e => grid.insert(e));
 
-        // 1. Projectiles vs Enemies
-        for (let i = 0; i < projectiles.length; i++) {
-            const p = projectiles[i];
+        // 2. Projectile vs Enemy
+        for (const p of projectiles) {
             if (p.health <= 0) continue;
+            // Enemy Bullets don't hit enemies
+            if (p.type === EntityType.ENEMY_BULLET) continue;
 
-            // --- LASER BEAM LOGIC (Line vs Circle) ---
             if (p.weaponType === WeaponType.LASER) {
-                // Only deal damage if in Firing state
+                // RAYCAST / LINE COLLISION FOR LASER
                 if (p.isFiring) {
-                    // Check if beam fired recently (damage application logic)
-                    if ((p.duration || 0) <= dt * 1.5) { // First frame(s) only
-                        const angle = p.angle || 0;
-                        const beamLen = LASER_LENGTH; // Use constant
-                        const beamStart = p.pos;
-                        const beamEnd = {
-                            x: beamStart.x + Math.cos(angle) * beamLen,
-                            y: beamStart.y + Math.sin(angle) * beamLen
-                        };
+                    const angle = p.angle || 0;
+                    const startX = playerPos.x;
+                    const startY = playerPos.y;
+                    const endX = startX + Math.cos(angle) * LASER_LENGTH;
+                    const endY = startY + Math.sin(angle) * LASER_LENGTH;
 
-                        // Check ALL enemies for beam
-                        for (let j = 0; j < enemies.length; j++) {
-                            const e = enemies[j];
-                            if (e.health <= 0) continue;
-
-                            const distSq = distToSegmentSq(e.pos, beamStart, beamEnd);
-                            const hitRadius = e.radius + 30; // Beam width allowance
-                            
-                            if (distSq < hitRadius * hitRadius) {
-                                // HIT!
-                                const isCrit = Math.random() < pStats.critChance;
-                                let baseDamage = pStats.damage;
-                                if (isCrit) baseDamage *= pStats.critMultiplier;
-                                
-                                let damage = baseDamage;
-                                let isShieldHit = false;
-
-                                if (e.shield && e.shield > 0) {
-                                    const shieldHit = Math.min(e.shield, damage);
-                                    e.shield -= shieldHit;
-                                    damage -= shieldHit;
-                                    e.lastShieldHitTime = time;
-                                    isShieldHit = true;
-                                }
-
-                                if (damage > 0) e.health -= damage;
+                    // Naive check against all enemies for Laser (optimization: use grid raycast in future)
+                    // For now, just iterate enemies as laser penetrates everything
+                    enemies.forEach(e => {
+                        const distSq = distToSegmentSq(e.pos, {x: startX, y: startY}, {x: endX, y: endY});
+                        if (distSq < (e.radius + 20) ** 2) { // 20 is laser thickness approx
+                            // Tick Damage
+                            if (time - (e.lastHitTime || 0) > 100) { // 10 ticks per second
                                 e.lastHitTime = time;
-                                spawnDamageText(e.pos, Math.floor(baseDamage), isCrit ? '#facc15' : '#a855f7');
+                                let dmg = pStats.damage * 0.2; // Continuous beam does less dmg per tick
+                                
+                                // Crits
+                                const isCrit = Math.random() < pStats.critChance;
+                                if (isCrit) dmg *= pStats.critMultiplier;
 
-                                if (e.health <= 0) {
-                                    const scoreGain = spawnDrops(e);
-                                    setScore(s => s + scoreGain);
+                                // Shield Logic
+                                let hullDmg = dmg;
+                                if (e.shield && e.shield > 0) {
+                                    e.lastShieldHitTime = time;
+                                    if (e.shield >= dmg) {
+                                        e.shield -= dmg;
+                                        hullDmg = 0;
+                                    } else {
+                                        hullDmg -= e.shield;
+                                        e.shield = 0;
+                                    }
                                 }
+                                
+                                if (hullDmg > 0) e.health -= hullDmg;
+                                spawnDamageText(e.pos, dmg, isCrit ? '#facc15' : '#fff');
                             }
                         }
-                    }
+                    });
                 }
-                continue; // Skip standard collision logic for Laser
-            }
+            } else {
+                // STANDARD PROJECTILE (Plasma / Missile)
+                const candidates = grid.retrieve(p);
+                for (const e of candidates) {
+                    if (e.health <= 0) continue;
 
-            // --- STANDARD PROJECTILE LOGIC (Circle vs Circle) ---
-            if (p.type !== EntityType.BULLET) continue;
+                    if (checkCircleCollision(p, e)) {
+                        // HIT!
+                        let damage = pStats.damage;
+                        const isCrit = Math.random() < pStats.critChance;
+                        if (isCrit) damage *= pStats.critMultiplier;
 
-            const candidates = grid.retrieve(p);
-
-            for (let j = 0; j < candidates.length; j++) {
-                const e = candidates[j];
-                if (e.health <= 0) continue;
-
-                if (checkCircleCollision(p, e)) {
-                     const isCrit = Math.random() < pStats.critChance;
-                     let baseDamage = pStats.damage;
-                     if (isCrit) baseDamage *= pStats.critMultiplier;
-                     
-                     let damage = baseDamage;
-                     let isShieldHit = false;
-
-                     if (e.shield && e.shield > 0) {
-                         const shieldHit = Math.min(e.shield, damage);
-                         e.shield -= shieldHit;
-                         damage -= shieldHit;
-                         e.lastShieldHitTime = time;
-                         isShieldHit = true;
-                     }
-
-                     if (damage > 0) e.health -= damage;
-                     e.lastHitTime = time;
-                     spawnDamageText(e.pos, baseDamage, isCrit ? '#facc15' : (isShieldHit && damage <= 0 ? '#06fdfd' : '#ffffff'));
-
-                     if (p.weaponType === WeaponType.PLASMA) {
-                         e.slowUntil = time + 2000;
-                         e.slowFactor = 0.3; 
-                     }
-
-                     if (e.health <= 0) {
-                         const scoreGain = spawnDrops(e);
-                         setScore(s => s + scoreGain);
-                     }
-
-                     if (p.weaponType === WeaponType.MISSILE) {
-                         p.health = 0; 
-                         const mRad = 110 * (1 + (persistentData.metaLevels['meta_msl_rad'] || 0) * 0.3);
-                         addParticles([{
-                             id: Math.random().toString(36), type: EntityType.EXPLOSION, pos: { ...p.pos },
-                             vel: { x: 0, y: 0 }, radius: mRad, health: 1, maxHealth: 1, color: '#fb923c',
-                             duration: 0, maxDuration: 0.6
-                         }]);
-                         enemies.forEach(other => {
-                             if (other.id !== e.id && other.health > 0) {
-                                 const dist = Math.hypot(other.pos.x - p.pos.x, other.pos.y - p.pos.y);
-                                 if (dist < mRad) {
-                                     const falloff = 1 - (dist / mRad);
-                                     const finalScale = 0.25 + (falloff * 0.75);
-                                     let aoeDmg = pStats.damage * 0.8 * finalScale;
-                                     if (other.shield && other.shield > 0) {
-                                         const sd = Math.min(other.shield, aoeDmg);
-                                         other.shield -= sd;
-                                         aoeDmg -= sd;
-                                         other.lastShieldHitTime = time;
-                                     }
-                                     if (aoeDmg > 0) other.health -= aoeDmg;
-                                     other.lastHitTime = time;
-                                     spawnDamageText(other.pos, Math.floor(aoeDmg), '#fb923c');
-                                     if (other.health <= 0) {
-                                         const sg = spawnDrops(other);
-                                         setScore(s => s + sg);
-                                     }
-                                 }
-                             }
-                         });
-                     } else {
-                         if (p.pierceCount && p.pierceCount > 1) {
-                             p.pierceCount--;
-                         } else {
-                             p.health = 0; 
-                         }
-                     }
-                     break; 
-                }
-            }
-        }
-
-        // 2. Enemy Attacks vs Player (Iterate all active enemies)
-        if (!isInvulnerable) {
-            for (let i = 0; i < enemies.length; i++) {
-                const e = enemies[i];
-                if (e.health <= 0) continue;
-                
-                // Melee (Strikers / Scouts / Boss)
-                if (e.isMelee || e.type === EntityType.ENEMY_SCOUT || e.isMiniboss || e.type === EntityType.ENEMY_BOSS) {
-                    const dist = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
-                    // Hit radius slightly larger for Boss
-                    const hitRad = e.type === EntityType.ENEMY_BOSS ? e.radius + 10 : e.radius + 20;
-
-                    if (dist < hitRad) {
-                        if (time - (e.lastMeleeHitTime || 0) > 500) {
-                            e.lastMeleeHitTime = time;
+                        // Missile AOE
+                        if (p.weaponType === WeaponType.MISSILE) {
+                            // Use dynamic missile radius from stats (Default 150)
+                            const explosionRad = pStats.missileRadius;
                             
-                            let baseHit = 15 + (e.level || 1) * 4;
-                            if (e.type === EntityType.ENEMY_BOSS) baseHit = 50 + (e.level || 1) * 8;
-                            else if (e.isMiniboss) baseHit *= 3.5;
-                            else if (e.isElite) baseHit *= 1.8;
+                            spawnExplosion(p.pos, explosionRad, '#fb923c'); // Visual Boom
+                            // Area Damage
+                             enemies.forEach(subE => {
+                                 const dist = Math.hypot(subE.pos.x - p.pos.x, subE.pos.y - p.pos.y);
+                                 if (dist < explosionRad) { // AOE Radius
+                                     let subDmg = damage;
+                                     // Falloff
+                                     if (dist > (explosionRad * 0.4)) subDmg *= 0.7;
+                                     
+                                     // Shield Logic for subE
+                                     let sHullDmg = subDmg;
+                                     if (subE.shield && subE.shield > 0) {
+                                         subE.lastShieldHitTime = time;
+                                         if (subE.shield >= subDmg) {
+                                             subE.shield -= subDmg;
+                                             sHullDmg = 0;
+                                         } else {
+                                             sHullDmg -= subE.shield;
+                                             subE.shield = 0;
+                                         }
+                                     }
+                                     if (sHullDmg > 0) subE.health -= sHullDmg;
+                                     subE.lastHitTime = time;
+                                     spawnDamageText(subE.pos, subDmg, '#fb923c');
+                                 }
+                             });
+                             p.health = 0; // Missile dies on contact
+                        } else {
+                            // Plasma / Standard Logic
+                            
+                            // Apply Slow (Cryo-Plasma Meta)
+                            if (pStats.weaponType === WeaponType.PLASMA) {
+                                const chillLvl = persistentData.metaLevels['meta_plas_area'] || 0;
+                                if (chillLvl > 0) {
+                                    e.slowUntil = time + 2000;
+                                    e.slowFactor = 0.3; // 30% slow
+                                }
+                            }
 
-                            triggerPlayerHit(time, baseHit);
+                            // Shield Logic
+                            let hullDmg = damage;
+                            if (e.shield && e.shield > 0) {
+                                e.lastShieldHitTime = time;
+                                if (e.shield >= damage) {
+                                    e.shield -= damage;
+                                    hullDmg = 0;
+                                } else {
+                                    hullDmg -= e.shield;
+                                    e.shield = 0;
+                                }
+                            }
+
+                            if (hullDmg > 0) e.health -= hullDmg;
+                            e.lastHitTime = time;
+                            spawnDamageText(e.pos, damage, isCrit ? '#facc15' : '#fff');
+                            spawnExplosion(p.pos, 20, '#22d3ee'); // Small hit puff
+
+                            p.pierceCount = (p.pierceCount || 1) - 1;
+                            if (p.pierceCount <= 0) p.health = 0;
                         }
-                    }
-                }
-                
-                // Laser Beam (Scout & Boss)
-                if ((e.type === EntityType.ENEMY_LASER_SCOUT || e.type === EntityType.ENEMY_BOSS) && e.isFiring) {
-                    const dx = playerPosRef.current.x - e.pos.x;
-                    const dy = playerPosRef.current.y - e.pos.y;
-                    const dist = Math.hypot(dx, dy);
-                    
-                    const beamRange = e.type === EntityType.ENEMY_BOSS ? 1400 : 800;
-                    const beamWidth = e.type === EntityType.ENEMY_BOSS ? 0.25 : 0.15; // Boss beam wider
-
-                    if (dist < beamRange) {
-                        const playerAngle = Math.atan2(dy, dx);
-                        const beamAngle = e.angle || 0;
-                        const angleDiff = Math.abs(Math.atan2(Math.sin(beamAngle - playerAngle), Math.cos(beamAngle - playerAngle)));
-                        
-                        if (angleDiff < beamWidth) {
-                            let beamDmg = 12 + (e.level || 1) * 3;
-                            if (e.type === EntityType.ENEMY_BOSS) beamDmg = 40 + (e.level || 1) * 6;
-                            else if (e.isMiniboss) beamDmg *= 3.0;
-                            else if (e.isElite) beamDmg *= 1.8;
-
-                            triggerPlayerHit(time, beamDmg);
-                        }
-                    }
-                }
-            }
-
-            // Enemy Bullets vs Player
-            for (let i = 0; i < projectiles.length; i++) {
-                const p = projectiles[i];
-                if (p.type === EntityType.ENEMY_BULLET && p.health > 0) {
-                    const dist = Math.hypot(p.pos.x - playerPosRef.current.x, p.pos.y - playerPosRef.current.y);
-                    if (dist < 22 + p.radius) { 
-                        p.health = 0;
-                        let bulletDmg = 10 + (p.level || 1) * 2.5;
-                        
-                        if (p.isMiniboss) bulletDmg *= 3.0;
-                        else if (p.isElite) bulletDmg *= 1.8;
-
-                        triggerPlayerHit(time, bulletDmg);
+                        break; // Collided with one enemy, handle next bullet
                     }
                 }
             }
         }
 
-        // 4. Pickups vs Player
-        for (let i = 0; i < pickups.length; i++) {
-            const p = pickups[i];
-            if (p.health <= 0) continue; 
-            const dist = Math.hypot(p.pos.x - playerPosRef.current.x, p.pos.y - playerPosRef.current.y);
-            if (dist < 50) {
-                p.health = 0; 
+        // 3. Player vs Enemy (Body Collision)
+        // Check surrounding cells of player
+        const playerCandidates = grid.retrieve({ pos: playerPos, radius: 20 } as Entity);
+        for (const e of playerCandidates) {
+            const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
+            // Player radius approx 20, enemy radius varies
+            if (dist < 20 + e.radius) {
+                // Collision damage logic
+                triggerPlayerHit(time, 15); // Static 15 dmg on collision for now
+            }
+        }
+
+        // 4. Enemy Projectiles vs Player
+        for (const p of projectiles) {
+            if (p.type !== EntityType.ENEMY_BULLET) continue;
+            const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
+            if (dist < 20 + p.radius) {
+                // Enemy Bullet Hit
+                let dmg = 10;
+                if (p.isElite) dmg = 20;
+                if (p.isMiniboss) dmg = 35;
                 
-                if (p.type === EntityType.POWERUP && p.powerUpId) {
-                    const config = POWER_UPS[p.powerUpId];
-                    if (config) {
-                        setStats(st => config.onPickup(st, time));
-                        spawnDamageText(playerPosRef.current, 0, config.color);
-                    }
-                } else if (p.type === EntityType.XP_GEM) {
-                    setStats(st => {
-                        const nx = st.xp + (p.value || 0);
-                        if (nx >= st.xpToNextLevel) {
-                            setTimeout(() => {
-                                setOfferedUpgrades([...UPGRADES].sort(() => 0.5 - Math.random()).slice(0, 3));
-                                setGameState(GameState.LEVELING);
-                            }, 0);
-                            return { ...st, xp: 0, level: st.level + 1, xpToNextLevel: Math.floor(250 * Math.pow(st.level + 1, 1.5)) };
+                triggerPlayerHit(time, dmg);
+                p.health = 0;
+            }
+        }
+
+        // 5. Pickup Collection
+        for (const p of pickups) {
+            // Already handled in usePickups movement logic? 
+            // usePickups handles movement and "collected" array return, 
+            // but stats processing happens here or in useGameLogic.
+            // Let's rely on usePickups to flag "collected" by setting alive=false and returning list
+            // But we need to process the EFFECTS here if we iterate them.
+            // Actually usePickups does the collection check distance < 50.
+            
+            // Wait, useGameLogic calls updatePickups which moves them. 
+            // We need to apply effects.
+            // Let's do it in updatePickups return in useGameLogic? 
+            // Or just check distance here again.
+            const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
+            if (dist < 40) { // Collection range
+                // Apply Effect
+                if (p.type === EntityType.XP_GEM) {
+                    setStats(prev => {
+                        let newXp = prev.xp + (p.value || 1);
+                        let newLevel = prev.level;
+                        let newXpToNext = prev.xpToNextLevel;
+                        let leveledUp = false;
+
+                        // Level Up Loop
+                        while (newXp >= newXpToNext) {
+                            newXp -= newXpToNext;
+                            newLevel++;
+                            newXpToNext = Math.floor(newXpToNext * 1.2);
+                            leveledUp = true;
                         }
-                        return { ...st, xp: nx };
+
+                        if (leveledUp) {
+                            // Generate upgrades
+                            const pool = UPGRADES.filter(u => !prev.acquiredUpgrades.some(owned => owned.id === u.id) || u.id === 'health_pack'); // Allow repeatable health
+                            const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
+                            setOfferedUpgrades(shuffled);
+                            setGameState(GameState.LEVELING);
+                        }
+                        
+                        return { ...prev, xp: newXp, level: newLevel, xpToNextLevel: newXpToNext };
                     });
                 } else if (p.type === EntityType.CREDIT) {
-                    const val = (p.value || 0) * pStats.creditMultiplier;
-                    setStats(st => ({ ...st, credits: st.credits + val }));
-                } 
+                    const amount = Math.floor((p.value || 0) * pStats.creditMultiplier);
+                    setStats(prev => ({ ...prev, credits: prev.credits + amount }));
+                } else if (p.type === EntityType.POWERUP && p.powerUpId) {
+                     const config = POWER_UPS[p.powerUpId];
+                     if (config) {
+                         setStats(prev => config.onPickup(prev, time));
+                     }
+                }
+                
+                // Mark for removal
+                p.health = 0; // usePickups cleans up health<=0 or distance check
+                // Actually usePickups removes if distance < 50, so this redundant check matches visuals
             }
         }
 
-    }, [enemiesRef, projectilesRef, pickupsRef, playerPosRef, statsRef, triggerPlayerHit, spawnDrops, spawnDamageText, addParticles, setScore, setStats, setOfferedUpgrades, setGameState, persistentData]);
+        // 6. Death Logic
+        enemies.forEach(e => {
+            if (e.health <= 0) {
+                const scoreAdd = spawnDrops(e);
+                setScore(s => s + scoreAdd);
+                spawnExplosion(e.pos, e.radius * 2.5, e.color); // BOOM!
+            }
+        });
+
+    }, [gridRef]); // Dep depends
 
     return { checkCollisions };
 };

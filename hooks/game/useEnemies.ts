@@ -1,5 +1,4 @@
-
-import { useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D, DifficultyConfig } from '../../types';
 import { WORLD_SIZE } from '../../constants';
 

@@ -1,5 +1,5 @@
 
-import { useRef, useCallback, useState } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { Entity, EntityType, Vector2D, WeaponType, PlayerStats } from '../../types';
 import { TARGETING_RADIUS, BULLET_MAX_DIST } from '../../constants';
 import { ObjectPool, createEntity } from '../../systems/ObjectPool';
@@ -198,8 +198,8 @@ export const useProjectiles = (
                          // 3. Firing Logic
                          else if (e.isFiring) {
                              e.duration = (e.duration || 0) + dt;
-                             // Beam lasts 0.3s
-                             if (e.duration > 0.3) {
+                             // Use Laser Duration from Stats (Base 0.3s)
+                             if (e.duration > pStats.laserDuration) {
                                  alive = false;
                              }
                          }

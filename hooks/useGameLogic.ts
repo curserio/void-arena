@@ -39,11 +39,11 @@ export const useGameLogic = (
   const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig);
   const { projectilesRef, autoAttack, setAutoAttack, initProjectiles, fireWeapon, updateProjectiles, addProjectiles } = useProjectiles(playerPosRef, statsRef);
   const { pickupsRef, initPickups, spawnDrops, updatePickups } = usePickups(playerPosRef, statsRef, difficultyConfig);
-  const { particlesRef, initParticles, spawnDamageText, updateParticles, addParticles } = useParticles();
+  const { particlesRef, initParticles, spawnDamageText, spawnExplosion, updateParticles, addParticles } = useParticles();
 
   const { checkCollisions } = useCollision(
     enemiesRef, projectilesRef, pickupsRef, playerPosRef, statsRef,
-    triggerPlayerHit, spawnDrops, spawnDamageText, addParticles,
+    triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, addParticles,
     setScore, setStats, setOfferedUpgrades, setGameState, persistentData
   );
 

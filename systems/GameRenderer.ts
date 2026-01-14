@@ -251,7 +251,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
     });
 };
 
-const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[], time: number) => {
+const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[], stats: PlayerStats, time: number) => {
     projectiles.forEach(e => {
         if (e.health <= 0) return;
 
@@ -306,12 +306,13 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
 
             } else if (e.isFiring) {
                 // Firing Beam
-                const duration = e.duration || 0; // 0 to 0.3
-                const maxDur = 0.3;
+                const duration = e.duration || 0; // 0 to maxDur
+                const maxDur = stats.laserDuration || 0.3;
                 const life = duration / maxDur; // 0 to 1
                 
-                // Width pulses and shrinks
-                const width = 40 * (1 - life); 
+                // Width pulses and shrinks.
+                // Clamp width to be non-negative to avoid IndexSizeError
+                const width = Math.max(0, 40 * (1 - life)); 
                 
                 // Core
                 ctx.shadowBlur = 60; ctx.shadowColor = '#a855f7';
@@ -363,7 +364,7 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
 
         if (e.type === EntityType.DAMAGE_NUMBER) {
             const prog = (e.duration || 0) / (e.maxDuration || 0.8);
-            ctx.globalAlpha = 1 - Math.pow(prog, 2);
+            ctx.globalAlpha = Math.max(0, 1 - Math.pow(prog, 2));
             ctx.scale(1 + (1-prog)*0.5, 1 + (1-prog)*0.5);
             ctx.fillStyle = e.color || '#ffffff';
             ctx.strokeStyle = '#000000';
@@ -373,16 +374,50 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
             const txt = e.value?.toString() || '0';
             ctx.strokeText(txt, 0, 0);
             ctx.fillText(txt, 0, 0);
+
         } else if (e.type === EntityType.EXPLOSION) {
-            const prog = (e.duration || 0) / (e.maxDuration || 1);
-            const r = Math.max(1, e.radius * (0.2 + Math.pow(prog, 0.5) * 0.8));
-            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
-            grad.addColorStop(0, `rgba(255, 255, 255, ${1 - prog})`);
-            grad.addColorStop(0.3, `rgba(255, 200, 50, ${(1 - prog) * 0.8})`);
-            grad.addColorStop(0.7, `rgba(255, 50, 0, ${(1 - prog) * 0.4})`);
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+            const prog = (e.duration || 0) / (e.maxDuration || 0.5);
+            const fade = Math.max(0, 1 - prog);
+            const seed = (e.id.charCodeAt(0) || 0) + (e.id.charCodeAt(e.id.length-1) || 0);
+
+            // 1. Shockwave Ring
+            ctx.beginPath();
+            ctx.arc(0, 0, e.radius * (0.2 + prog * 1.2), 0, Math.PI * 2);
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = (1 - prog) * 4;
+            ctx.globalAlpha = fade;
+            ctx.stroke();
+
+            // 2. Central Flash (Quick)
+            if (prog < 0.3) {
+                ctx.fillStyle = '#fff';
+                ctx.globalAlpha = (0.3 - prog) * 3;
+                ctx.beginPath(); ctx.arc(0, 0, e.radius * 0.5, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // 3. Procedural Debris (Performance optimized)
+            // Instead of simulating 8 separate entities, calculate their position mathematically
+            ctx.globalAlpha = fade;
+            ctx.fillStyle = e.color;
+            
+            // Generate 6-8 shards based on entity hash
+            const shardCount = 6 + (seed % 4); 
+            const speed = e.radius * 2.5; // Debris moves proportional to explosion size
+            
+            for(let i = 0; i < shardCount; i++) {
+                // Deterministic angle based on index and seed
+                const angle = (i / shardCount) * Math.PI * 2 + (seed * 0.1);
+                
+                // Distance travels over time
+                const dist = prog * speed * (0.8 + (i % 3) * 0.2); // slight variance in speed
+                
+                const dx = Math.cos(angle) * dist;
+                const dy = Math.sin(angle) * dist;
+                
+                // Draw shard (Rect is faster than Arc)
+                const size = (e.radius * 0.15) * fade;
+                ctx.fillRect(dx - size/2, dy - size/2, size, size);
+            }
         }
         ctx.restore();
     });
@@ -525,9 +560,9 @@ export const renderGame = (
     // 2. Render Layers
     renderPickups(ctx, pickups, time);
     renderEnemies(ctx, enemies, time);
-    renderProjectiles(ctx, projectiles, time);
+    renderProjectiles(ctx, projectiles, stats, time);
+    renderParticles(ctx, particles); // Moved above player so player flies through smoke/fire
     renderPlayer(ctx, playerPos, joystickDir, aimDir, stats, time, lastPlayerHitTime);
-    renderParticles(ctx, particles);
 
     ctx.restore();
 };

@@ -35,13 +35,26 @@ export class SpatialHashGrid {
   }
 
   insert(entity: Entity) {
+    // Safety check: If physics broke and coords are NaN, skip to prevent Grid crash
+    if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.y)) {
+        return;
+    }
+
     const index = this.getIndex(entity.pos.x, entity.pos.y);
-    this.buckets[index].push(entity);
+    if (this.buckets[index]) {
+        this.buckets[index].push(entity);
+    }
   }
 
   // Retrieve potential candidates from the entity's cell and 8 neighbors
   retrieve(entity: Entity): Entity[] {
     const candidates: Entity[] = [];
+    
+    // Safety check
+    if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.y)) {
+        return candidates;
+    }
+
     const col = Math.floor(entity.pos.x / this.cellSize);
     const row = Math.floor(entity.pos.y / this.cellSize);
 

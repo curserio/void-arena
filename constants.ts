@@ -97,6 +97,8 @@ export const INITIAL_STATS: PlayerStats = {
   critChance: 0.05, // 5% base
   critMultiplier: 1.5, // 150% crit dmg
   creditMultiplier: 1.0,
+  missileRadius: 150,
+  laserDuration: 0.3, // Seconds
   
   // Refactored Buffer System
   activeBuffs: {}
@@ -261,13 +263,15 @@ export const META_UPGRADES: MetaUpgrade[] = [
   { id: 'meta_plas_count', name: 'Split Chamber', description: '+1 Projectile count.', icon: 'fa-clone', maxLevel: 2, costBase: 5000, costFactor: 2.5, weaponType: WeaponType.PLASMA },
 
   // --- WEAPON SPECIFIC: MISSILE ---
-  { id: 'meta_msl_rad', name: 'Warhead Yield', description: 'Increases missile explosion radius.', icon: 'fa-bomb', maxLevel: 20, costBase: 1500, costFactor: 1.4, weaponType: WeaponType.MISSILE },
+  // Nerfed: Increased costBase 1500->4000 and Factor 1.4->1.6
+  { id: 'meta_msl_rad', name: 'Warhead Yield', description: 'Increases missile explosion radius.', icon: 'fa-bomb', maxLevel: 20, costBase: 4000, costFactor: 1.6, weaponType: WeaponType.MISSILE },
   { id: 'meta_msl_dmg', name: 'Payload Potency', description: '+5% Damage per level.', icon: 'fa-explosion', maxLevel: 100, costBase: 500, costFactor: 1.12, weaponType: WeaponType.MISSILE },
   { id: 'meta_msl_reload', name: 'Auto-Loader', description: '+5% Fire Rate per level.', icon: 'fa-repeat', maxLevel: 40, costBase: 1000, costFactor: 1.25, weaponType: WeaponType.MISSILE },
 
   // --- WEAPON SPECIFIC: LASER ---
   { id: 'meta_lsr_recharge', name: 'Capacitor Banks', description: 'Reduces Laser recharge time.', icon: 'fa-battery-full', maxLevel: 20, costBase: 2000, costFactor: 1.45, weaponType: WeaponType.LASER },
-  { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER }
+  { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER },
+  { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER }
 ];
 
 export const SHIPS: ShipConfig[] = [
@@ -283,7 +287,7 @@ export const SHIPS: ShipConfig[] = [
     type: ShipType.CRUISER,
     name: 'Valkyrie',
     description: 'Heavy armor. High sustain.',
-    baseStats: { speed: 200, maxHealth: 250, maxShield: 50, shieldRegen: 2, damage: 40 }, // Slightly higher base dmg
+    baseStats: { speed: 200, maxHealth: 250, maxShield: 50, shieldRegen: 2 }, // Damage 40 removed
     cost: 50000,
     color: '#a855f7'
   },

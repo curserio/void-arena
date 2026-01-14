@@ -112,11 +112,9 @@ const App: React.FC = () => {
   }, [persistentData]);
 
   // Handle Death / Game Over persistence logic
-  // This effect runs once when health drops <= 0
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
-      
-      // 1. Save RPG Progress (Credits, XP) immediately
+      // 1. Save RPG Progress
       setPersistentData(p => ({ 
         ...p, 
         credits: p.credits + stats.credits,
@@ -126,21 +124,15 @@ const App: React.FC = () => {
         acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
       }));
 
-      // 2. Determine Leaderboard status
-      // We do NOT save to highScores array yet. We wait for user input.
+      // 2. Leaderboard Logic
       const currentScores = persistentData.highScores || [];
       const newScore = score;
-      
-      // Sort existing to be safe
       const sorted = [...currentScores].sort((a, b) => b.score - a.score);
       
-      // Determine Rank
       let rank = -1;
       if (sorted.length < 10) {
-          // If less than 10 scores, we definitely qualify (assuming score > 0)
           rank = sorted.filter(s => s.score > newScore).length + 1;
       } else {
-          // Check if we beat the 10th score
           if (newScore > sorted[9].score) {
                rank = sorted.filter(s => s.score > newScore).length + 1;
           }
@@ -152,12 +144,21 @@ const App: React.FC = () => {
           setHasSubmittedScore(false);
       } else {
           setPendingHighScore(null);
-          setHasSubmittedScore(true); // Technically false, but we skip the input screen
+          setHasSubmittedScore(true);
       }
 
       setGameState(GameState.GAMEOVER);
     }
   }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, score]);
+
+  // Failsafe: If stuck in Leveling with no upgrades (rare race condition), force play
+  useEffect(() => {
+    if (gameState === GameState.LEVELING && offeredUpgrades.length === 0) {
+        // Fallback: Just resume play if no upgrades generated
+        console.warn("Failsafe: Leveling state detected with no upgrades. Resuming.");
+        setGameState(GameState.PLAYING);
+    }
+  }, [gameState, offeredUpgrades]);
 
   const submitScore = () => {
       if (!pendingHighScore) return;
@@ -173,7 +174,7 @@ const App: React.FC = () => {
       setPersistentData(p => {
           const newScores = [...(p.highScores || []), entry]
              .sort((a, b) => b.score - a.score)
-             .slice(0, 10); // Keep top 10
+             .slice(0, 10);
           return { ...p, highScores: newScores };
       });
 
@@ -221,14 +222,12 @@ const App: React.FC = () => {
 
     // --- KEYBOARD/MOUSE INPUT LOGIC ---
     if (currentScheme === ControlScheme.KEYBOARD_MOUSE && !isPausedNow && currentState === GameState.PLAYING) {
-        // 1. Movement
         let dx = 0; let dy = 0;
         if (keysPressed.current.has('KeyW') || keysPressed.current.has('ArrowUp')) dy -= 1;
         if (keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown')) dy += 1;
         if (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft')) dx -= 1;
         if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
         
-        // Normalize
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len > 0) {
             joystickDirRef.current = { x: dx/len, y: dy/len };
@@ -236,15 +235,12 @@ const App: React.FC = () => {
             joystickDirRef.current = { x: 0, y: 0 };
         }
 
-        // 2. Aiming (Corrected for Camera Position AND Zoom)
         const screenCX = window.innerWidth / 2;
         const screenCY = window.innerHeight / 2;
         
-        // Calculate offset in WORLD space
         const relX = (playerPosRef.current.x - cameraPosRef.current.x);
         const relY = (playerPosRef.current.y - cameraPosRef.current.y);
         
-        // Project player to SCREEN space, accounting for ZOOM
         const playerScreenX = screenCX + relX * currentZoom;
         const playerScreenY = screenCY + relY * currentZoom;
 
@@ -262,7 +258,11 @@ const App: React.FC = () => {
         triggerRef.current = true; 
     }
 
-    updateRef.current(time, dt);
+    try {
+        updateRef.current(time, dt);
+    } catch (e) {
+        console.error("Game Loop Error:", e);
+    }
 
     const vOX = canvas.width / 2 - cameraPosRef.current.x;
     const vOY = canvas.height / 2 - cameraPosRef.current.y;
@@ -283,7 +283,7 @@ const App: React.FC = () => {
       aimDirRef.current, 
       time,
       lastPlayerHitTime.current,
-      currentZoom // Pass dynamic zoom
+      currentZoom
     );
 
     requestRef.current = requestAnimationFrame(frame);
@@ -686,6 +686,11 @@ return (
           onShowUpgrades={() => setShowUpgradesList(true)}
           onOpenGarage={() => setShowGarage(true)}
         />
+        
+        {/* Render Upgrade Menu AFTER HUD/Controls to ensure it overlays them visually and receives input */}
+        {gameState === GameState.LEVELING && (
+          <UpgradeMenu upgrades={offeredUpgrades} onSelect={(u) => { addUpgrade(u); setGameState(GameState.PLAYING); }} />
+        )}
       </>
     )}
   </div>

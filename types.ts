@@ -171,6 +171,10 @@ export interface PlayerStats {
   critMultiplier: number;
   creditMultiplier: number;
   
+  // New Weapon specific calculated stats
+  missileRadius: number;
+  laserDuration: number;
+  
   // Generic Active Buffs System
   // Key: PowerUpId, Value: Expiration Timestamp (ms)
   activeBuffs: Record<string, number>;

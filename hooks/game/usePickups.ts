@@ -1,5 +1,4 @@
-
-import { useRef, useCallback } from 'react';
+import React, { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D, PlayerStats, DifficultyConfig } from '../../types';
 import { XP_PER_GEM } from '../../constants';
 import { getWeightedRandomPowerUp, POWER_UPS } from '../../systems/PowerUpSystem';

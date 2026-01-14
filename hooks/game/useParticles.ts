@@ -42,6 +42,25 @@ export const useParticles = () => {
         particlesRef.current.push(p);
     }, []);
 
+    const spawnExplosion = useCallback((pos: Vector2D, radius: number, color: string = '#facc15') => {
+        const pool = poolRef.current;
+        const p = pool.get();
+
+        p.id = Math.random().toString(36);
+        p.type = EntityType.EXPLOSION;
+        p.pos.x = pos.x;
+        p.pos.y = pos.y;
+        p.vel.x = 0; p.vel.y = 0;
+        // Visual radius of the explosion ring
+        p.radius = radius; 
+        p.color = color;
+        p.duration = 0;
+        // A quick pop looks better than a slow fade for mass destruction
+        p.maxDuration = 0.4; 
+
+        particlesRef.current.push(p);
+    }, []);
+
     const addParticles = useCallback((newParticles: Entity[]) => {
         // Adopt new particles. Ideally should copy data into pooled objects if these came from external
         // but simple push is okay as long as we clean them up correctly later
@@ -84,5 +103,5 @@ export const useParticles = () => {
         }
     }, []);
 
-    return { particlesRef, initParticles, spawnDamageText, updateParticles, addParticles };
+    return { particlesRef, initParticles, spawnDamageText, spawnExplosion, updateParticles, addParticles };
 };

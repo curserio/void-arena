@@ -9,7 +9,7 @@ interface UpgradeMenuProps {
 
 const UpgradeMenu: React.FC<UpgradeMenuProps> = ({ upgrades, onSelect }) => {
   return (
-    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[100] p-6">
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[500] p-6">
       <div className="max-w-md w-full flex flex-col gap-6 animate-in fade-in zoom-in duration-300">
         <div className="text-center">
           <h2 className="text-cyan-400 text-3xl font-black italic tracking-tighter uppercase">Level Up!</h2>

@@ -41,7 +41,10 @@ export const usePlayer = (
         
         const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
         const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
+        const mslRadL = data.metaLevels['meta_msl_rad'] || 0;
+        
         const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
+        const lsrDurL = data.metaLevels['meta_lsr_duration'] || 0;
 
         // Weapon Specific Metas
         let bCount = (shipConfig.baseStats.bulletCount || 1);
@@ -49,6 +52,8 @@ export const usePlayer = (
         let bDamageMult = 1.0;
         let bPierce = 1;
         let fRate = baseWStats.fireRate;
+        let mRadius = 150; // New Base Radius
+        let lDuration = 0.3;
 
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
@@ -57,9 +62,11 @@ export const usePlayer = (
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
+            mRadius = 150 * (1 + mslRadL * 0.10); // +10% radius per level
         } else if (weapon === WeaponType.LASER) {
              bDamageMult *= (1 + lsrDmgL * 0.05);
              fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
+             lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
              bPierce = 999; 
         }
 
@@ -86,6 +93,8 @@ export const usePlayer = (
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
+            missileRadius: mRadius,
+            laserDuration: lDuration,
             
             critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
             critMultiplier: 1.5 + (critDmgL * 0.05),
