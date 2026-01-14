@@ -44,11 +44,9 @@ export const INITIAL_STATS: PlayerStats = {
   critChance: 0.05, // 5% base
   critMultiplier: 1.5, // 150% crit dmg
   creditMultiplier: 1.0,
-  buffs: {
-    overdriveUntil: 0,
-    omniUntil: 0,
-    pierceUntil: 0
-  }
+  
+  // Refactored Buffer System
+  activeBuffs: {}
 };
 
 export const XP_PER_GEM = 15; 

@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PlayerStats, ShipType, PowerUpType } from '../types';
+import { PlayerStats, ShipType } from '../types';
 import { SHIPS } from '../constants';
+import { POWER_UPS, isBuffActive } from '../systems/PowerUpSystem';
 
 interface HUDProps {
   stats: PlayerStats;
@@ -46,7 +47,7 @@ const PowerUpIndicator: React.FC<{
 
   if (timeLeft <= 0) return null;
 
-  const size = 56;
+  const size = 48; // Slightly smaller for side view
   const stroke = 4;
   const radius = (size / 2) - stroke;
   const circumference = radius * 2 * Math.PI;
@@ -55,7 +56,7 @@ const PowerUpIndicator: React.FC<{
 
   return (
     <div className="flex flex-col items-center gap-1 animate-in zoom-in fade-in duration-300 pointer-events-none">
-      <div className="relative w-14 h-14 flex items-center justify-center">
+      <div className="relative w-12 h-12 flex items-center justify-center bg-slate-900/80 rounded-full border border-slate-700 shadow-lg">
         <svg width={size} height={size} className="absolute -rotate-90">
           <circle 
             cx={size/2} cy={size/2} r={radius} 
@@ -70,11 +71,11 @@ const PowerUpIndicator: React.FC<{
             className="transition-[stroke-dashoffset] duration-100 ease-linear"
           />
         </svg>
-        <div className={`text-xl drop-shadow-lg`} style={{ color }}>
+        <div className={`text-lg drop-shadow-lg`} style={{ color }}>
           <i className={`fa-solid ${icon}`} />
         </div>
       </div>
-      <span className="text-[10px] font-black uppercase text-white tracking-widest drop-shadow-md">
+      <span className="text-[9px] font-black uppercase text-white tracking-widest drop-shadow-md bg-slate-900/60 px-1 rounded">
         {(timeLeft / 1000).toFixed(1)}s
       </span>
     </div>
@@ -88,12 +89,6 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
   const isInvulnerable = performance.now() < stats.invulnerableUntil;
 
   const currentShipName = SHIPS.find(s => s.type === stats.shipType)?.name || 'Vessel';
-
-  const DURATIONS = {
-    OVERDRIVE: 8000,
-    OMNI: 10000,
-    PIERCE: 7000
-  };
 
   // --- DAMAGE POPUP LOGIC ---
   const [popups, setPopups] = useState<DamagePopup[]>([]);
@@ -156,13 +151,26 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
               <span>{formatCredits(stats.credits)}</span>
             </div>
           </div>
-        </div>
 
-        {/* Center Power-ups */}
-        <div className="flex gap-4 items-center justify-center pt-2">
-          <PowerUpIndicator label="Overdrive" until={stats.buffs.overdriveUntil} maxDuration={DURATIONS.OVERDRIVE} color="#f0f" icon="fa-bolt-lightning" />
-          <PowerUpIndicator label="Omni" until={stats.buffs.omniUntil} maxDuration={DURATIONS.OMNI} color="#fbbf24" icon="fa-arrows-split-up-and-left" />
-          <PowerUpIndicator label="Pierce" until={stats.buffs.pierceUntil} maxDuration={DURATIONS.PIERCE} color="#22d3ee" icon="fa-ghost" />
+          {/* Active Power-ups (Moved Here) */}
+          <div className="flex flex-col gap-2 mt-2 items-start">
+            {Object.entries(stats.activeBuffs).map(([id, until]) => {
+                if (until <= performance.now()) return null;
+                const config = POWER_UPS[id as any];
+                if (!config || config.type === 'INSTANT') return null;
+                
+                return (
+                    <PowerUpIndicator 
+                      key={id}
+                      label={config.name}
+                      until={until}
+                      maxDuration={config.duration || 1000}
+                      color={config.color}
+                      icon={config.icon}
+                    />
+                );
+            })}
+          </div>
         </div>
 
         {/* Right Controls Block */}

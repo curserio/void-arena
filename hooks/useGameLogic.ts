@@ -1,3 +1,4 @@
+
 import { useRef, useCallback, useState } from 'react';
 import {
   GameState, PlayerStats, PersistentData
@@ -9,6 +10,7 @@ import { useProjectiles } from './game/useProjectiles';
 import { usePickups } from './game/usePickups';
 import { useParticles } from './game/useParticles';
 import { useCollision } from './game/useCollision';
+import { isBuffActive } from '../systems/PowerUpSystem';
 
 export const useGameLogic = (
   gameState: GameState,
@@ -59,9 +61,9 @@ export const useGameLogic = (
     handleShieldRegen(dt, time);
 
     // 2. Firing Logic
-    const isOverdrive = time < statsRef.current.buffs.overdriveUntil;
-    const isOmni = time < statsRef.current.buffs.omniUntil;
-    const isPierce = time < statsRef.current.buffs.pierceUntil;
+    const isOverdrive = isBuffActive(statsRef.current, 'OVERDRIVE', time);
+    const isOmni = isBuffActive(statsRef.current, 'OMNI', time);
+    const isPierce = isBuffActive(statsRef.current, 'PIERCE', time);
 
     // Pass enemies as targets for auto-aim
     fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current);

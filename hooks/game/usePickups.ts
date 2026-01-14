@@ -1,7 +1,8 @@
 
 import { useRef, useCallback } from 'react';
-import { Entity, EntityType, Vector2D, PlayerStats, PowerUpType } from '../../types';
+import { Entity, EntityType, Vector2D, PlayerStats } from '../../types';
 import { XP_PER_GEM } from '../../constants';
+import { getWeightedRandomPowerUp, POWER_UPS } from '../../systems/PowerUpSystem';
 
 export const usePickups = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -18,12 +19,14 @@ export const usePickups = (
         const baseVal = enemy.type === EntityType.ENEMY_LASER_SCOUT ? 500 : (enemy.isMelee ? 250 : 100);
         const level = enemy.level || 1;
 
+        // XP Gem
         drops.push({
             id: Math.random().toString(36), type: EntityType.XP_GEM,
             pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 14, health: 1, maxHealth: 1, color: '#06b6d4',
             value: XP_PER_GEM * (enemy.type === EntityType.ENEMY_LASER_SCOUT ? 5 : (enemy.isMelee ? 3 : 1))
         });
 
+        // Credit Drop
         if (Math.random() < 0.25) {
             drops.push({
                 id: Math.random().toString(36), type: EntityType.CREDIT,
@@ -32,12 +35,15 @@ export const usePickups = (
             });
         }
 
-        if (Math.random() < 0.05) {
-            const types = [PowerUpType.OVERDRIVE, PowerUpType.OMNI_SHOT, PowerUpType.SUPER_PIERCE];
+        // PowerUp Drop (Consolidated logic for all powerups including health/shield)
+        if (Math.random() < 0.05) { // 5% chance
+            const powerUpId = getWeightedRandomPowerUp();
+            const config = POWER_UPS[powerUpId];
+            
             drops.push({
                 id: Math.random().toString(36), type: EntityType.POWERUP,
-                pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 24, health: 1, maxHealth: 1, color: '#fff',
-                powerUpType: types[Math.floor(Math.random() * types.length)]
+                pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 24, health: 1, maxHealth: 1, color: config.color,
+                powerUpId: powerUpId
             });
         }
 

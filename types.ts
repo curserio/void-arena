@@ -20,7 +20,6 @@ export enum EntityType {
   XP_GEM = 'XP_GEM',
   POWERUP = 'POWERUP',
   CREDIT = 'CREDIT',
-  HEAL_PICKUP = 'HEAL_PICKUP',
   EXPLOSION = 'EXPLOSION',
   DAMAGE_NUMBER = 'DAMAGE_NUMBER'
 }
@@ -31,16 +30,25 @@ export enum WeaponType {
   LASER = 'LASER'
 }
 
-export enum PowerUpType {
-  OVERDRIVE = 'OVERDRIVE',
-  OMNI_SHOT = 'OMNI_SHOT',
-  SUPER_PIERCE = 'SUPER_PIERCE'
-}
-
 export enum ShipType {
   INTERCEPTOR = 'INTERCEPTOR',
   CRUISER = 'CRUISER',
   DREADNOUGHT = 'DREADNOUGHT'
+}
+
+// PowerUp ID strings for flexibility
+export type PowerUpId = 'OVERDRIVE' | 'OMNI' | 'PIERCE' | 'SPEED' | 'HEALTH' | 'SHIELD';
+
+export interface PowerUpConfig {
+  id: PowerUpId;
+  name: string;
+  type: 'DURATION' | 'INSTANT';
+  duration?: number; // ms
+  weight: number; // For drop chance
+  color: string;
+  icon: string; // FontAwesome class
+  label: string; // Short char for pickup render
+  onPickup: (stats: PlayerStats, time: number) => PlayerStats;
 }
 
 export interface Entity {
@@ -56,7 +64,7 @@ export interface Entity {
   color: string;
   value?: number;
   level?: number;
-  powerUpType?: PowerUpType;
+  powerUpId?: PowerUpId; // Changed from enum to string ID
   pierceCount?: number;
   lastShotTime?: number;
   lastMeleeHitTime?: number;
@@ -73,12 +81,11 @@ export interface Entity {
   chargeProgress?: number;
   angle?: number;
   isFiring?: boolean;
-  // New AI & Status properties
   slowUntil?: number; 
   slowFactor?: number;
   isDashing?: boolean;
   dashUntil?: number;
-  isElite?: boolean; // Explicit elite flag
+  isElite?: boolean; 
 }
 
 export interface Upgrade {
@@ -97,7 +104,7 @@ export interface MetaUpgrade {
   icon: string;
   maxLevel: number;
   costBase: number;
-  costFactor: number; // Geometric growth factor
+  costFactor: number; 
   weaponType?: WeaponType;
 }
 
@@ -133,15 +140,13 @@ export interface PlayerStats {
   shipType: ShipType;
   acquiredUpgrades: Upgrade[];
   invulnerableUntil: number;
-  // New Stats
   critChance: number;
   critMultiplier: number;
   creditMultiplier: number;
-  buffs: {
-    overdriveUntil: number;
-    omniUntil: number;
-    pierceUntil: number;
-  };
+  
+  // Generic Active Buffs System
+  // Key: PowerUpId, Value: Expiration Timestamp (ms)
+  activeBuffs: Record<string, number>;
 }
 
 export interface PersistentData {

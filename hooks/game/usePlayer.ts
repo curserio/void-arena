@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState } from '../../types';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP } from '../../constants';
+import { isBuffActive } from '../../systems/PowerUpSystem';
 
 export const usePlayer = (
     gameState: GameState,
@@ -89,7 +90,8 @@ export const usePlayer = (
             critMultiplier: 1.5 + (critDmgL * 0.05),
             creditMultiplier: 1.0 + (salvageL * 0.05),
 
-            invulnerableUntil: 0
+            invulnerableUntil: 0,
+            activeBuffs: {}
         };
 
         return metaStats;
@@ -106,8 +108,14 @@ export const usePlayer = (
     const updatePlayer = useCallback((dt: number, time: number) => {
         if (gameState !== GameState.PLAYING || isPaused) return;
         const pStats = statsRef.current;
-        playerPosRef.current.x += joystickDirRef.current.x * pStats.speed * dt;
-        playerPosRef.current.y += joystickDirRef.current.y * pStats.speed * dt;
+        
+        let moveSpeed = pStats.speed;
+        if (isBuffActive(pStats, 'SPEED', time)) {
+             moveSpeed *= 1.5; // 50% Speed Boost
+        }
+
+        playerPosRef.current.x += joystickDirRef.current.x * moveSpeed * dt;
+        playerPosRef.current.y += joystickDirRef.current.y * moveSpeed * dt;
         playerPosRef.current.x = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.x));
         playerPosRef.current.y = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.y));
         cameraPosRef.current.x += (playerPosRef.current.x - cameraPosRef.current.x) * CAMERA_LERP;
@@ -172,7 +180,7 @@ export const usePlayer = (
             finalStats.level = current.level;
             finalStats.xpToNextLevel = current.xpToNextLevel;
             finalStats.acquiredUpgrades = current.acquiredUpgrades;
-            finalStats.buffs = current.buffs;
+            finalStats.activeBuffs = current.activeBuffs; // Preserve active buffs
 
             return finalStats;
         });

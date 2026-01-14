@@ -1,7 +1,8 @@
 
 import { useCallback } from 'react';
-import { Entity, EntityType, PlayerStats, WeaponType, PowerUpType, PersistentData, Upgrade, GameState } from '../../types';
+import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState } from '../../types';
 import { UPGRADES } from '../../constants';
+import { POWER_UPS } from '../../systems/PowerUpSystem';
 
 const checkCircleCollision = (a: Entity, b: Entity) => {
     const dx = a.pos.x - b.pos.x;
@@ -178,10 +179,13 @@ export const useCollision = (
             const dist = Math.hypot(p.pos.x - playerPosRef.current.x, p.pos.y - playerPosRef.current.y);
             if (dist < 50) {
                 p.health = 0; 
-                if (p.type === EntityType.POWERUP) {
-                    if (p.powerUpType === PowerUpType.OVERDRIVE) setStats(st => ({ ...st, buffs: { ...st.buffs, overdriveUntil: time + 8000 } }));
-                    else if (p.powerUpType === PowerUpType.OMNI_SHOT) setStats(st => ({ ...st, buffs: { ...st.buffs, omniUntil: time + 10000 } }));
-                    else if (p.powerUpType === PowerUpType.SUPER_PIERCE) setStats(st => ({ ...st, buffs: { ...st.buffs, pierceUntil: time + 7000 } }));
+                
+                if (p.type === EntityType.POWERUP && p.powerUpId) {
+                    const config = POWER_UPS[p.powerUpId];
+                    if (config) {
+                        setStats(st => config.onPickup(st, time));
+                        spawnDamageText(playerPosRef.current, 0, config.color); // Hack to just spawn a particle if needed, or we can assume HUD updates
+                    }
                 } else if (p.type === EntityType.XP_GEM) {
                     setStats(st => {
                         const nx = st.xp + (p.value || 0);
@@ -190,7 +194,6 @@ export const useCollision = (
                                 setOfferedUpgrades([...UPGRADES].sort(() => 0.5 - Math.random()).slice(0, 3));
                                 setGameState(GameState.LEVELING);
                             }, 0);
-                            // New XP Curve: 250 * (Level ^ 1.5)
                             return { ...st, xp: 0, level: st.level + 1, xpToNextLevel: Math.floor(250 * Math.pow(st.level + 1, 1.5)) };
                         }
                         return { ...st, xp: nx };
@@ -198,9 +201,7 @@ export const useCollision = (
                 } else if (p.type === EntityType.CREDIT) {
                     const val = (p.value || 0) * pStats.creditMultiplier;
                     setStats(st => ({ ...st, credits: st.credits + val }));
-                } else if (p.type === EntityType.HEAL_PICKUP) {
-                    setStats(st => ({ ...st, currentHealth: Math.min(st.maxHealth, st.currentHealth + (p.value || 0)) }));
-                }
+                } 
             }
         });
 

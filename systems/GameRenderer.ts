@@ -1,6 +1,7 @@
 
-import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, PowerUpType, ShipType } from '../types';
+import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, ShipType } from '../types';
 import { SHIPS, GAME_ZOOM, WORLD_SIZE } from '../constants';
+import { POWER_UPS } from '../systems/PowerUpSystem';
 
 // --- Helpers ---
 const getAsteroidPoints = (seed: number, radius: number) => {
@@ -48,18 +49,18 @@ const renderPickups = (ctx: CanvasRenderingContext2D, pickups: Entity[], time: n
             ctx.fillStyle = '#fbbf24'; ctx.beginPath();
             ctx.moveTo(0, -14); ctx.lineTo(14, 0); ctx.lineTo(0, 14); ctx.lineTo(-14, 0); ctx.closePath(); ctx.fill();
             ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
-        } else if (e.type === EntityType.POWERUP) {
-            const pulse = 1 + Math.sin(time * 0.01) * 0.15;
-            ctx.rotate(time * 0.002);
-            ctx.shadowBlur = 25; ctx.shadowColor = '#0ff';
-            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#0ff'; ctx.lineWidth = 4;
-            ctx.beginPath(); ctx.rect(-18 * pulse, -18 * pulse, 36 * pulse, 36 * pulse); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            let txt = '?';
-            if (e.powerUpType === PowerUpType.OVERDRIVE) { txt = 'F'; ctx.shadowColor = '#f0f'; ctx.strokeStyle = '#f0f'; }
-            if (e.powerUpType === PowerUpType.OMNI_SHOT) { txt = 'M'; ctx.shadowColor = '#fbbf24'; ctx.strokeStyle = '#fbbf24'; }
-            if (e.powerUpType === PowerUpType.SUPER_PIERCE) { txt = 'P'; ctx.shadowColor = '#22d3ee'; ctx.strokeStyle = '#22d3ee'; }
-            ctx.fillText(txt, 0, 0);
+        } else if (e.type === EntityType.POWERUP && e.powerUpId) {
+            const config = POWER_UPS[e.powerUpId];
+            if (config) {
+                const pulse = 1 + Math.sin(time * 0.01) * 0.15;
+                ctx.rotate(time * 0.002);
+                ctx.shadowBlur = 25; ctx.shadowColor = config.color;
+                ctx.fillStyle = '#fff'; ctx.strokeStyle = config.color; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.rect(-18 * pulse, -18 * pulse, 36 * pulse, 36 * pulse); ctx.fill(); ctx.stroke();
+                
+                ctx.fillStyle = '#000'; ctx.font = 'bold 18px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(config.label, 0, 0);
+            }
         }
         ctx.restore();
     });
