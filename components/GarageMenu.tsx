@@ -125,12 +125,23 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                          const level = data.metaLevels[mu.id] || 0;
                          const cost = getUpgradeCost(mu, level);
                          const isMax = level >= mu.maxLevel;
+                         const percent = Math.min(100, (level / mu.maxLevel) * 100);
+
                          return (
                            <div key={mu.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex flex-col gap-2 shadow-inner">
                               <div className="flex justify-between items-center">
                                 <span className="text-cyan-400 text-[10px] font-black uppercase tracking-tight truncate max-w-[100px]">{mu.name}</span>
-                                <span className="text-slate-500 text-[9px] font-black shrink-0">LV {level}/{mu.maxLevel}</span>
+                                <span className="text-slate-500 text-[9px] font-black shrink-0">{level}/{mu.maxLevel}</span>
                               </div>
+                              
+                              {/* Progress Bar */}
+                              <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_5px_rgba(6,182,212,0.8)]" 
+                                    style={{ width: `${percent}%` }}
+                                  />
+                              </div>
+
                               <p className="text-slate-500 text-[9px] leading-tight h-8 overflow-hidden">{mu.description}</p>
                               <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(mu)} className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}>
                                 {isMax ? 'MAXED' : `${formatCredits(cost)} C`}
@@ -153,6 +164,8 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
               const level = data.metaLevels[u.id] || 0;
               const cost = getUpgradeCost(u, level);
               const isMax = level >= u.maxLevel;
+              const percent = Math.min(100, (level / u.maxLevel) * 100);
+
               return (
                 <div key={u.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col gap-3 shadow-sm hover:border-slate-700 transition-colors">
                   <div className="flex items-center gap-3">
@@ -160,11 +173,21 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                       <i className={`fa-solid ${u.icon}`} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-white font-black text-[11px] uppercase truncate tracking-tight">{u.name}</h4>
-                      <div className="text-slate-500 text-[8px] font-bold">LV {level} / {u.maxLevel}</div>
+                      <div className="flex justify-between items-baseline mb-1">
+                          <h4 className="text-white font-black text-[11px] uppercase truncate tracking-tight">{u.name}</h4>
+                          <div className="text-slate-500 text-[8px] font-bold">LV {level} / {u.maxLevel}</div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800/50">
+                        <div 
+                            className="h-full bg-cyan-500 transition-all duration-300 shadow-[0_0_8px_rgba(6,182,212,0.6)]" 
+                            style={{ width: `${percent}%` }} 
+                        />
+                      </div>
                     </div>
                   </div>
-                  {/* Added Description Here */}
+                  
                   <p className="text-slate-500 text-[9px] leading-tight">{u.description}</p>
                   
                   <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(u)} className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-cyan-600 text-white shadow-lg active:scale-95'}`}>
