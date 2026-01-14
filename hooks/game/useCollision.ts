@@ -1,7 +1,7 @@
 
 import React, { useCallback, useRef, useEffect } from 'react';
 import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState } from '../../types';
-import { UPGRADES } from '../../constants';
+import { UPGRADES, LASER_LENGTH } from '../../constants';
 import { POWER_UPS } from '../../systems/PowerUpSystem';
 import { SpatialHashGrid } from '../../systems/SpatialHashGrid';
 
@@ -15,6 +15,20 @@ const checkCircleCollision = (a: Entity, b: Entity) => {
     const distSq = dx * dx + dy * dy;
     const radSum = a.radius + b.radius;
     return distSq < radSum * radSum;
+};
+
+// Distance from point P to line segment VW
+const distToSegmentSq = (p: {x:number, y:number}, v: {x:number, y:number}, w: {x:number, y:number}) => {
+    const l2 = (w.x - v.x)*(w.x - v.x) + (w.y - v.y)*(w.y - v.y);
+    if (l2 === 0) return (p.x - v.x)*(p.x - v.x) + (p.y - v.y)*(p.y - v.y);
+    
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    
+    const px = v.x + t * (w.x - v.x);
+    const py = v.y + t * (w.y - v.y);
+    
+    return (p.x - px)*(p.x - px) + (p.y - py)*(p.y - py);
 };
 
 // Fix: Use React namespace correctly by importing React
@@ -54,24 +68,88 @@ export const useCollision = (
             }
         }
 
-        // 1. Projectiles vs Enemies (Optimized O(N * K))
+        // 1. Projectiles vs Enemies
         for (let i = 0; i < projectiles.length; i++) {
             const p = projectiles[i];
-            
-            // Skip dead or special projectiles early
-            if (p.type !== EntityType.BULLET || p.isCharging || p.health <= 0) continue;
+            if (p.health <= 0) continue;
 
-            // Retrieve only nearby candidates
+            // --- LASER BEAM LOGIC (Line vs Circle) ---
+            if (p.weaponType === WeaponType.LASER) {
+                // Only deal damage if in Firing state
+                if (p.isFiring) {
+                    // Prevent multi-hit per beam tick if we want strict DPS, 
+                    // but for "Instant Hit", we can just check if we haven't hit this enemy with THIS beam instance yet.
+                    // However, simplified: apply damage every frame it is overlapping.
+                    // To prevent crazy damage, we use a cooldown per enemy for being hit by specific weapon types if needed,
+                    // OR rely on the short duration of the beam (0.3s) and frame rate.
+                    // Let's use a `lastHitTime` check on enemy for Laser specifically to throttle it slightly or just let it rip.
+                    // Given the user said "Instantly damages", implying one big hit.
+                    // We can use a property on the beam `hasDealtDamage` or similar, but the beam persists for visuals.
+                    
+                    // Let's implement: Damage applied ONCE per beam fire instance.
+                    // We can store hit enemies in a Set on the projectile? 
+                    // Since Entity doesn't have a Set, we'll check `p.duration` (if it's the first frame of firing).
+                    
+                    if ((p.duration || 0) <= dt * 1.5) { // First frame(s) only
+                        const angle = p.angle || 0;
+                        const beamLen = LASER_LENGTH; // Use constant
+                        const beamStart = p.pos;
+                        const beamEnd = {
+                            x: beamStart.x + Math.cos(angle) * beamLen,
+                            y: beamStart.y + Math.sin(angle) * beamLen
+                        };
+
+                        // Check ALL enemies for beam (Grid is acceptable, but Line traverses many cells. 
+                        // Iterating all active enemies is safer/easier for infinite lines).
+                        for (let j = 0; j < enemies.length; j++) {
+                            const e = enemies[j];
+                            if (e.health <= 0) continue;
+
+                            const distSq = distToSegmentSq(e.pos, beamStart, beamEnd);
+                            const hitRadius = e.radius + 30; // Beam width allowance
+                            
+                            if (distSq < hitRadius * hitRadius) {
+                                // HIT!
+                                const isCrit = Math.random() < pStats.critChance;
+                                let baseDamage = pStats.damage;
+                                if (isCrit) baseDamage *= pStats.critMultiplier;
+                                
+                                let damage = baseDamage;
+                                let isShieldHit = false;
+
+                                if (e.shield && e.shield > 0) {
+                                    const shieldHit = Math.min(e.shield, damage);
+                                    e.shield -= shieldHit;
+                                    damage -= shieldHit;
+                                    e.lastShieldHitTime = time;
+                                    isShieldHit = true;
+                                }
+
+                                if (damage > 0) e.health -= damage;
+                                e.lastHitTime = time;
+                                spawnDamageText(e.pos, Math.floor(baseDamage), isCrit ? '#facc15' : '#a855f7');
+
+                                if (e.health <= 0) {
+                                    const scoreGain = spawnDrops(e);
+                                    setScore(s => s + scoreGain);
+                                }
+                            }
+                        }
+                    }
+                }
+                continue; // Skip standard collision logic for Laser
+            }
+
+            // --- STANDARD PROJECTILE LOGIC (Circle vs Circle) ---
+            if (p.type !== EntityType.BULLET) continue;
+
             const candidates = grid.retrieve(p);
 
             for (let j = 0; j < candidates.length; j++) {
                 const e = candidates[j];
-                
-                // Double check health (redundant but safe)
                 if (e.health <= 0) continue;
 
                 if (checkCircleCollision(p, e)) {
-                     // --- DAMAGE CALCULATION ---
                      const isCrit = Math.random() < pStats.critChance;
                      let baseDamage = pStats.damage;
                      if (isCrit) baseDamage *= pStats.critMultiplier;
@@ -79,7 +157,6 @@ export const useCollision = (
                      let damage = baseDamage;
                      let isShieldHit = false;
 
-                     // Shield Logic
                      if (e.shield && e.shield > 0) {
                          const shieldHit = Math.min(e.shield, damage);
                          e.shield -= shieldHit;
@@ -88,15 +165,11 @@ export const useCollision = (
                          isShieldHit = true;
                      }
 
-                     // Hull Logic
                      if (damage > 0) e.health -= damage;
-                     
                      e.lastHitTime = time;
                      spawnDamageText(e.pos, baseDamage, isCrit ? '#facc15' : (isShieldHit && damage <= 0 ? '#06fdfd' : '#ffffff'));
 
-                     // --- WEAPON EFFECTS ---
                      if (p.weaponType === WeaponType.PLASMA) {
-                         // Plasma Slow Effect
                          e.slowUntil = time + 2000;
                          e.slowFactor = 0.3; 
                      }
@@ -106,23 +179,14 @@ export const useCollision = (
                          setScore(s => s + scoreGain);
                      }
 
-                     // --- PROJECTILE CONSUMPTION ---
                      if (p.weaponType === WeaponType.MISSILE) {
                          p.health = 0; 
                          const mRad = 110 * (1 + (persistentData.metaLevels['meta_msl_rad'] || 0) * 0.3);
-                         
-                         // Area Damage with Falloff
-                         // Note: We use addParticles but we might want to pool explosions in the future too
                          addParticles([{
                              id: Math.random().toString(36), type: EntityType.EXPLOSION, pos: { ...p.pos },
                              vel: { x: 0, y: 0 }, radius: mRad, health: 1, maxHealth: 1, color: '#fb923c',
                              duration: 0, maxDuration: 0.6
                          }]);
-                         
-                         // For AOE, we still iterate candidates or nearby. 
-                         // To be perfectly accurate, AOE should check grid again with larger radius
-                         // But reusing candidates is a "good enough" approximation if radius isn't huge compared to cell.
-                         // Or we can just iterate 'enemies' for AOE since it happens rarely (Missiles have slow fire rate)
                          enemies.forEach(other => {
                              if (other.id !== e.id && other.health > 0) {
                                  const dist = Math.hypot(other.pos.x - p.pos.x, other.pos.y - p.pos.y);
@@ -130,7 +194,6 @@ export const useCollision = (
                                      const falloff = 1 - (dist / mRad);
                                      const finalScale = 0.25 + (falloff * 0.75);
                                      let aoeDmg = pStats.damage * 0.8 * finalScale;
-                                     
                                      if (other.shield && other.shield > 0) {
                                          const sd = Math.min(other.shield, aoeDmg);
                                          other.shield -= sd;
@@ -148,14 +211,13 @@ export const useCollision = (
                              }
                          });
                      } else {
-                         // Plasma/Laser
                          if (p.pierceCount && p.pierceCount > 1) {
                              p.pierceCount--;
                          } else {
                              p.health = 0; 
                          }
                      }
-                     break; // Hit one enemy per frame per bullet check (unless piercing handled logic above continues, but `break` here stops checking other candidates for THIS bullet instance)
+                     break; 
                 }
             }
         }

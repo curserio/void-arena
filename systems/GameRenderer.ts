@@ -1,6 +1,6 @@
 
 import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, ShipType } from '../types';
-import { SHIPS, GAME_ZOOM, WORLD_SIZE } from '../constants';
+import { SHIPS, GAME_ZOOM, WORLD_SIZE, LASER_LENGTH } from '../constants';
 import { POWER_UPS } from '../systems/PowerUpSystem';
 
 // --- Helpers ---
@@ -209,7 +209,12 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
         ctx.save();
         ctx.translate(e.pos.x, e.pos.y);
 
-        const angle = e.isCharging ? (e.angle || 0) : Math.atan2(e.vel.y, e.vel.x);
+        // Angle Calculation
+        // For Lasers, angle is explicit. For moving bullets, derive from velocity.
+        let angle = Math.atan2(e.vel.y, e.vel.x);
+        if (e.weaponType === WeaponType.LASER) {
+            angle = e.angle || 0;
+        }
         
         // Render Trail
         if (!e.isCharging && e.type === EntityType.BULLET && e.weaponType !== WeaponType.LASER) {
@@ -225,21 +230,64 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
             ctx.restore();
         }
 
+        // Player Laser Rendering
+        if (e.weaponType === WeaponType.LASER) {
+            ctx.rotate(angle); // Rotate to aim direction
+            
+            if (e.isCharging) {
+                // Charging Line (Telegraph)
+                const prog = e.chargeProgress || 0;
+                
+                // Guide Line
+                ctx.strokeStyle = `rgba(168, 85, 247, ${0.2 + prog * 0.4})`; // Purple
+                ctx.lineWidth = 1 + prog * 2;
+                ctx.setLineDash([20, 15]);
+                ctx.beginPath(); 
+                ctx.moveTo(30, 0); // Start slightly ahead of ship
+                ctx.lineTo(LASER_LENGTH, 0); 
+                ctx.stroke();
+
+                // Gathering Energy Orb at base
+                ctx.shadowBlur = 10 + prog * 20; 
+                ctx.shadowColor = '#d8b4fe';
+                ctx.fillStyle = '#a855f7';
+                ctx.beginPath();
+                ctx.arc(20, 0, 5 + prog * 8, 0, Math.PI * 2);
+                ctx.fill();
+
+            } else if (e.isFiring) {
+                // Firing Beam
+                const duration = e.duration || 0; // 0 to 0.3
+                const maxDur = 0.3;
+                const life = duration / maxDur; // 0 to 1
+                
+                // Width pulses and shrinks
+                const width = 40 * (1 - life); 
+                
+                // Core
+                ctx.shadowBlur = 60; ctx.shadowColor = '#a855f7';
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(0, -width / 4, LASER_LENGTH, width / 2);
+                
+                // Outer Glow
+                ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
+                ctx.fillRect(0, -width, LASER_LENGTH, width * 2);
+
+                // Flash at base
+                ctx.beginPath();
+                ctx.fillStyle = '#fff';
+                ctx.arc(20, 0, width * 1.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+            return; // Done rendering Laser
+        }
+
         ctx.rotate(angle + Math.PI / 2);
 
         if (e.type === EntityType.BULLET) {
-            if (e.weaponType === WeaponType.LASER) {
-                if (e.isCharging) {
-                    const prog = e.chargeProgress || 0;
-                    ctx.shadowBlur = 20 + prog * 40; ctx.shadowColor = '#fff';
-                    const sphereGrad = ctx.createRadialGradient(0, -35, 0.1, 0, -35, Math.max(1, 25 * prog));
-                    sphereGrad.addColorStop(0, '#fff'); sphereGrad.addColorStop(1, 'transparent');
-                    ctx.fillStyle = sphereGrad; ctx.beginPath(); ctx.arc(0, -35, Math.max(1, 25 * prog), 0, Math.PI*2); ctx.fill();
-                } else {
-                    ctx.shadowBlur = 50; ctx.shadowColor = '#a855f7';
-                    ctx.fillStyle = '#fff'; ctx.fillRect(-15, -200, 30, 400);
-                }
-            } else if (e.weaponType === WeaponType.MISSILE) {
+            if (e.weaponType === WeaponType.MISSILE) {
                 ctx.shadowBlur = 20; ctx.shadowColor = e.color;
                 ctx.fillStyle = e.color; ctx.fillRect(-8, -20, 16, 40);
                 // Engine fire
@@ -298,7 +346,10 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     ctx.translate(playerPos.x, playerPos.y);
 
     // --- AIM RETICLE ---
-    // Only draw if player is actively aiming with left stick
+    // Only draw if player is actively aiming with left stick AND NOT using Laser (Laser has its own telegraph)
+    // Actually, laser telegraph is part of the projectile, so we can hide default reticle if Laser is equipped AND charging?
+    // Or just keep the reticle for consistent "where am I aiming" feedback. 
+    // The prompt says "Aiming should continue", so seeing the reticle helps.
     if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
         const aimAngle = Math.atan2(aimDir.y, aimDir.x);
         ctx.save();

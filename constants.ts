@@ -5,6 +5,7 @@ export const WORLD_SIZE = 4000;
 export const CAMERA_LERP = 0.08;
 export const TARGETING_RADIUS = 600; 
 export const BULLET_MAX_DIST = 1200;
+export const LASER_LENGTH = 1800;
 export const GAME_ZOOM = 0.65; 
 
 // Rebalanced Weapons
@@ -13,8 +14,8 @@ export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: n
   [WeaponType.PLASMA]: { fireRate: 6.0, damage: 35, bulletSpeed: 900 },
   // Missile: Slow fire, huge AOE damage, good for clearing packs
   [WeaponType.MISSILE]: { fireRate: 0.8, damage: 180, bulletSpeed: 600 },
-  // Laser: Railgun style. Pierces everything. High damage per shot, precision needed.
-  [WeaponType.LASER]: { fireRate: 0.6, damage: 400, bulletSpeed: 4500 }
+  // Laser: Charge mechanic. High damage tick.
+  [WeaponType.LASER]: { fireRate: 1.0, damage: 250, bulletSpeed: 0 } // Speed 0 as it is attached to player
 };
 
 export const INITIAL_STATS: PlayerStats = {

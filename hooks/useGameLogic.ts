@@ -77,7 +77,8 @@ export const useGameLogic = (
     const { enemyBulletsToSpawn } = updateEnemies(dt, time, gameTimeRef.current);
     if (enemyBulletsToSpawn.length > 0) addProjectiles(enemyBulletsToSpawn);
 
-    const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current);
+    // Pass aimDirRef to updateProjectiles so lasers can rotate while charging
+    const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDirRef.current);
     // updateProjectiles can return new explosions or events if needed
 
     updatePickups(dt);
