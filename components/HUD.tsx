@@ -155,7 +155,8 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
           {/* Active Power-ups (Moved Here) */}
           <div className="flex flex-col gap-2 mt-2 items-start">
             {Object.entries(stats.activeBuffs).map(([id, until]) => {
-                if (until <= performance.now()) return null;
+                // Assert until as number to avoid unknown type error
+                if ((until as number) <= performance.now()) return null;
                 const config = POWER_UPS[id as any];
                 if (!config || config.type === 'INSTANT') return null;
                 
@@ -163,7 +164,7 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
                     <PowerUpIndicator 
                       key={id}
                       label={config.name}
-                      until={until}
+                      until={until as number}
                       maxDuration={config.duration || 1000}
                       color={config.color}
                       icon={config.icon}

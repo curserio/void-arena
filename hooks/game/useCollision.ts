@@ -1,5 +1,5 @@
 
-import { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect } from 'react';
 import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState } from '../../types';
 import { UPGRADES } from '../../constants';
 import { POWER_UPS } from '../../systems/PowerUpSystem';
@@ -17,6 +17,7 @@ const checkCircleCollision = (a: Entity, b: Entity) => {
     return distSq < radSum * radSum;
 };
 
+// Fix: Use React namespace correctly by importing React
 export const useCollision = (
     enemiesRef: React.MutableRefObject<Entity[]>,
     projectilesRef: React.MutableRefObject<Entity[]>,

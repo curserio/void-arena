@@ -6,6 +6,8 @@ import UpgradeMenu from './components/UpgradeMenu';
 import GarageMenu from './components/GarageMenu';
 import UpgradesList from './components/UpgradesList';
 import SettingsMenu from './components/SettingsMenu';
+import GuideMenu from './components/GuideMenu';
+import CheatsMenu from './components/CheatsMenu';
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
@@ -22,6 +24,8 @@ const App: React.FC = () => {
   const [showGarage, setShowGarage] = useState(false);
   const [showUpgradesList, setShowUpgradesList] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showCheats, setShowCheats] = useState(false);
   
   // Initialize Persistent Data with Auto-Detection
   const [persistentData, setPersistentData] = useState<PersistentData>(() => {
@@ -53,7 +57,7 @@ const App: React.FC = () => {
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
   // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
-  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings;
+  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats;
 
   const {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
@@ -104,13 +108,13 @@ const App: React.FC = () => {
   const isPausedRef = useRef(isPaused);
   const gameStateRef = useRef(gameState);
   const autoAttackRef = useRef(autoAttack);
-  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings);
+  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats);
 
   useEffect(() => { persistentDataRef.current = persistentData; }, [persistentData]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { autoAttackRef.current = autoAttack; }, [autoAttack]);
-  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings; }, [showGarage, showUpgradesList, showSettings]);
+  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats]);
 
   const frame = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
@@ -145,13 +149,10 @@ const App: React.FC = () => {
         }
 
         // 2. Aiming (Corrected for Camera Position)
-        // Calculate player position on screen
         const screenCX = window.innerWidth / 2;
         const screenCY = window.innerHeight / 2;
-        // Player position in world relative to camera
         const relX = (playerPosRef.current.x - cameraPosRef.current.x);
         const relY = (playerPosRef.current.y - cameraPosRef.current.y);
-        // Scaled to zoom
         const playerScreenX = screenCX + relX * GAME_ZOOM;
         const playerScreenY = screenCY + relY * GAME_ZOOM;
 
@@ -163,15 +164,12 @@ const App: React.FC = () => {
             aimDirRef.current = { x: vx/dist, y: vy/dist };
         }
 
-        // 3. Firing (Click OR "Auto Attack" toggle which acts as Always Fire)
         triggerRef.current = isMouseDown.current || isAutoAttack;
     } 
     else if ((currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && !isPausedNow) {
-        // For joysticks/touch, trigger is implicit if aiming is active (magnitude check done in useProjectiles)
         triggerRef.current = true; 
     }
 
-    // Call update through ref to always get latest closure if needed, though we passed necessary refs already
     updateRef.current(time, dt);
 
     const vOX = canvas.width / 2 - cameraPosRef.current.x;
@@ -208,7 +206,6 @@ useEffect(() => {
   window.addEventListener('resize', handleResize);
   handleResize();
 
-  // Input Listeners
   const onKeyDown = (e: KeyboardEvent) => keysPressed.current.add(e.code);
   const onKeyUp = (e: KeyboardEvent) => keysPressed.current.delete(e.code);
   const onMouseMove = (e: MouseEvent) => mousePos.current = { x: e.clientX, y: e.clientY };
@@ -246,7 +243,6 @@ const handleGarageUpdate = (newData: PersistentData, spentSession: number) => {
 };
 
 const handleManualAbort = () => {
-  // Save progress on manual exit
   setPersistentData(p => ({ 
     ...p, 
     credits: p.credits + stats.credits,
@@ -259,7 +255,6 @@ const handleManualAbort = () => {
   setIsPaused(false);
 };
 
-// --- TAP TO AIM LOGIC ---
 const aimTouchIdRef = useRef<number | null>(null);
 
 const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
@@ -270,7 +265,6 @@ const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
   const dist = Math.sqrt(dx * dx + dy * dy);
   
   if (dist > 0) {
-    // Normalize vector
     aimDirRef.current = { x: dx / dist, y: dy / dist };
   }
 }, [aimDirRef]);
@@ -303,8 +297,6 @@ const handleAimLayerTouchEnd = useCallback((e: React.TouchEvent) => {
   }
 }, [persistentData.settings, aimDirRef]);
 
-// Mouse fallbacks for aiming layer (ONLY for Tap to Aim mode)
-// In Keyboard/Mouse mode, global listeners handle this.
 const handleAimLayerMouseDown = useCallback((e: React.MouseEvent) => {
     if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return;
     aimTouchIdRef.current = 999;
@@ -335,19 +327,30 @@ return (
     {gameState === GameState.START && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-lg z-[200]">
         <h1 className="text-cyan-400 text-7xl font-black italic uppercase mb-2 drop-shadow-[0_0_40px_rgba(6,182,212,0.9)] text-center">Neon Reach</h1>
-        <div className="flex flex-col gap-5 w-full max-w-xs mt-12">
+        <div className="flex flex-col gap-4 w-full max-w-xs mt-12">
           <button onClick={initGame} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
-          <button onClick={() => setShowGarage(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">CMD GARAGE</button>
-          <button onClick={() => setShowSettings(true)} className="py-4 bg-slate-900 text-slate-400 font-bold text-lg rounded-2xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
-            <i className="fa-solid fa-gear" /> SETTINGS
-          </button>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => setShowGarage(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">GARAGE</button>
+            <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">MANUAL</button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+             <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i className="fa-solid fa-gear" /> SETTINGS
+              </button>
+              <button onClick={() => setShowCheats(true)} className="py-3 bg-slate-950 text-red-900 font-bold text-sm rounded-xl border border-red-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i className="fa-solid fa-code" /> CHEATS
+              </button>
+          </div>
         </div>
+
         <div className="mt-12 text-amber-400 font-black text-xl flex items-center gap-2">
           <i className="fas fa-coins" />
           <span>{persistentData.credits.toLocaleString()} CREDITS</span>
         </div>
-        <div className="mt-2 text-cyan-400/60 font-bold text-sm">
-           CURRENT RANK: LV {persistentData.currentLevel || 1}
+        <div className="mt-2 text-cyan-400/60 font-bold text-sm uppercase tracking-widest">
+           RANK: LV {persistentData.currentLevel || 1}
         </div>
       </div>
     )}
@@ -355,13 +358,24 @@ return (
     {isPaused && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-2xl z-[250]">
         <h2 className="text-white text-6xl font-black italic uppercase mb-12">Paused</h2>
-        <div className="flex flex-col gap-5 w-full max-w-xs px-6">
+        <div className="flex flex-col gap-4 w-full max-w-xs px-6">
           <button onClick={() => setIsPaused(false)} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 shadow-xl">RESUME</button>
-          <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">CMD GARAGE</button>
-          <button onClick={() => setShowSettings(true)} className="py-4 bg-slate-900 text-slate-400 font-bold text-lg rounded-2xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
-            <i className="fa-solid fa-gear" /> SETTINGS
-          </button>
-          <button onClick={handleManualAbort} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95">SAVE & EXIT</button>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">GARAGE</button>
+            <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANUAL</button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
+              <i className="fa-solid fa-gear" /> SETTINGS
+            </button>
+             <button onClick={() => setShowCheats(true)} className="py-3 bg-slate-950 text-red-900 font-bold text-sm rounded-xl border border-red-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i className="fa-solid fa-code" /> CHEATS
+              </button>
+          </div>
+
+          <button onClick={handleManualAbort} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95 mt-4">SAVE & EXIT</button>
         </div>
       </div>
     )}
@@ -371,6 +385,18 @@ return (
         data={persistentData}
         onUpdate={setPersistentData}
         onClose={() => setShowSettings(false)}
+      />
+    )}
+
+    {showGuide && (
+      <GuideMenu onClose={() => setShowGuide(false)} />
+    )}
+
+    {showCheats && (
+      <CheatsMenu 
+        data={persistentData} 
+        onUpdate={setPersistentData} 
+        onClose={() => setShowCheats(false)} 
       />
     )}
 
@@ -390,14 +416,14 @@ return (
 
     {gameState === GameState.GAMEOVER && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/80 backdrop-blur-xl z-[200]">
-        <h2 className="text-white text-7xl font-black uppercase mb-8 italic tracking-tighter">Mission Failed</h2>
+        <h2 className="text-white text-7xl font-black uppercase mb-8 italic tracking-tighter text-center">Mission Failed</h2>
         <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-4 rounded-2xl text-amber-400 font-black text-4xl mb-4">
           Salvage: +{Math.floor(stats.credits)} C
         </div>
-        <div className="text-slate-400 font-bold mb-12 uppercase tracking-widest">
+        <div className="text-slate-400 font-bold mb-12 uppercase tracking-widest text-center">
             Progress Saved. Rank {stats.level}.
         </div>
-        <button onClick={() => setGameState(GameState.START)} className="px-16 py-6 bg-white text-red-900 font-black text-3xl rounded-full shadow-2xl">RETURN TO BASE</button>
+        <button onClick={() => setGameState(GameState.START)} className="px-16 py-6 bg-white text-red-900 font-black text-3xl rounded-full shadow-2xl active:scale-95 transition-all">RETURN TO BASE</button>
       </div>
     )}
 
@@ -407,7 +433,6 @@ return (
 
     {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isGamePaused && (
       <>
-        {/* INPUT LAYER: TAP TO AIM (Only visible in that mode) */}
         {currentScheme === ControlScheme.TAP_TO_AIM && (
           <div 
              className="absolute inset-0 z-30 touch-none cursor-crosshair"
@@ -420,7 +445,6 @@ return (
           />
         )}
 
-        {/* CONTROLS: LEFT SIDE (Only for Twin Stick) */}
         {currentScheme === ControlScheme.TWIN_STICK && (
             <Joystick 
                 className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" 
@@ -428,7 +452,6 @@ return (
             />
         )}
         
-        {/* CONTROLS: RIGHT SIDE (Movement - Twin Stick & Tap Aim) */}
         {(currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && (
              <Joystick 
                 className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" 
@@ -436,7 +459,6 @@ return (
             />
         )}
 
-        {/* HUD is always visible */}
         <HUD
           stats={stats}
           score={score}
