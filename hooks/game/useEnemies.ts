@@ -1,10 +1,11 @@
 
 import { useRef, useCallback } from 'react';
-import { Entity, EntityType, Vector2D } from '../../types';
+import { Entity, EntityType, Vector2D, DifficultyConfig } from '../../types';
 import { WORLD_SIZE } from '../../constants';
 
 export const useEnemies = (
-    playerPosRef: React.MutableRefObject<Vector2D>
+    playerPosRef: React.MutableRefObject<Vector2D>,
+    difficulty: DifficultyConfig
 ) => {
     const enemiesRef = useRef<Entity[]>([]);
     const spawnTimerRef = useRef(0);
@@ -21,17 +22,19 @@ export const useEnemies = (
                 id: Math.random().toString(36), type: EntityType.ASTEROID,
                 pos: { x: Math.random() * WORLD_SIZE, y: Math.random() * WORLD_SIZE },
                 vel: { x: (Math.random() - 0.5) * 40, y: (Math.random() - 0.5) * 40 },
-                radius: r, health: r * 5, maxHealth: r * 5, color: '#475569', seed: Math.random(),
+                radius: r, health: r * 5 * difficulty.statMultiplier, maxHealth: r * 5 * difficulty.statMultiplier, 
+                color: '#475569', seed: Math.random(),
                 lastHitTime: 0
             });
         }
-    }, []);
+    }, [difficulty]);
 
     const spawnEnemy = useCallback((gameTime: number, currentTime: number) => {
         const gameMinutes = gameTime / 60;
         
-        // 1. Difficulty Scaling
-        const difficultyMultiplier = 1 + (gameMinutes * 0.4) + (Math.pow(gameMinutes, 1.5) * 0.1);
+        // 1. Difficulty Scaling (Time + Selected Mode)
+        const difficultyMultiplier = (1 + (gameMinutes * 0.4) + (Math.pow(gameMinutes, 1.5) * 0.1)) * difficulty.statMultiplier;
+        const levelBonus = difficulty.enemyLevelBonus;
 
         // --- BOSS SPAWNING LOGIC ---
         // Spawn a boss every 3 minutes (180 seconds)
@@ -60,7 +63,7 @@ export const useEnemies = (
                 shield: bossHp * 0.25,
                 maxShield: bossHp * 0.25,
                 color: '#4ade80', // Green Theme
-                level: Math.floor(difficultyMultiplier) + 5,
+                level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
                 isBoss: true,
                 aiPhase: 0,
                 lastHitTime: 0, lastShieldHitTime: 0,
@@ -135,7 +138,7 @@ export const useEnemies = (
             shield: maxShield, maxShield: maxShield,
             color: color,
             isMelee: type === EntityType.ENEMY_STRIKER,
-            level: Math.floor(difficultyMultiplier), 
+            level: Math.floor(difficultyMultiplier) + levelBonus, 
             isElite: isElite, 
             isMiniboss: isMiniboss,
             aiPhase: Math.random() * Math.PI * 2, 
@@ -144,7 +147,7 @@ export const useEnemies = (
             isCharging: false, isFiring: false, chargeProgress: 0, 
             lastShotTime: currentTime + Math.random() * 1000
         });
-    }, [playerPosRef]);
+    }, [playerPosRef, difficulty]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
         // --- SPAWNING LOGIC ---
@@ -155,6 +158,9 @@ export const useEnemies = (
         
         let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
         if (isRushHour) spawnDelay /= 3;
+
+        // Higher difficulty spawns slightly faster
+        spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
 
         spawnTimerRef.current += dt;
         if (spawnTimerRef.current > spawnDelay) {
@@ -341,7 +347,7 @@ export const useEnemies = (
 
         enemiesRef.current = nextEnemies;
         return { enemyBulletsToSpawn };
-    }, [spawnEnemy, playerPosRef]);
+    }, [spawnEnemy, playerPosRef, difficulty]);
 
     return { enemiesRef, initEnemies, updateEnemies };
 };

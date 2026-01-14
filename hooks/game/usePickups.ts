@@ -1,12 +1,13 @@
 
 import { useRef, useCallback } from 'react';
-import { Entity, EntityType, Vector2D, PlayerStats } from '../../types';
+import { Entity, EntityType, Vector2D, PlayerStats, DifficultyConfig } from '../../types';
 import { XP_PER_GEM } from '../../constants';
 import { getWeightedRandomPowerUp, POWER_UPS } from '../../systems/PowerUpSystem';
 
 export const usePickups = (
     playerPosRef: React.MutableRefObject<Vector2D>,
-    statsRef: React.MutableRefObject<PlayerStats>
+    statsRef: React.MutableRefObject<PlayerStats>,
+    difficulty: DifficultyConfig
 ) => {
     const pickupsRef = useRef<Entity[]>([]);
 
@@ -16,6 +17,7 @@ export const usePickups = (
 
     const spawnDrops = useCallback((enemy: Entity) => {
         const drops: Entity[] = [];
+        const lootMult = difficulty.lootMultiplier;
         
         // Scaling Factors
         const level = enemy.level || 1;
@@ -46,8 +48,8 @@ export const usePickups = (
         if (enemy.type === EntityType.ENEMY_LASER_SCOUT) typeXpMult = 5;
         if (isBoss) typeXpMult = 20;
 
-        // Formula: BaseGem(15) * Type * LevelScaling * EliteBonus
-        const xpValue = Math.ceil(XP_PER_GEM * typeXpMult * (1 + (level * 0.1)) * rewardMult);
+        // Formula: BaseGem(15) * Type * LevelScaling * EliteBonus * DifficultyLoot
+        const xpValue = Math.ceil(XP_PER_GEM * typeXpMult * (1 + (level * 0.1)) * rewardMult * lootMult);
 
         drops.push({
             id: Math.random().toString(36), type: EntityType.XP_GEM,
@@ -66,8 +68,8 @@ export const usePickups = (
             if (enemy.type === EntityType.ENEMY_LASER_SCOUT) baseCredits = 150;
             if (isBoss) baseCredits = 1000;
 
-            // Formula: Base * LevelScaling * EliteBonus
-            const creditValue = Math.floor(baseCredits * levelMult * rewardMult);
+            // Formula: Base * LevelScaling * EliteBonus * DifficultyLoot
+            const creditValue = Math.floor(baseCredits * levelMult * rewardMult * lootMult);
 
             drops.push({
                 id: Math.random().toString(36), type: EntityType.CREDIT,
@@ -96,7 +98,7 @@ export const usePickups = (
 
         pickupsRef.current.push(...drops);
         return finalScore; 
-    }, []);
+    }, [difficulty]);
 
     const updatePickups = useCallback((dt: number) => {
         const pStats = statsRef.current;

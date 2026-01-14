@@ -1,9 +1,9 @@
 
 import { useRef, useCallback, useState } from 'react';
 import {
-  GameState, PlayerStats, PersistentData
+  GameState, PlayerStats, PersistentData, GameDifficulty
 } from '../types';
-import { INITIAL_STATS, WORLD_SIZE } from '../constants';
+import { INITIAL_STATS, WORLD_SIZE, DIFFICULTY_CONFIGS } from '../constants';
 import { usePlayer } from './game/usePlayer';
 import { useEnemies } from './game/useEnemies';
 import { useProjectiles } from './game/useProjectiles';
@@ -17,11 +17,14 @@ export const useGameLogic = (
   setGameState: (s: GameState) => void,
   persistentData: PersistentData,
   setOfferedUpgrades: (u: any[]) => void,
-  isPaused: boolean
+  isPaused: boolean,
+  selectedDifficulty: GameDifficulty
 ) => {
   const [score, setScore] = useState(0);
   const gameTimeRef = useRef(0);
   
+  const difficultyConfig = DIFFICULTY_CONFIGS[selectedDifficulty];
+
   // New: Aim Direction Ref for left joystick / mouse
   const aimDirRef = useRef({ x: 0, y: 0 });
   // New: Trigger Ref (Is player pressing fire button?)
@@ -33,9 +36,9 @@ export const useGameLogic = (
     addUpgrade, triggerPlayerHit, syncWithPersistentData
   } = usePlayer(gameState, persistentData, isPaused);
 
-  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef);
+  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig);
   const { projectilesRef, autoAttack, setAutoAttack, initProjectiles, fireWeapon, updateProjectiles, addProjectiles } = useProjectiles(playerPosRef, statsRef);
-  const { pickupsRef, initPickups, spawnDrops, updatePickups } = usePickups(playerPosRef, statsRef);
+  const { pickupsRef, initPickups, spawnDrops, updatePickups } = usePickups(playerPosRef, statsRef, difficultyConfig);
   const { particlesRef, initParticles, spawnDamageText, updateParticles, addParticles } = useParticles();
 
   const { checkCollisions } = useCollision(

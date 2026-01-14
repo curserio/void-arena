@@ -1,5 +1,6 @@
 
-import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry } from './types';
+import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty } from './types';
+import { DIFFICULTY_CONFIGS } from './constants';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
 import UpgradeMenu from './components/UpgradeMenu';
@@ -46,6 +47,9 @@ const App: React.FC = () => {
   const [showCheats, setShowCheats] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   
+  // Difficulty Selection State
+  const [selectedDifficulty, setSelectedDifficulty] = useState<GameDifficulty>(GameDifficulty.NORMAL);
+
   // High Score Entry State
   const [newHighScoreName, setNewHighScoreName] = useState('');
   const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number} | null>(null);
@@ -90,7 +94,7 @@ const App: React.FC = () => {
     autoAttack, setAutoAttack,
     enemiesRef, projectilesRef, pickupsRef, particlesRef
   } = useGameLogic(
-    gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused
+    gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty
   );
 
   const updateRef = useRef(update);
@@ -157,7 +161,8 @@ const App: React.FC = () => {
           name: newHighScoreName.substring(0, 12).toUpperCase() || 'UNKNOWN',
           score: pendingHighScore.score,
           date: Date.now(),
-          ship: stats.shipType
+          ship: stats.shipType,
+          difficulty: selectedDifficulty
       };
 
       setPersistentData(p => {
@@ -408,6 +413,7 @@ const handleAimLayerMouseUp = useCallback(() => {
 const currentScheme = persistentData.settings?.controlScheme || ControlScheme.TWIN_STICK;
 const totalCredits = persistentData.credits + (gameState === GameState.PLAYING ? stats.credits : 0);
 const bestScore = persistentData.highScores?.[0]?.score || 0;
+const currentRank = persistentData.currentLevel || 1;
 
 return (
   <div className="relative w-full h-screen overflow-hidden bg-slate-950 font-sans select-none touch-none">
@@ -430,7 +436,38 @@ return (
              <i className="fa-solid fa-trophy text-2xl" />
         </button>
 
-        <div className="flex flex-col gap-4 w-full max-w-xs mt-4">
+        {/* Difficulty Selection */}
+        <div className="flex gap-2 mb-6 p-2 bg-slate-900/60 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
+            {Object.values(DIFFICULTY_CONFIGS).map(diff => {
+                const isUnlocked = currentRank >= diff.minRank;
+                const isSelected = selectedDifficulty === diff.id;
+                
+                return (
+                    <button 
+                        key={diff.id}
+                        disabled={!isUnlocked}
+                        onClick={() => setSelectedDifficulty(diff.id)}
+                        className={`px-4 py-3 rounded-lg flex flex-col items-center min-w-[100px] transition-all relative
+                            ${isSelected ? 'bg-slate-800 border-2 shadow-lg scale-105 z-10' : 'bg-transparent border border-transparent opacity-60 hover:opacity-100'}
+                            ${!isUnlocked ? 'cursor-not-allowed opacity-30 grayscale' : ''}
+                        `}
+                        style={{ borderColor: isSelected ? diff.color : 'transparent' }}
+                    >
+                        <div className="font-black text-sm uppercase tracking-widest" style={{ color: diff.color }}>{diff.name}</div>
+                        {!isUnlocked && (
+                            <div className="text-[9px] font-bold text-slate-400 mt-1 flex items-center gap-1">
+                                <i className="fa-solid fa-lock" /> Rank {diff.minRank}
+                            </div>
+                        )}
+                        {isSelected && (
+                             <div className="text-[9px] font-bold text-white mt-1">{diff.description}</div>
+                        )}
+                    </button>
+                );
+            })}
+        </div>
+
+        <div className="flex flex-col gap-4 w-full max-w-xs mt-2">
           <button onClick={initGame} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
           
           <div className="grid grid-cols-2 gap-4">

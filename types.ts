@@ -9,6 +9,24 @@ export enum GameState {
   GARAGE = 'GARAGE'
 }
 
+export enum GameDifficulty {
+  NORMAL = 'NORMAL',
+  HARD = 'HARD',
+  NIGHTMARE = 'NIGHTMARE',
+  HELL = 'HELL'
+}
+
+export interface DifficultyConfig {
+  id: GameDifficulty;
+  name: string;
+  description: string;
+  minRank: number; // Required player level to unlock
+  enemyLevelBonus: number; // Start enemies at this level
+  statMultiplier: number; // Multiply HP/Dmg
+  lootMultiplier: number; // Multiply XP/Credits
+  color: string;
+}
+
 export enum EntityType {
   PLAYER = 'PLAYER',
   ENEMY_SCOUT = 'ENEMY_SCOUT',
@@ -163,6 +181,7 @@ export interface HighScoreEntry {
   score: number;
   date: number;
   ship?: ShipType;
+  difficulty?: GameDifficulty;
 }
 
 export interface PersistentData {
