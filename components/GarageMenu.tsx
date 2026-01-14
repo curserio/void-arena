@@ -25,7 +25,8 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
   const [expandedWeapons, setExpandedWeapons] = useState<Record<string, boolean>>(() => ({
     [WeaponType.PLASMA]: data.equippedWeapon === WeaponType.PLASMA,
     [WeaponType.MISSILE]: data.equippedWeapon === WeaponType.MISSILE,
-    [WeaponType.LASER]: data.equippedWeapon === WeaponType.LASER
+    [WeaponType.LASER]: data.equippedWeapon === WeaponType.LASER,
+    [WeaponType.SWARM_LAUNCHER]: data.equippedWeapon === WeaponType.SWARM_LAUNCHER
   }));
 
   const totalCredits = useMemo(() => data.credits + sessionCredits, [data.credits, sessionCredits]);
@@ -78,6 +79,16 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
         setExpandedWeapons(prev => ({ ...prev, [w]: true }));
       }
     }
+  };
+
+  const getWeaponIcon = (w: WeaponType) => {
+      switch(w) {
+          case WeaponType.PLASMA: return 'fa-fire-burner';
+          case WeaponType.MISSILE: return 'fa-rocket';
+          case WeaponType.LASER: return 'fa-sun';
+          case WeaponType.SWARM_LAUNCHER: return 'fa-hive';
+          default: return 'fa-gun';
+      }
   };
 
   return (
@@ -180,7 +191,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
         {/* WEAPONS TAB */}
         {activeTab === 'WEAPONS' && (
             <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                {[WeaponType.PLASMA, WeaponType.MISSILE, WeaponType.LASER].map(w => {
+                {[WeaponType.PLASMA, WeaponType.MISSILE, WeaponType.LASER, WeaponType.SWARM_LAUNCHER].map(w => {
                     const isUnlocked = (data.unlockedWeapons || [WeaponType.PLASMA]).includes(w);
                     const isEquipped = (data.equippedWeapon || WeaponType.PLASMA) === w;
                     const price = WEAPON_PRICES[w];
@@ -196,11 +207,11 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                                     onClick={() => isUnlocked && toggleWeapon(w)}
                                 >
                                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border ${isEquipped ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
-                                         <i className={`fa-solid ${w === WeaponType.PLASMA ? 'fa-fire-burner' : w === WeaponType.MISSILE ? 'fa-rocket' : 'fa-sun'}`} />
+                                         <i className={`fa-solid ${getWeaponIcon(w)}`} />
                                      </div>
                                      <div>
                                          <div className="flex items-center gap-3">
-                                            <h3 className="text-white text-2xl font-black italic uppercase tracking-tighter">{w} ARRAY</h3>
+                                            <h3 className="text-white text-2xl font-black italic uppercase tracking-tighter">{w.replace('_', ' ')}</h3>
                                             {isUnlocked && (
                                                 <i className={`fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-slate-500 text-sm`} />
                                             )}

@@ -47,7 +47,8 @@ export enum EntityType {
 export enum WeaponType {
   PLASMA = 'PLASMA',
   MISSILE = 'MISSILE',
-  LASER = 'LASER'
+  LASER = 'LASER',
+  SWARM_LAUNCHER = 'SWARM_LAUNCHER'
 }
 
 export enum ShipType {
@@ -114,6 +115,7 @@ export interface Entity {
   isElite?: boolean;
   isMiniboss?: boolean; 
   isBoss?: boolean;
+  targetId?: string; // For Homing Missiles
 }
 
 export interface Upgrade {
@@ -172,9 +174,11 @@ export interface PlayerStats {
   critMultiplier: number;
   creditMultiplier: number;
   
-  // New Weapon specific calculated stats
+  // Weapon specific calculated stats
   missileRadius: number;
   laserDuration: number;
+  swarmCount: number;
+  swarmAgility: number; // Turn speed in radians per sec
   
   // Generic Active Buffs System
   // Key: PowerUpId, Value: Expiration Timestamp (ms)

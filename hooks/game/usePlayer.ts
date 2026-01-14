@@ -45,6 +45,13 @@ export const usePlayer = (
         
         const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
         const lsrDurL = data.metaLevels['meta_lsr_duration'] || 0;
+        
+        const swarmCountL = data.metaLevels['meta_swarm_count'] || 0;
+        const swarmAgilityL = data.metaLevels['meta_swarm_agility'] || 0;
+        const swarmDmgL = data.metaLevels['meta_swarm_dmg'] || 0;
+        const swarmSpdL = data.metaLevels['meta_swarm_speed'] || 0;
+        const swarmCdL = data.metaLevels['meta_swarm_cd'] || 0;
+
 
         // Weapon Specific Metas
         let bCount = (shipConfig.baseStats.bulletCount || 1);
@@ -52,8 +59,12 @@ export const usePlayer = (
         let bDamageMult = 1.0;
         let bPierce = 1;
         let fRate = baseWStats.fireRate;
-        let mRadius = 150; // New Base Radius
+        let mRadius = 195; // Updated Base Radius (was 150)
         let lDuration = 0.3;
+        
+        // Swarm defaults
+        let sCount = 3; // Base 3
+        let sAgility = 1.5; // Reduced Base Agility
 
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
@@ -62,12 +73,18 @@ export const usePlayer = (
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
-            mRadius = 150 * (1 + mslRadL * 0.10); // +10% radius per level
+            mRadius = 195 * (1 + mslRadL * 0.10); // 150 -> 195
         } else if (weapon === WeaponType.LASER) {
              bDamageMult *= (1 + lsrDmgL * 0.05);
              fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
              lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
              bPierce = 999; 
+        } else if (weapon === WeaponType.SWARM_LAUNCHER) {
+             bDamageMult *= (1 + swarmDmgL * 0.05);
+             bSpeed *= (1 + swarmSpdL * 0.05);
+             sCount = 3 + swarmCountL; // 3 base + upgrades (up to 9)
+             sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
+             fRate *= (1 + swarmCdL * 0.05); // Minor CD reduction
         }
 
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
@@ -95,6 +112,8 @@ export const usePlayer = (
             pierceCount: bPierce,
             missileRadius: mRadius,
             laserDuration: lDuration,
+            swarmCount: sCount,
+            swarmAgility: sAgility,
             
             critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
             critMultiplier: 1.5 + (critDmgL * 0.05),

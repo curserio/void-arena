@@ -111,7 +111,10 @@ export const useGameLogic = (
 
     // Pass aimDirRef to updateProjectiles so lasers can rotate while charging
     const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDirRef.current);
-    // updateProjectiles can return new explosions or events if needed
+    // Handle expirations/timeouts from projectiles (e.g. Swarm Missiles timing out)
+    if (newExplosions && newExplosions.length > 0) {
+        newExplosions.forEach(exp => spawnExplosion(exp.pos, exp.radius, exp.color));
+    }
 
     updatePickups(dt);
     updateParticles(dt);
@@ -119,7 +122,7 @@ export const useGameLogic = (
     // 4. Collisions
     checkCollisions(time, dt);
 
-  }, [gameState, isPaused, updatePlayer, handleShieldRegen, fireWeapon, updateEnemies, addProjectiles, updateProjectiles, updatePickups, updateParticles, checkCollisions]);
+  }, [gameState, isPaused, updatePlayer, handleShieldRegen, fireWeapon, updateEnemies, addProjectiles, updateProjectiles, updatePickups, updateParticles, checkCollisions, spawnExplosion]);
 
   return {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,

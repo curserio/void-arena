@@ -113,7 +113,7 @@ export const useCollision = (
                     });
                 }
             } else {
-                // STANDARD PROJECTILE (Plasma / Missile)
+                // STANDARD PROJECTILE (Plasma / Missile / Swarm)
                 const candidates = grid.retrieve(p);
                 for (const e of candidates) {
                     if (e.health <= 0) continue;
@@ -126,12 +126,16 @@ export const useCollision = (
                         const isCrit = Math.random() < pStats.critChance;
                         if (isCrit) damage *= pStats.critMultiplier;
 
-                        // Missile AOE
-                        if (p.weaponType === WeaponType.MISSILE) {
-                            // Use dynamic missile radius from stats (Default 150)
-                            const explosionRad = pStats.missileRadius;
+                        // Missile AOE Logic (Standard Missile OR Swarm Launcher)
+                        if (p.weaponType === WeaponType.MISSILE || p.weaponType === WeaponType.SWARM_LAUNCHER) {
                             
-                            spawnExplosion(p.pos, explosionRad, '#fb923c'); // Visual Boom
+                            // Determine radius and color based on type
+                            const isSwarm = p.weaponType === WeaponType.SWARM_LAUNCHER;
+                            const explosionRad = isSwarm ? 150 : pStats.missileRadius; // Swarm 150 (standard), Missile uses stats (starts 195)
+                            const boomColor = isSwarm ? '#e879f9' : '#fb923c'; // Pinkish for swarm, Orange for missile
+                            
+                            spawnExplosion(p.pos, explosionRad, boomColor); // Visual Boom
+                            
                             // Area Damage
                              enemies.forEach(subE => {
                                  const dist = Math.hypot(subE.pos.x - p.pos.x, subE.pos.y - p.pos.y);
@@ -154,7 +158,7 @@ export const useCollision = (
                                      }
                                      if (sHullDmg > 0) subE.health -= sHullDmg;
                                      subE.lastHitTime = time;
-                                     spawnDamageText(subE.pos, subDmg, '#fb923c');
+                                     spawnDamageText(subE.pos, subDmg, boomColor);
                                  }
                              });
                              p.health = 0; // Missile dies on contact

@@ -67,7 +67,10 @@ export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: n
   // Missile: Slow fire, huge AOE damage, good for clearing packs
   [WeaponType.MISSILE]: { fireRate: 0.8, damage: 180, bulletSpeed: 600 },
   // Laser: Charge mechanic. High damage tick.
-  [WeaponType.LASER]: { fireRate: 1.0, damage: 250, bulletSpeed: 0 } // Speed 0 as it is attached to player
+  [WeaponType.LASER]: { fireRate: 1.0, damage: 250, bulletSpeed: 0 }, // Speed 0 as it is attached to player
+  // Swarm Launcher: Burst fire (3-9 rockets), homing. Long reload starts AFTER burst.
+  // 0.5 fire rate = 2.0s reload time + burst time
+  [WeaponType.SWARM_LAUNCHER]: { fireRate: 0.5, damage: 75, bulletSpeed: 550 } // Damage buffed 65 -> 75
 };
 
 export const INITIAL_STATS: PlayerStats = {
@@ -97,8 +100,10 @@ export const INITIAL_STATS: PlayerStats = {
   critChance: 0.05, // 5% base
   critMultiplier: 1.5, // 150% crit dmg
   creditMultiplier: 1.0,
-  missileRadius: 150,
+  missileRadius: 195, // Buffed Base Radius (150 -> 195)
   laserDuration: 0.3, // Seconds
+  swarmCount: 3, // Base burst is 3
+  swarmAgility: 1.5, // Reduced base agility (was 3.0)
   
   // Refactored Buffer System
   activeBuffs: {}
@@ -109,7 +114,8 @@ export const XP_PER_GEM = 15;
 export const WEAPON_PRICES: Record<WeaponType, number> = {
   [WeaponType.PLASMA]: 0,
   [WeaponType.MISSILE]: 15000,
-  [WeaponType.LASER]: 35000
+  [WeaponType.LASER]: 35000,
+  [WeaponType.SWARM_LAUNCHER]: 40000
 };
 
 // In-Game Upgrades (Roguelike Elements)
@@ -271,7 +277,15 @@ export const META_UPGRADES: MetaUpgrade[] = [
   // --- WEAPON SPECIFIC: LASER ---
   { id: 'meta_lsr_recharge', name: 'Capacitor Banks', description: 'Reduces Laser recharge time.', icon: 'fa-battery-full', maxLevel: 20, costBase: 2000, costFactor: 1.45, weaponType: WeaponType.LASER },
   { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER },
-  { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER }
+  { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER },
+
+  // --- WEAPON SPECIFIC: SWARM LAUNCHER ---
+  // Max Level 6 to reach 3 (base) + 6 = 9 Rockets
+  { id: 'meta_swarm_count', name: 'Extended Magazines', description: '+1 Rocket per salvo.', icon: 'fa-layer-group', maxLevel: 6, costBase: 5000, costFactor: 1.7, weaponType: WeaponType.SWARM_LAUNCHER },
+  { id: 'meta_swarm_agility', name: 'Thrust Vectoring', description: 'Improves rocket homing turn rate.', icon: 'fa-paper-plane', maxLevel: 20, costBase: 2000, costFactor: 1.3, weaponType: WeaponType.SWARM_LAUNCHER },
+  { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 50, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER },
+  { id: 'meta_swarm_speed', name: 'Solid Fuel Boost', description: '+5% Rocket Speed per level.', icon: 'fa-wind', maxLevel: 20, costBase: 800, costFactor: 1.2, weaponType: WeaponType.SWARM_LAUNCHER },
+  { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: 'Reduces cooldown between salvos.', icon: 'fa-clock', maxLevel: 10, costBase: 3000, costFactor: 1.5, weaponType: WeaponType.SWARM_LAUNCHER },
 ];
 
 export const SHIPS: ShipConfig[] = [

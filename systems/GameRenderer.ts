@@ -342,6 +342,20 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 ctx.fillStyle = e.color; ctx.fillRect(-8, -20, 16, 40);
                 // Engine fire
                 ctx.fillStyle = '#fff'; ctx.fillRect(-4, 20, 8, 10);
+            } else if (e.weaponType === WeaponType.SWARM_LAUNCHER) {
+                // Swarm Rocket - Smaller, agile
+                ctx.shadowBlur = 10; ctx.shadowColor = e.color;
+                ctx.fillStyle = e.color; 
+                // Rocket Body
+                ctx.beginPath();
+                ctx.moveTo(0, -8);
+                ctx.lineTo(5, 5);
+                ctx.lineTo(-5, 5);
+                ctx.closePath();
+                ctx.fill();
+                // Thruster
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-2, 5, 4, 6);
             } else {
                 ctx.shadowBlur = 15; ctx.shadowColor = e.color;
                 ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();

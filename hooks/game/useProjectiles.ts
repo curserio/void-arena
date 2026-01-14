@@ -13,6 +13,14 @@ export const useProjectiles = (
     const lastFireTimeRef = useRef(0);
     const [autoAttack, setAutoAttack] = useState(true);
 
+    // Burst Logic State
+    const burstQueueRef = useRef({
+        count: 0,
+        nextShotTime: 0,
+        angle: 0,
+        hasTarget: false
+    });
+
     // Initialize Pool
     const poolRef = useRef<ObjectPool<Entity>>(
         new ObjectPool<Entity>(createEntity, (e) => {
@@ -25,6 +33,7 @@ export const useProjectiles = (
             e.angle = 0;
             e.pierceCount = 1;
             e.duration = 0;
+            e.targetId = undefined; // Reset Target
         })
     );
 
@@ -34,6 +43,7 @@ export const useProjectiles = (
         projectilesRef.current.forEach(p => pool.release(p));
         projectilesRef.current.length = 0;
         lastFireTimeRef.current = 0;
+        burstQueueRef.current = { count: 0, nextShotTime: 0, angle: 0, hasTarget: false };
     }, []);
 
     const fireWeapon = useCallback((time: number, isOverdrive: boolean, isOmni: boolean, isPierce: boolean, targets: Entity[], aimDir: Vector2D, triggerActive: boolean) => {
@@ -46,6 +56,7 @@ export const useProjectiles = (
         // Firing Condition:
         // 1. Manual Aim is active AND Trigger is held (Key/Mouse/Stick)
         // 2. OR AutoAttack is enabled AND no manual aim AND enemies nearby
+        // NOTE: For SWARM_LAUNCHER, "nearby" might be wider, but sticking to standard targeting radius is fine.
         const shouldFire = (isManualAim && triggerActive) || (autoAttack && !isManualAim && targets.length > 0);
 
         if (shouldFire && (time - lastFireTimeRef.current > 1000 / fr)) {
@@ -83,8 +94,22 @@ export const useProjectiles = (
             }
 
             if (hasTarget) {
+                // If SWARM LAUNCHER, do not fire immediately. Queue the Burst.
+                if (pStats.weaponType === WeaponType.SWARM_LAUNCHER) {
+                    // Prevent queueing if already firing
+                    if (burstQueueRef.current.count > 0) return;
+
+                    burstQueueRef.current.count = pStats.swarmCount;
+                    burstQueueRef.current.nextShotTime = time; // Fire first immediately in loop
+                    burstQueueRef.current.angle = fireAngle;
+                    burstQueueRef.current.hasTarget = true;
+                    // NOTE: We do NOT set lastFireTimeRef here. 
+                    // We set it only when the burst finishes in updateProjectiles.
+                    return; 
+                }
+
                 lastFireTimeRef.current = time;
-                onShotFired(); // Track stats
+                onShotFired(); // Track stats for immediate weapons
                 const pool = poolRef.current;
 
                 if (pStats.weaponType === WeaponType.LASER) {
@@ -154,6 +179,49 @@ export const useProjectiles = (
     const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[], aimDir: Vector2D) => {
         const pStats = statsRef.current;
         const pool = poolRef.current;
+        const newExplosions: { pos: Vector2D, radius: number, color: string }[] = [];
+        
+        // --- BURST PROCESSING (Swarm Launcher) ---
+        if (burstQueueRef.current.count > 0 && time >= burstQueueRef.current.nextShotTime) {
+             const angle = burstQueueRef.current.angle;
+             const p = pool.get();
+             p.id = Math.random().toString(36);
+             p.type = EntityType.BULLET;
+             p.pos.x = playerPosRef.current.x; p.pos.y = playerPosRef.current.y;
+             
+             // Swarm starts slower then accelerates? No, let's just use steering.
+             // Start moving in fire direction
+             const speed = pStats.bulletSpeed;
+             p.vel.x = Math.cos(angle) * speed;
+             p.vel.y = Math.sin(angle) * speed;
+             
+             p.radius = 10;
+             p.color = '#e879f9'; // Pink/Purple for swarm
+             p.weaponType = WeaponType.SWARM_LAUNCHER;
+             p.pierceCount = 1;
+             p.duration = 0; // Ensure reset
+             
+             // Assign a target if available
+             // Find nearest valid target at spawn moment for homing
+             let nearest: Entity | null = null;
+             let minDist = 800;
+             targets.forEach(t => {
+                 const d = Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y);
+                 if (d < minDist) { minDist = d; nearest = t; }
+             });
+             if (nearest) p.targetId = nearest.id;
+
+             projectilesRef.current.push(p);
+             onShotFired();
+
+             burstQueueRef.current.count--;
+             if (burstQueueRef.current.count <= 0) {
+                 // Burst Finished: Start the reload timer NOW
+                 lastFireTimeRef.current = time;
+             } else {
+                 burstQueueRef.current.nextShotTime = time + 120; // 120ms between burst shots
+             }
+        }
         
         // Iterate BACKWARDS to allow safe swap-remove
         const projs = projectilesRef.current;
@@ -166,16 +234,14 @@ export const useProjectiles = (
                 if (e.type === EntityType.BULLET) {
                     
                     if (e.weaponType === WeaponType.LASER) {
-                         // 1. Stick to Player Position
+                         // ... (Laser Logic Same as Before) ...
                          e.pos.x = playerPosRef.current.x;
                          e.pos.y = playerPosRef.current.y;
 
-                         // Calculate Target Angle (Manual or Auto)
                          let targetAngle = e.angle || 0;
                          if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
                              targetAngle = Math.atan2(aimDir.y, aimDir.x);
                          } else if (targets.length > 0 && autoAttack) {
-                             // Auto-track nearest
                              let nearest: Entity | null = null;
                              let minDist = TARGETING_RADIUS;
                              targets.forEach(t => {
@@ -187,18 +253,12 @@ export const useProjectiles = (
                              }
                          }
 
-                         // Apply Rotation with Inertia
                          let currentAngle = e.angle || 0;
                          let angleDiff = targetAngle - currentAngle;
-                         
-                         // Angle Wrapping (-PI to PI)
                          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-                         // Turn Speed (Radians per second)
-                         // Slower when firing to give "heavy beam" feel
                          const turnSpeed = e.isFiring ? 3.0 : 8.0; 
-                         
                          const step = turnSpeed * dt;
                          if (Math.abs(angleDiff) < step) {
                              e.angle = targetAngle;
@@ -206,25 +266,77 @@ export const useProjectiles = (
                              e.angle = currentAngle + Math.sign(angleDiff) * step;
                          }
 
-                         // 2. Charging Logic
                          if (e.isCharging) {
-                             const chargeSpeed = 1.0; // 1 second charge
-                             e.chargeProgress = (e.chargeProgress || 0) + dt * chargeSpeed;
-
-                             if (e.chargeProgress >= 1.0) {
-                                 e.isCharging = false;
-                                 e.isFiring = true;
-                                 e.duration = 0; // Reset duration for firing phase
-                             }
-                         } 
-                         // 3. Firing Logic
-                         else if (e.isFiring) {
+                             e.chargeProgress = (e.chargeProgress || 0) + dt * 1.0; 
+                             if (e.chargeProgress >= 1.0) { e.isCharging = false; e.isFiring = true; e.duration = 0; }
+                         } else if (e.isFiring) {
                              e.duration = (e.duration || 0) + dt;
-                             // Use Laser Duration from Stats (Base 0.3s)
-                             if (e.duration > pStats.laserDuration) {
-                                 alive = false;
-                             }
+                             if (e.duration > pStats.laserDuration) alive = false;
                          }
+
+                    } else if (e.weaponType === WeaponType.SWARM_LAUNCHER) {
+                        // --- HOMING MISSILE STEERING ---
+                        // Lifetime check (3.0 seconds max)
+                        e.duration = (e.duration || 0) + dt;
+                        if (e.duration > 3.0) {
+                            alive = false;
+                            // Visual Explosion on timeout
+                            newExplosions.push({ pos: e.pos, radius: 150, color: '#e879f9' }); // 80 -> 150
+                        }
+
+                        if (alive) {
+                            // 1. Find or Maintain Target
+                            let target: Entity | undefined;
+                            if (e.targetId) {
+                                target = targets.find(t => t.id === e.targetId);
+                            }
+                            
+                            // If target lost/dead, find new one
+                            if (!target || target.health <= 0) {
+                                let nearest: Entity | null = null;
+                                let minDist = 600;
+                                targets.forEach(t => {
+                                    const d = Math.hypot(t.pos.x - e.pos.x, t.pos.y - e.pos.y);
+                                    if (d < minDist) { minDist = d; nearest = t; }
+                                });
+                                if (nearest) {
+                                    e.targetId = nearest.id;
+                                    target = nearest;
+                                } else {
+                                    e.targetId = undefined; // No target, fly straight
+                                }
+                            }
+
+                            // 2. Steer towards target
+                            const speed = pStats.bulletSpeed; // Current speed stat
+                            const agility = pStats.swarmAgility || 1.5; // Rad/sec
+
+                            let currentAngle = Math.atan2(e.vel.y, e.vel.x);
+
+                            if (target) {
+                                const dx = target.pos.x - e.pos.x;
+                                const dy = target.pos.y - e.pos.y;
+                                const targetAngle = Math.atan2(dy, dx);
+                                
+                                let diff = targetAngle - currentAngle;
+                                while (diff > Math.PI) diff -= Math.PI * 2;
+                                while (diff < -Math.PI) diff += Math.PI * 2;
+                                
+                                const turnStep = agility * dt;
+                                if (Math.abs(diff) < turnStep) {
+                                    currentAngle = targetAngle;
+                                } else {
+                                    currentAngle += Math.sign(diff) * turnStep;
+                                }
+                            }
+
+                            // Apply Velocity
+                            e.vel.x = Math.cos(currentAngle) * speed;
+                            e.vel.y = Math.sin(currentAngle) * speed;
+                            
+                            e.pos.x += e.vel.x * dt;
+                            e.pos.y += e.vel.y * dt;
+                        }
 
                     } else {
                         // Standard Bullets (Plasma / Missile)
@@ -232,7 +344,6 @@ export const useProjectiles = (
                         e.pos.y += e.vel.y * dt;
 
                         const maxDist = BULLET_MAX_DIST;
-                        // Manual hypot for speed
                         const dx = e.pos.x - playerPosRef.current.x;
                         const dy = e.pos.y - playerPosRef.current.y;
                         if (dx*dx + dy*dy > maxDist*maxDist) {
@@ -259,8 +370,8 @@ export const useProjectiles = (
             }
         }
 
-        return { newExplosions: [] };
-    }, [playerPosRef, statsRef, autoAttack]);
+        return { newExplosions };
+    }, [playerPosRef, statsRef, autoAttack, onShotFired]);
 
     const addProjectiles = useCallback((newProjs: Entity[]) => {
         projectilesRef.current.push(...newProjs);
