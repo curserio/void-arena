@@ -1,7 +1,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState } from '../../types';
-import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP } from '../../constants';
+import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { isBuffActive } from '../../systems/PowerUpSystem';
 
 export const usePlayer = (
@@ -36,7 +36,7 @@ export const usePlayer = (
         // Weapon Specific Meta Levels
         const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
         const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
-        const plasCountL = data.metaLevels['meta_plas_count'] || 0; // New Meta
+        const plasCountL = data.metaLevels['meta_plas_count'] || 0; 
         
         const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
         const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
@@ -52,15 +52,14 @@ export const usePlayer = (
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
             bSpeed *= (1 + plasSpdL * 0.08);
-            bCount += plasCountL; // Apply Split Chamber Meta
+            bCount += plasCountL; 
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
-             // Warhead yield (radius) handled in collision
         } else if (weapon === WeaponType.LASER) {
              bDamageMult *= (1 + lsrDmgL * 0.05);
              fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
-             bPierce = 999; // Railgun
+             bPierce = 999; 
         }
 
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
@@ -68,13 +67,13 @@ export const usePlayer = (
         const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * (1 + regenL * 0.10);
         
         // Base stats from ship config + Meta scaling
-        const metaStats: PlayerStats = {
+        let metaStats: PlayerStats = {
             ...INITIAL_STATS,
-            ...shipConfig.baseStats, // Apply ship overrides
+            ...shipConfig.baseStats, 
             shipType: data.equippedShip,
             weaponType: weapon,
             maxHealth: finalMaxHP,
-            currentHealth: finalMaxHP, // Full health on init
+            currentHealth: finalMaxHP, 
             maxShield: finalMaxShield,
             currentShield: finalMaxShield,
             shieldRegen: finalShieldRegen,
@@ -90,9 +89,35 @@ export const usePlayer = (
             critMultiplier: 1.5 + (critDmgL * 0.05),
             creditMultiplier: 1.0 + (salvageL * 0.05),
 
+            // RPG Persistence Loading
+            level: data.currentLevel || 1,
+            xp: data.currentXp || 0,
+            xpToNextLevel: data.xpToNextLevel || 250,
+            
+            credits: 0, // Reset session credits (bank is in persistentData)
+
             invulnerableUntil: 0,
-            activeBuffs: {}
+            activeBuffs: {},
+            acquiredUpgrades: []
         };
+
+        // Re-apply saved in-game upgrades (RPG Style)
+        if (data.acquiredUpgradeIds && data.acquiredUpgradeIds.length > 0) {
+            const rehydratedUpgrades: Upgrade[] = [];
+            data.acquiredUpgradeIds.forEach(id => {
+                const upgrade = UPGRADES.find(u => u.id === id);
+                if (upgrade) {
+                    metaStats = upgrade.effect(metaStats);
+                    rehydratedUpgrades.push(upgrade);
+                }
+            });
+            metaStats.acquiredUpgrades = rehydratedUpgrades;
+            
+            // IMPORTANT: Restore health/shield to MAX after reapplying stats
+            // We give the player a fresh heal on spawn even if they were damaged before
+            metaStats.currentHealth = metaStats.maxHealth;
+            metaStats.currentShield = metaStats.maxShield;
+        }
 
         return metaStats;
     }, []);
@@ -161,26 +186,27 @@ export const usePlayer = (
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
         const baseStats = calculateStats(newData);
         setStats(current => {
-            // Re-apply in-game upgrades to the new base stats
+            // Logic to merge current session state with new meta state
+            // Re-apply current session upgrades to the new base stats
+            // (Note: calculateStats already includes stored RPG upgrades, so we just need to ensure consistency)
+            
+            // This function is mostly used when Garage updates happen mid-game (if allowed)
+            // or to ensure UI sync. Since we are RPG style, calculateStats does the heavy lifting.
+            
+            // If in RPG mode, 'current.acquiredUpgrades' should theoretically match 'newData.acquiredUpgradeIds'
+            // unless we just bought a meta upgrade.
+            
             let finalStats = { ...baseStats };
             
-            // Preserve current health/shield state ratios or values logic
-            // Actually, keep current HP but clamp to new Max
+            // Preserve strictly real-time session data
             const hpRatio = current.maxHealth > 0 ? current.currentHealth / current.maxHealth : 1;
             const shieldRatio = current.maxShield > 0 ? current.currentShield / current.maxShield : 1;
-
-            current.acquiredUpgrades.forEach(upg => { finalStats = upg.effect(finalStats); });
 
             finalStats.currentHealth = Math.min(finalStats.maxHealth, finalStats.maxHealth * hpRatio);
             finalStats.currentShield = Math.min(finalStats.maxShield, finalStats.maxShield * shieldRatio);
             
-            // Preserve in-game currency
-            finalStats.credits = current.credits;
-            finalStats.xp = current.xp;
-            finalStats.level = current.level;
-            finalStats.xpToNextLevel = current.xpToNextLevel;
-            finalStats.acquiredUpgrades = current.acquiredUpgrades;
-            finalStats.activeBuffs = current.activeBuffs; // Preserve active buffs
+            finalStats.credits = current.credits; // Session credits
+            finalStats.activeBuffs = current.activeBuffs; 
 
             return finalStats;
         });

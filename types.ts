@@ -156,4 +156,10 @@ export interface PersistentData {
   equippedShip: ShipType;
   equippedWeapon: WeaponType;
   unlockedWeapons: WeaponType[];
+  
+  // RPG Progression Fields
+  currentLevel: number;
+  currentXp: number;
+  xpToNextLevel: number;
+  acquiredUpgradeIds: string[]; // Store IDs to reconstruct upgrades
 }

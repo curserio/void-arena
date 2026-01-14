@@ -15,17 +15,24 @@ const App: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [showGarage, setShowGarage] = useState(false);
   const [showUpgradesList, setShowUpgradesList] = useState(false);
+  
+  // Initialize Persistent Data
   const [persistentData, setPersistentData] = useState<PersistentData>(() => {
-    const saved = localStorage.getItem('stellar_survivor_v10_revised');
+    const saved = localStorage.getItem('stellar_survivor_v11_rpg');
     return saved ? JSON.parse(saved) : {
-      credits: 1000000,
+      credits: 0, // Removed debug millions
       metaLevels: {},
       unlockedShips: [ShipType.INTERCEPTOR],
       equippedShip: ShipType.INTERCEPTOR,
       equippedWeapon: WeaponType.PLASMA,
-      unlockedWeapons: [WeaponType.PLASMA]
+      unlockedWeapons: [WeaponType.PLASMA],
+      currentLevel: 1,
+      currentXp: 0,
+      xpToNextLevel: 250,
+      acquiredUpgradeIds: []
     };
   });
+  
   const [offeredUpgrades, setOfferedUpgrades] = useState<any[]>([]);
 
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
@@ -45,15 +52,25 @@ const App: React.FC = () => {
   }, [update]);
 
   useEffect(() => {
-    localStorage.setItem('stellar_survivor_v10_revised', JSON.stringify(persistentData));
+    localStorage.setItem('stellar_survivor_v11_rpg', JSON.stringify(persistentData));
   }, [persistentData]);
 
+  // Handle Death / Game Over persistence
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
-      setPersistentData(p => ({ ...p, credits: p.credits + stats.credits }));
+      // Save RPG progress on death
+      setPersistentData(p => ({ 
+        ...p, 
+        credits: p.credits + stats.credits,
+        // Persist level/xp/upgrades even on death (RPG style)
+        currentLevel: stats.level,
+        currentXp: stats.xp,
+        xpToNextLevel: stats.xpToNextLevel,
+        acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
+      }));
       setGameState(GameState.GAMEOVER);
     }
-  }, [stats.currentHealth, gameState, stats.credits]);
+  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -124,6 +141,20 @@ const handleGarageUpdate = (newData: PersistentData, spentSession: number) => {
   }
 };
 
+const handleManualAbort = () => {
+  // Save progress on manual exit
+  setPersistentData(p => ({ 
+    ...p, 
+    credits: p.credits + stats.credits,
+    currentLevel: stats.level,
+    currentXp: stats.xp,
+    xpToNextLevel: stats.xpToNextLevel,
+    acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
+  }));
+  setGameState(GameState.START);
+  setIsPaused(false);
+};
+
 return (
   <div className="relative w-full h-screen overflow-hidden bg-slate-950 font-sans select-none touch-none">
     <canvas ref={canvasRef} className="absolute inset-0" />
@@ -139,6 +170,9 @@ return (
           <i className="fas fa-coins" />
           <span>{persistentData.credits.toLocaleString()} CREDITS</span>
         </div>
+        <div className="mt-2 text-cyan-400/60 font-bold text-sm">
+           CURRENT RANK: LV {persistentData.currentLevel || 1}
+        </div>
       </div>
     )}
 
@@ -148,7 +182,7 @@ return (
         <div className="flex flex-col gap-5 w-full max-w-xs px-6">
           <button onClick={() => setIsPaused(false)} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 shadow-xl">RESUME</button>
           <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">CMD GARAGE</button>
-          <button onClick={() => { setPersistentData(p => ({ ...p, credits: p.credits + stats.credits })); setGameState(GameState.START); setIsPaused(false); }} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95">ABORT MISSION</button>
+          <button onClick={handleManualAbort} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95">SAVE & EXIT</button>
         </div>
       </div>
     )}
@@ -170,8 +204,11 @@ return (
     {gameState === GameState.GAMEOVER && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/80 backdrop-blur-xl z-[200]">
         <h2 className="text-white text-7xl font-black uppercase mb-8 italic tracking-tighter">Mission Failed</h2>
-        <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-4 rounded-2xl text-amber-400 font-black text-4xl mb-12">
+        <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-4 rounded-2xl text-amber-400 font-black text-4xl mb-4">
           Salvage: +{Math.floor(stats.credits)} C
+        </div>
+        <div className="text-slate-400 font-bold mb-12 uppercase tracking-widest">
+            Progress Saved. Rank {stats.level}.
         </div>
         <button onClick={() => setGameState(GameState.START)} className="px-16 py-6 bg-white text-red-900 font-black text-3xl rounded-full shadow-2xl">RETURN TO BASE</button>
       </div>
