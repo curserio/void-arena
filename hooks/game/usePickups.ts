@@ -21,11 +21,13 @@ export const usePickups = (
         const level = enemy.level || 1;
         const isElite = enemy.isElite || false;
         const isMiniboss = enemy.isMiniboss || false;
+        const isBoss = enemy.type === EntityType.ENEMY_BOSS;
         
         // Multipliers
         let rewardMult = 1.0;
-        if (isMiniboss) rewardMult = 15.0; // Miniboss Jackpot
-        else if (isElite) rewardMult = 5.0; // Elite Bonus
+        if (isBoss) rewardMult = 50.0; // Boss Mega Jackpot
+        else if (isMiniboss) rewardMult = 15.0; 
+        else if (isElite) rewardMult = 5.0; 
 
         const levelMult = 1 + (level * 0.2);    // +20% value per enemy level
 
@@ -33,6 +35,7 @@ export const usePickups = (
         let baseScore = 100; // Scout
         if (enemy.type === EntityType.ENEMY_STRIKER) baseScore = 250;
         if (enemy.type === EntityType.ENEMY_LASER_SCOUT) baseScore = 500;
+        if (isBoss) baseScore = 5000;
         
         const finalScore = Math.floor(baseScore * levelMult * rewardMult);
 
@@ -41,6 +44,7 @@ export const usePickups = (
         let typeXpMult = 1; // Scout
         if (enemy.isMelee) typeXpMult = 3; // Striker
         if (enemy.type === EntityType.ENEMY_LASER_SCOUT) typeXpMult = 5;
+        if (isBoss) typeXpMult = 20;
 
         // Formula: BaseGem(15) * Type * LevelScaling * EliteBonus
         const xpValue = Math.ceil(XP_PER_GEM * typeXpMult * (1 + (level * 0.1)) * rewardMult);
@@ -52,14 +56,15 @@ export const usePickups = (
         });
 
         // 3. CREDIT DROP GENERATION
-        // Chance: 33% base, 100% for Elites/Minibosses
-        const dropChance = (isElite || isMiniboss) ? 1.0 : 0.33;
+        // Chance: 33% base, 100% for Elites/Minibosses/Bosses
+        const dropChance = (isElite || isMiniboss || isBoss) ? 1.0 : 0.33;
 
         if (Math.random() < dropChance) {
-            // Increased Base Values: Scout(30), Striker(60), Laser(150)
+            // Increased Base Values
             let baseCredits = 30; 
             if (enemy.type === EntityType.ENEMY_STRIKER) baseCredits = 60;
             if (enemy.type === EntityType.ENEMY_LASER_SCOUT) baseCredits = 150;
+            if (isBoss) baseCredits = 1000;
 
             // Formula: Base * LevelScaling * EliteBonus
             const creditValue = Math.floor(baseCredits * levelMult * rewardMult);
@@ -72,9 +77,10 @@ export const usePickups = (
         }
 
         // 4. POWERUP GENERATION
-        // Chance: 5% base, 25% Elite, 50% Miniboss
+        // Chance: 5% base, 25% Elite, 50% Miniboss, 100% Boss
         let powerUpChance = 0.05;
-        if (isMiniboss) powerUpChance = 0.5;
+        if (isBoss) powerUpChance = 1.0;
+        else if (isMiniboss) powerUpChance = 0.5;
         else if (isElite) powerUpChance = 0.25;
 
         if (Math.random() < powerUpChance) { 

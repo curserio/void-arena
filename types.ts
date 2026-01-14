@@ -14,6 +14,7 @@ export enum EntityType {
   ENEMY_SCOUT = 'ENEMY_SCOUT',
   ENEMY_STRIKER = 'ENEMY_STRIKER',
   ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT',
+  ENEMY_BOSS = 'ENEMY_BOSS',
   ASTEROID = 'ASTEROID',
   BULLET = 'BULLET',
   ENEMY_BULLET = 'ENEMY_BULLET',
@@ -93,6 +94,7 @@ export interface Entity {
   dashUntil?: number;
   isElite?: boolean;
   isMiniboss?: boolean; 
+  isBoss?: boolean;
 }
 
 export interface Upgrade {

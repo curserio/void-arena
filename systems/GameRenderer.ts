@@ -106,6 +106,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         const isShieldHit = (time - (e.lastShieldHitTime || 0)) < 120;
         const isElite = !!e.isElite;
         const isMiniboss = !!e.isMiniboss;
+        const isBoss = e.type === EntityType.ENEMY_BOSS;
 
         // Health Bars & Stats
         ctx.save();
@@ -114,7 +115,12 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
 
-        if (isMiniboss) {
+        if (isBoss) {
+            ctx.shadowBlur = 25; ctx.shadowColor = '#4ade80';
+            ctx.fillStyle = '#4ade80';
+            ctx.font = '900 16px Arial';
+            ctx.fillText("GALACTIC DREADNOUGHT", 0, hudY - 25);
+        } else if (isMiniboss) {
             ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
             ctx.fillStyle = '#ef4444';
             ctx.font = '900 12px Arial';
@@ -124,7 +130,6 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             ctx.fillStyle = '#f0f';
             ctx.fillText("ELITE", 0, hudY - 20);
         } else {
-             // Show Level for non-elites too to show progression
              ctx.fillStyle = 'rgba(255,255,255,0.5)';
              ctx.fillText(`LV ${e.level || 1}`, 0, hudY - 10);
         }
@@ -133,7 +138,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         const barH = 4; const barX = -barW / 2;
         ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(barX, hudY - 5, barW, barH);
         const hpRatio = Math.max(0, e.health / e.maxHealth);
-        ctx.fillStyle = hpRatio < 0.3 ? '#f87171' : '#ef4444'; 
+        ctx.fillStyle = hpRatio < 0.3 ? '#f87171' : (isBoss ? '#4ade80' : '#ef4444'); 
         ctx.fillRect(barX, hudY - 5, barW * hpRatio, barH);
         
         if (e.maxShield && e.maxShield > 0) {
@@ -143,44 +148,82 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         }
         ctx.restore();
 
-        // Laser Scout Beam
-        if (e.type === EntityType.ENEMY_LASER_SCOUT && (e.isFiring || e.isCharging)) {
+        // Laser Scout & Boss Beam Rendering
+        if ((e.type === EntityType.ENEMY_LASER_SCOUT || isBoss) && (e.isFiring || e.isCharging)) {
             ctx.save();
             ctx.rotate(e.angle || 0);
+            
+            const beamColor = isBoss ? '74, 222, 128' : '255, 0, 0'; // Green vs Red
+            const beamHex = isBoss ? '#4ade80' : '#ff0000';
+            const beamLen = isBoss ? 1600 : 1200;
+            const beamScale = isBoss ? 2.5 : 1.0;
+
             if (e.isCharging) {
                 const prog = e.chargeProgress || 0;
-                ctx.strokeStyle = `rgba(255, 0, 0, ${0.1 + prog * 0.6})`;
-                ctx.lineWidth = 1 + prog * 3;
+                ctx.strokeStyle = `rgba(${beamColor}, ${0.1 + prog * 0.6})`;
+                ctx.lineWidth = (1 + prog * 3) * beamScale;
                 ctx.setLineDash([20, 10]);
-                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1200, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(beamLen, 0); ctx.stroke();
             }
             if (e.isFiring) {
                 const prog = e.chargeProgress || 0;
-                const width = 30 * (1 - prog);
-                ctx.shadowBlur = 50; ctx.shadowColor = '#f00';
+                const width = 30 * (1 - prog) * beamScale;
+                ctx.shadowBlur = 50; ctx.shadowColor = beamHex;
                 ctx.fillStyle = '#fff';
-                ctx.fillRect(0, -width / 2, 1200, width);
-                ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-                ctx.fillRect(0, -width, 1200, width * 2);
+                ctx.fillRect(0, -width / 2, beamLen, width);
+                ctx.fillStyle = `rgba(${beamColor}, 0.4)`;
+                ctx.fillRect(0, -width, beamLen, width * 2);
             }
             ctx.restore();
         }
 
         // Body Rotation and Draw
-        if (e.type === EntityType.ENEMY_LASER_SCOUT && (e.isCharging || e.isFiring)) {
+        if ((e.type === EntityType.ENEMY_LASER_SCOUT || isBoss) && (e.isCharging || e.isFiring)) {
             ctx.rotate((e.angle || 0) + Math.PI / 2);
         } else {
             ctx.rotate(Math.atan2(e.vel.y, e.vel.x) + Math.PI / 2);
         }
 
-        ctx.shadowBlur = isMiniboss ? 35 : (isElite ? 25 : 15); 
+        ctx.shadowBlur = isBoss ? 50 : (isMiniboss ? 35 : (isElite ? 25 : 15)); 
         ctx.shadowColor = e.color;
         
         if (isShieldHit) ctx.fillStyle = '#ffffff';
         else if (isRecentlyHit) ctx.fillStyle = '#ff0000';
         else ctx.fillStyle = e.color;
 
-        if (e.type === EntityType.ENEMY_SCOUT) {
+        if (e.type === EntityType.ENEMY_BOSS) {
+            // DEATH STAR / BOSS RENDER
+            // Main Body
+            const grad = ctx.createRadialGradient(-15, -15, 5, 0, 0, e.radius);
+            grad.addColorStop(0, '#52525b'); // lighter grey
+            grad.addColorStop(1, '#18181b'); // darker grey
+            ctx.fillStyle = isRecentlyHit ? '#ff0000' : grad;
+            ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+
+            // Equatorial Trench
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.moveTo(-e.radius, 0); ctx.lineTo(e.radius, 0); ctx.stroke();
+
+            // Superlaser Dish (Offset to top)
+            // Since we rotated +PI/2, "Up" is negative Y in local space if facing right, 
+            // but we want the dish to face the firing direction (which is -Y in local space after rotation)
+            // Local space: 0,0 is center. Facing (0, -radius).
+            
+            const dishY = -e.radius * 0.5;
+            ctx.fillStyle = '#27272a';
+            ctx.beginPath(); ctx.arc(0, dishY, e.radius * 0.25, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#10b981'; // Green glow ring
+            ctx.lineWidth = 2; ctx.stroke();
+
+            // Glow if charging
+            if (e.isCharging || e.isFiring) {
+                const prog = e.chargeProgress || 0;
+                ctx.fillStyle = `rgba(16, 185, 129, ${prog})`;
+                ctx.beginPath(); ctx.arc(0, dishY, e.radius * 0.15 * prog, 0, Math.PI*2); ctx.fill();
+            }
+
+        } else if (e.type === EntityType.ENEMY_SCOUT) {
             ctx.beginPath();
             ctx.moveTo(0, -e.radius); ctx.lineTo(-e.radius * 0.8, e.radius * 0.5);
             ctx.lineTo(-e.radius * 0.3, e.radius * 0.3); ctx.lineTo(0, e.radius * 0.8);

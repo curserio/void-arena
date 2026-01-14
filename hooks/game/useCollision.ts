@@ -77,19 +77,7 @@ export const useCollision = (
             if (p.weaponType === WeaponType.LASER) {
                 // Only deal damage if in Firing state
                 if (p.isFiring) {
-                    // Prevent multi-hit per beam tick if we want strict DPS, 
-                    // but for "Instant Hit", we can just check if we haven't hit this enemy with THIS beam instance yet.
-                    // However, simplified: apply damage every frame it is overlapping.
-                    // To prevent crazy damage, we use a cooldown per enemy for being hit by specific weapon types if needed,
-                    // OR rely on the short duration of the beam (0.3s) and frame rate.
-                    // Let's use a `lastHitTime` check on enemy for Laser specifically to throttle it slightly or just let it rip.
-                    // Given the user said "Instantly damages", implying one big hit.
-                    // We can use a property on the beam `hasDealtDamage` or similar, but the beam persists for visuals.
-                    
-                    // Let's implement: Damage applied ONCE per beam fire instance.
-                    // We can store hit enemies in a Set on the projectile? 
-                    // Since Entity doesn't have a Set, we'll check `p.duration` (if it's the first frame of firing).
-                    
+                    // Check if beam fired recently (damage application logic)
                     if ((p.duration || 0) <= dt * 1.5) { // First frame(s) only
                         const angle = p.angle || 0;
                         const beamLen = LASER_LENGTH; // Use constant
@@ -99,8 +87,7 @@ export const useCollision = (
                             y: beamStart.y + Math.sin(angle) * beamLen
                         };
 
-                        // Check ALL enemies for beam (Grid is acceptable, but Line traverses many cells. 
-                        // Iterating all active enemies is safer/easier for infinite lines).
+                        // Check ALL enemies for beam
                         for (let j = 0; j < enemies.length; j++) {
                             const e = enemies[j];
                             if (e.health <= 0) continue;
@@ -228,15 +215,19 @@ export const useCollision = (
                 const e = enemies[i];
                 if (e.health <= 0) continue;
                 
-                // Melee (Strikers / Scouts)
-                if (e.isMelee || e.type === EntityType.ENEMY_SCOUT || e.isMiniboss) {
+                // Melee (Strikers / Scouts / Boss)
+                if (e.isMelee || e.type === EntityType.ENEMY_SCOUT || e.isMiniboss || e.type === EntityType.ENEMY_BOSS) {
                     const dist = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
-                    if (dist < e.radius + 20) {
+                    // Hit radius slightly larger for Boss
+                    const hitRad = e.type === EntityType.ENEMY_BOSS ? e.radius + 10 : e.radius + 20;
+
+                    if (dist < hitRad) {
                         if (time - (e.lastMeleeHitTime || 0) > 500) {
                             e.lastMeleeHitTime = time;
                             
                             let baseHit = 15 + (e.level || 1) * 4;
-                            if (e.isMiniboss) baseHit *= 3.5; // Huge damage
+                            if (e.type === EntityType.ENEMY_BOSS) baseHit = 50 + (e.level || 1) * 8;
+                            else if (e.isMiniboss) baseHit *= 3.5;
                             else if (e.isElite) baseHit *= 1.8;
 
                             triggerPlayerHit(time, baseHit);
@@ -244,20 +235,24 @@ export const useCollision = (
                     }
                 }
                 
-                // Laser Beam
-                if (e.type === EntityType.ENEMY_LASER_SCOUT && e.isFiring) {
+                // Laser Beam (Scout & Boss)
+                if ((e.type === EntityType.ENEMY_LASER_SCOUT || e.type === EntityType.ENEMY_BOSS) && e.isFiring) {
                     const dx = playerPosRef.current.x - e.pos.x;
                     const dy = playerPosRef.current.y - e.pos.y;
                     const dist = Math.hypot(dx, dy);
                     
-                    if (dist < 800) {
+                    const beamRange = e.type === EntityType.ENEMY_BOSS ? 1400 : 800;
+                    const beamWidth = e.type === EntityType.ENEMY_BOSS ? 0.25 : 0.15; // Boss beam wider
+
+                    if (dist < beamRange) {
                         const playerAngle = Math.atan2(dy, dx);
                         const beamAngle = e.angle || 0;
                         const angleDiff = Math.abs(Math.atan2(Math.sin(beamAngle - playerAngle), Math.cos(beamAngle - playerAngle)));
                         
-                        if (angleDiff < 0.15) {
+                        if (angleDiff < beamWidth) {
                             let beamDmg = 12 + (e.level || 1) * 3;
-                            if (e.isMiniboss) beamDmg *= 3.0;
+                            if (e.type === EntityType.ENEMY_BOSS) beamDmg = 40 + (e.level || 1) * 6;
+                            else if (e.isMiniboss) beamDmg *= 3.0;
                             else if (e.isElite) beamDmg *= 1.8;
 
                             triggerPlayerHit(time, beamDmg);
