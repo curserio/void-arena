@@ -1,5 +1,5 @@
 
-import { GameState, PersistentData, ShipType, WeaponType, ControlScheme } from './types';
+import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry } from './types';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
 import UpgradeMenu from './components/UpgradeMenu';
@@ -8,6 +8,7 @@ import UpgradesList from './components/UpgradesList';
 import SettingsMenu from './components/SettingsMenu';
 import GuideMenu from './components/GuideMenu';
 import CheatsMenu from './components/CheatsMenu';
+import LeaderboardMenu from './components/LeaderboardMenu';
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
@@ -18,6 +19,23 @@ const isTouchDevice = () => {
   return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 };
 
+const DEFAULT_DATA: PersistentData = {
+  credits: 0,
+  metaLevels: {},
+  unlockedShips: [ShipType.INTERCEPTOR],
+  equippedShip: ShipType.INTERCEPTOR,
+  equippedWeapon: WeaponType.PLASMA,
+  unlockedWeapons: [WeaponType.PLASMA],
+  currentLevel: 1,
+  currentXp: 0,
+  xpToNextLevel: 250,
+  acquiredUpgradeIds: [],
+  highScores: [],
+  settings: {
+    controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE
+  }
+};
+
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.START);
   const [isPaused, setIsPaused] = useState(false);
@@ -26,22 +44,17 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [showCheats, setShowCheats] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   
-  // Initialize Persistent Data with Auto-Detection
+  // High Score Entry State
+  const [newHighScoreName, setNewHighScoreName] = useState('');
+  const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number} | null>(null);
+  const [hasSubmittedScore, setHasSubmittedScore] = useState(false);
+  
+  // Initialize Persistent Data with Auto-Detection and Migration
   const [persistentData, setPersistentData] = useState<PersistentData>(() => {
     const saved = localStorage.getItem('stellar_survivor_v11_rpg');
-    let data = saved ? JSON.parse(saved) : {
-      credits: 0,
-      metaLevels: {},
-      unlockedShips: [ShipType.INTERCEPTOR],
-      equippedShip: ShipType.INTERCEPTOR,
-      equippedWeapon: WeaponType.PLASMA,
-      unlockedWeapons: [WeaponType.PLASMA],
-      currentLevel: 1,
-      currentXp: 0,
-      xpToNextLevel: 250,
-      acquiredUpgradeIds: [],
-    };
+    let data = saved ? JSON.parse(saved) : DEFAULT_DATA;
 
     // Ensure settings exist (Migration or New)
     if (!data.settings) {
@@ -49,6 +62,18 @@ const App: React.FC = () => {
         controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE
       };
     }
+    
+    // Migration: Convert old number[] scores to HighScoreEntry[] objects
+    if (!data.highScores) {
+        data.highScores = [];
+    } else if (data.highScores.length > 0 && typeof data.highScores[0] === 'number') {
+        data.highScores = (data.highScores as unknown as number[]).map(s => ({
+            name: 'Unknown',
+            score: s,
+            date: Date.now()
+        }));
+    }
+
     return data;
   });
   
@@ -57,7 +82,7 @@ const App: React.FC = () => {
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
   // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
-  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats;
+  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard;
 
   const {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
@@ -77,22 +102,73 @@ const App: React.FC = () => {
     localStorage.setItem('stellar_survivor_v11_rpg', JSON.stringify(persistentData));
   }, [persistentData]);
 
-  // Handle Death / Game Over persistence
+  // Handle Death / Game Over persistence logic
+  // This effect runs once when health drops <= 0
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
-      // Save RPG progress on death
+      
+      // 1. Save RPG Progress (Credits, XP) immediately
       setPersistentData(p => ({ 
         ...p, 
         credits: p.credits + stats.credits,
-        // Persist level/xp/upgrades even on death (RPG style)
         currentLevel: stats.level,
         currentXp: stats.xp,
         xpToNextLevel: stats.xpToNextLevel,
         acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
       }));
+
+      // 2. Determine Leaderboard status
+      // We do NOT save to highScores array yet. We wait for user input.
+      const currentScores = persistentData.highScores || [];
+      const newScore = score;
+      
+      // Sort existing to be safe
+      const sorted = [...currentScores].sort((a, b) => b.score - a.score);
+      
+      // Determine Rank
+      let rank = -1;
+      if (sorted.length < 10) {
+          // If less than 10 scores, we definitely qualify (assuming score > 0)
+          rank = sorted.filter(s => s.score > newScore).length + 1;
+      } else {
+          // Check if we beat the 10th score
+          if (newScore > sorted[9].score) {
+               rank = sorted.filter(s => s.score > newScore).length + 1;
+          }
+      }
+
+      if (rank !== -1 && newScore > 0) {
+          setPendingHighScore({ score: newScore, rank });
+          setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
+          setHasSubmittedScore(false);
+      } else {
+          setPendingHighScore(null);
+          setHasSubmittedScore(true); // Technically false, but we skip the input screen
+      }
+
       setGameState(GameState.GAMEOVER);
     }
-  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades]);
+  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, score]);
+
+  const submitScore = () => {
+      if (!pendingHighScore) return;
+      
+      const entry: HighScoreEntry = {
+          name: newHighScoreName.substring(0, 12).toUpperCase() || 'UNKNOWN',
+          score: pendingHighScore.score,
+          date: Date.now(),
+          ship: stats.shipType
+      };
+
+      setPersistentData(p => {
+          const newScores = [...(p.highScores || []), entry]
+             .sort((a, b) => b.score - a.score)
+             .slice(0, 10); // Keep top 10
+          return { ...p, highScores: newScores };
+      });
+
+      setHasSubmittedScore(true);
+  };
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const requestRef = useRef<number>(0);
@@ -108,13 +184,13 @@ const App: React.FC = () => {
   const isPausedRef = useRef(isPaused);
   const gameStateRef = useRef(gameState);
   const autoAttackRef = useRef(autoAttack);
-  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats);
+  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard);
 
   useEffect(() => { persistentDataRef.current = persistentData; }, [persistentData]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { autoAttackRef.current = autoAttack; }, [autoAttack]);
-  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats]);
+  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats, showLeaderboard]);
 
   const frame = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
@@ -255,6 +331,17 @@ const handleManualAbort = () => {
   setIsPaused(false);
 };
 
+const handleResetProgress = () => {
+    const resetData = {
+        ...DEFAULT_DATA,
+        settings: persistentData.settings // Keep settings but reset progress
+    };
+    setPersistentData(resetData);
+    setGameState(GameState.START);
+    setIsPaused(false);
+    setShowSettings(false);
+};
+
 const aimTouchIdRef = useRef<number | null>(null);
 
 const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
@@ -265,7 +352,7 @@ const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
   const dist = Math.sqrt(dx * dx + dy * dy);
   
   if (dist > 0) {
-    aimDirRef.current = { x: dx / dist, y: dy / dist };
+    aimDirRef.current = { x: dx/dist, y: dy/dist };
   }
 }, [aimDirRef]);
 
@@ -319,6 +406,8 @@ const handleAimLayerMouseUp = useCallback(() => {
 }, [persistentData.settings, aimDirRef]);
 
 const currentScheme = persistentData.settings?.controlScheme || ControlScheme.TWIN_STICK;
+const totalCredits = persistentData.credits + (gameState === GameState.PLAYING ? stats.credits : 0);
+const bestScore = persistentData.highScores?.[0]?.score || 0;
 
 return (
   <div className="relative w-full h-screen overflow-hidden bg-slate-950 font-sans select-none touch-none">
@@ -327,7 +416,21 @@ return (
     {gameState === GameState.START && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-lg z-[200]">
         <h1 className="text-cyan-400 text-7xl font-black italic uppercase mb-2 drop-shadow-[0_0_40px_rgba(6,182,212,0.9)] text-center">Void Arena</h1>
-        <div className="flex flex-col gap-4 w-full max-w-xs mt-12">
+        
+        {bestScore > 0 && (
+            <div className="mb-8 px-4 py-1 rounded bg-slate-900/50 border border-slate-700 text-amber-400 font-bold uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(251,191,36,0.3)]">
+                Best Score: {bestScore.toLocaleString()}
+            </div>
+        )}
+        
+        <button 
+             onClick={() => setShowLeaderboard(true)}
+             className="absolute top-6 right-6 w-14 h-14 bg-slate-800 rounded-full border border-slate-700 text-amber-400 shadow-xl flex items-center justify-center hover:bg-slate-700 transition-all active:scale-95 z-[210]"
+        >
+             <i className="fa-solid fa-trophy text-2xl" />
+        </button>
+
+        <div className="flex flex-col gap-4 w-full max-w-xs mt-4">
           <button onClick={initGame} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
           
           <div className="grid grid-cols-2 gap-4">
@@ -384,10 +487,18 @@ return (
       </div>
     )}
 
+    {showLeaderboard && (
+        <LeaderboardMenu 
+            scores={persistentData.highScores || []}
+            onClose={() => setShowLeaderboard(false)}
+        />
+    )}
+
     {showSettings && (
       <SettingsMenu 
         data={persistentData}
         onUpdate={setPersistentData}
+        onReset={handleResetProgress}
         onClose={() => setShowSettings(false)}
       />
     )}
@@ -419,15 +530,70 @@ return (
     )}
 
     {gameState === GameState.GAMEOVER && (
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/80 backdrop-blur-xl z-[200]">
-        <h2 className="text-white text-7xl font-black uppercase mb-8 italic tracking-tighter text-center">Mission Failed</h2>
-        <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-4 rounded-2xl text-amber-400 font-black text-4xl mb-4">
-          Salvage: +{Math.floor(stats.credits)} C
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-2xl z-[200] p-6">
+        <h2 className="text-white text-6xl font-black uppercase mb-6 italic tracking-tighter text-center">Mission Failed</h2>
+        
+        {!hasSubmittedScore && pendingHighScore ? (
+            <div className="w-full max-w-sm bg-slate-900 border border-amber-500 rounded-2xl p-6 mb-6 flex flex-col gap-4 animate-in fade-in zoom-in">
+                <div className="text-center">
+                    <div className="text-amber-400 font-black text-xl uppercase tracking-widest mb-1">New High Score!</div>
+                    <div className="text-white text-4xl font-black tabular-nums">{pendingHighScore.score.toLocaleString()}</div>
+                    <div className="text-slate-400 text-xs font-bold uppercase mt-1">Rank #{pendingHighScore.rank}</div>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                    <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enter Pilot Name</label>
+                    <input 
+                        type="text" 
+                        value={newHighScoreName}
+                        onChange={(e) => setNewHighScoreName(e.target.value)}
+                        maxLength={12}
+                        className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold text-center uppercase focus:border-cyan-500 outline-none"
+                    />
+                </div>
+
+                <button 
+                    onClick={submitScore}
+                    className="w-full py-4 bg-amber-500 text-slate-950 font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 active:scale-95 transition-all"
+                >
+                    Register Score
+                </button>
+            </div>
+        ) : (
+             <>
+                <div className="flex flex-col gap-2 items-center mb-8">
+                    <div className="text-slate-400 font-bold uppercase tracking-widest text-sm">Final Score</div>
+                    <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+                        {score.toLocaleString()}
+                    </div>
+                </div>
+                
+                {/* Mini Leaderboard View */}
+                <div className="w-full max-w-sm bg-slate-900/50 border border-slate-800 rounded-2xl p-4 mb-8 overflow-hidden">
+                    <div className="flex justify-between items-center mb-2 px-2">
+                         <h3 className="text-cyan-400 font-black uppercase italic text-sm">Top Aces</h3>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        {(persistentData.highScores || []).slice(0, 5).map((s, idx) => (
+                            <div key={idx} className={`flex justify-between items-center p-2 rounded text-xs ${s.score === score && hasSubmittedScore ? 'bg-amber-400/10 border border-amber-400/30' : ''}`}>
+                                <div className="flex gap-2">
+                                    <span className={`font-bold w-4 ${idx === 0 ? 'text-amber-400' : 'text-slate-500'}`}>#{idx + 1}</span>
+                                    <span className="text-slate-300 font-bold uppercase">{s.name}</span>
+                                </div>
+                                <span className="font-black text-slate-400">{s.score.toLocaleString()}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+             </>
+        )}
+
+        <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-2xl mb-8 flex items-center gap-3">
+          <i className="fa-solid fa-coins" />
+          <span>Salvage: +{Math.floor(stats.credits)} C</span>
         </div>
-        <div className="text-slate-400 font-bold mb-12 uppercase tracking-widest text-center">
-            Progress Saved. Rank {stats.level}.
-        </div>
-        <button onClick={() => setGameState(GameState.START)} className="px-16 py-6 bg-white text-red-900 font-black text-3xl rounded-full shadow-2xl active:scale-95 transition-all">RETURN TO BASE</button>
+        
+        <button onClick={() => setGameState(GameState.START)} className="px-12 py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
       </div>
     )}
 
@@ -468,6 +634,7 @@ return (
           score={score}
           autoAttack={autoAttack}
           setAutoAttack={setAutoAttack}
+          totalCredits={totalCredits}
           onPause={() => setIsPaused(true)}
           onShowUpgrades={() => setShowUpgradesList(true)}
           onOpenGarage={() => setShowGarage(true)}

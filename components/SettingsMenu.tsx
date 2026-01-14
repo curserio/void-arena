@@ -1,14 +1,16 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ControlScheme, PersistentData } from '../types';
 
 interface SettingsMenuProps {
   data: PersistentData;
   onUpdate: (newData: PersistentData) => void;
+  onReset: () => void;
   onClose: () => void;
 }
 
-const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onClose }) => {
+const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, onClose }) => {
+  const [confirmReset, setConfirmReset] = useState(false);
   const currentScheme = data.settings?.controlScheme || ControlScheme.TWIN_STICK;
 
   const setScheme = (scheme: ControlScheme) => {
@@ -21,9 +23,19 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onClose }) 
     });
   };
 
+  const handleResetClick = () => {
+    if (confirmReset) {
+      onReset();
+    } else {
+      setConfirmReset(true);
+      // Auto-reset confirmation state after 3 seconds if not clicked
+      setTimeout(() => setConfirmReset(false), 3000);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[300] p-6 animate-in fade-in duration-200">
-      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-8">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div className="flex justify-between items-center">
           <h2 className="text-cyan-400 text-3xl font-black italic uppercase tracking-tighter">System Config</h2>
         </div>
@@ -79,11 +91,26 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onClose }) 
           </div>
         </div>
 
+        <div className="flex flex-col gap-4 border-t border-slate-800 pt-6">
+           <h3 className="text-red-500 text-xs font-bold uppercase tracking-widest px-1">Danger Zone</h3>
+           <button 
+             onClick={handleResetClick}
+             className={`p-4 rounded-xl border transition-all flex items-center justify-center gap-2 font-black uppercase text-xs 
+               ${confirmReset 
+                 ? 'bg-red-600 text-white border-red-500 scale-105 shadow-xl animate-pulse' 
+                 : 'bg-red-950/20 text-red-500 border-red-900/50 hover:bg-red-900/40 hover:border-red-500/50'
+               }`}
+           >
+             <i className={`fa-solid ${confirmReset ? 'fa-exclamation-circle' : 'fa-trash'}`} />
+             {confirmReset ? "CONFIRM RESET? (TAP AGAIN)" : "RESET PROGRESS"}
+           </button>
+        </div>
+
         <button 
           onClick={onClose}
           className="w-full py-4 bg-white text-slate-950 font-black text-xl rounded-xl uppercase tracking-widest active:scale-95 transition-all shadow-lg"
         >
-          Confirm
+          Close
         </button>
       </div>
     </div>

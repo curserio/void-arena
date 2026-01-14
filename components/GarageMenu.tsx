@@ -92,8 +92,17 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                     <div className="w-6 h-6 rounded-full shrink-0 shadow-lg" style={{ backgroundColor: s.color }} />
                   </div>
                   {!isUnlocked && <div className="text-amber-500 text-[10px] font-black">PRICE: {formatCredits(s.cost)} C</div>}
-                  <button disabled={!isUnlocked && totalCredits < s.cost} onClick={() => buyShip(s)} className={`w-full py-2.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all ${isEquipped ? 'bg-cyan-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-amber-600 text-white'}`}>
-                    {isEquipped ? 'ACTIVE' : isUnlocked ? 'SELECT' : 'PURCHASE'}
+                  <button 
+                    disabled={!isUnlocked && totalCredits < s.cost} 
+                    onClick={() => buyShip(s)} 
+                    className={`w-full py-2.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all 
+                        ${isEquipped ? 'bg-cyan-500 text-slate-950' : 
+                          isUnlocked ? 'bg-slate-700 text-white' : 
+                          'bg-amber-600 text-white disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed disabled:shadow-none'}`}
+                  >
+                    {isEquipped ? 'ACTIVE' : 
+                     isUnlocked ? 'SELECT' : 
+                     (totalCredits < s.cost ? `MISSING ${formatCredits(s.cost - totalCredits)} C` : 'PURCHASE')}
                   </button>
                 </div>
               );
@@ -115,8 +124,15 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                     <div className="flex-1 pr-4">
                       <span className="text-white text-xl font-black italic uppercase tracking-tighter">{w} SYSTEM</span>
                     </div>
-                    <button disabled={!isUnlocked && totalCredits < price} onClick={() => handleWeaponAction(w)} className={`px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all shrink-0 ${isEquipped ? 'bg-amber-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-cyan-600 text-white'}`}>
-                      {isEquipped ? 'EQUIPPED' : isUnlocked ? 'SELECT' : `UNLOCK: ${formatCredits(price)} C`}
+                    <button 
+                        disabled={!isUnlocked && totalCredits < price} 
+                        onClick={() => handleWeaponAction(w)} 
+                        className={`px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all shrink-0 
+                            ${isEquipped ? 'bg-amber-500 text-slate-950' : 
+                              isUnlocked ? 'bg-slate-700 text-white' : 
+                              'bg-cyan-600 text-white disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed'}`}
+                    >
+                      {isEquipped ? 'EQUIPPED' : isUnlocked ? 'SELECT' : (totalCredits < price ? 'LOCKED' : `UNLOCK: ${formatCredits(price)} C`)}
                     </button>
                    </div>
                    {isUnlocked && (
@@ -143,7 +159,14 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                               </div>
 
                               <p className="text-slate-500 text-[9px] leading-tight h-8 overflow-hidden">{mu.description}</p>
-                              <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(mu)} className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}>
+                              <button 
+                                disabled={isMax || totalCredits < cost} 
+                                onClick={() => buyMeta(mu)} 
+                                className={`w-full py-2 rounded-lg font-black text-[10px] transition-all 
+                                    ${isMax ? 'bg-slate-800 text-slate-500 cursor-default' : 
+                                      totalCredits < cost ? 'bg-slate-800 text-slate-600 border border-slate-700 cursor-not-allowed opacity-50' :
+                                      'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40 hover:border-cyan-400/50'}`}
+                              >
                                 {isMax ? 'MAXED' : `${formatCredits(cost)} C`}
                               </button>
                            </div>
@@ -190,7 +213,14 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                   
                   <p className="text-slate-500 text-[9px] leading-tight">{u.description}</p>
                   
-                  <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(u)} className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-cyan-600 text-white shadow-lg active:scale-95'}`}>
+                  <button 
+                    disabled={isMax || totalCredits < cost} 
+                    onClick={() => buyMeta(u)} 
+                    className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all 
+                        ${isMax ? 'bg-slate-800 text-slate-500 cursor-default' : 
+                          totalCredits < cost ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50 border border-slate-700' :
+                          'bg-cyan-600 text-white shadow-lg active:scale-95 hover:bg-cyan-500'}`}
+                  >
                     {isMax ? 'MAXED' : `UPGRADE: ${formatCredits(cost)} C`}
                   </button>
                 </div>

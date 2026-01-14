@@ -158,6 +158,13 @@ export interface PlayerStats {
   activeBuffs: Record<string, number>;
 }
 
+export interface HighScoreEntry {
+  name: string;
+  score: number;
+  date: number;
+  ship?: ShipType;
+}
+
 export interface PersistentData {
   credits: number;
   metaLevels: Record<string, number>;
@@ -172,6 +179,8 @@ export interface PersistentData {
   xpToNextLevel: number;
   acquiredUpgradeIds: string[]; // Store IDs to reconstruct upgrades
   
+  highScores: HighScoreEntry[];
+
   // Settings
   settings: {
     controlScheme: ControlScheme;

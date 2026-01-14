@@ -9,6 +9,7 @@ interface HUDProps {
   score: number;
   autoAttack: boolean;
   setAutoAttack: (val: boolean) => void;
+  totalCredits: number;
   onPause: () => void;
   onShowUpgrades: () => void;
   onOpenGarage: () => void;
@@ -82,7 +83,7 @@ const PowerUpIndicator: React.FC<{
   );
 };
 
-const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPause, onShowUpgrades, onOpenGarage }) => {
+const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage }) => {
   const healthPercent = Math.max(0, (stats.currentHealth / stats.maxHealth) * 100);
   const shieldPercent = Math.max(0, (stats.currentShield / stats.maxShield) * 100);
   const xpPercent = Math.max(0, Math.min(100, (stats.xp / stats.xpToNextLevel) * 100));
@@ -145,10 +146,10 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
           </div>
           
           <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-2xl p-3 flex flex-col shadow-2xl min-w-[140px]">
-            <span className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">BANK CREDITS</span>
+            <span className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">TOTAL CREDITS</span>
             <div className="flex items-center gap-2 text-amber-400 font-black text-2xl leading-none drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]">
               <i className="fa-solid fa-coins text-sm" />
-              <span>{formatCredits(stats.credits)}</span>
+              <span>{formatCredits(totalCredits)}</span>
             </div>
           </div>
 
