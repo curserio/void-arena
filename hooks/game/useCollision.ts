@@ -42,7 +42,10 @@ export const useCollision = (
     setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
     setOfferedUpgrades: (u: any[]) => void,
     setGameState: (s: GameState) => void,
-    persistentData: PersistentData
+    persistentData: PersistentData,
+    onEnemyHit: () => void,
+    onEnemyKilled: () => void,
+    onCreditCollected: (amount: number) => void
 ) => {
     const gridRef = useRef<SpatialHashGrid>(new SpatialHashGrid(250));
 
@@ -82,6 +85,8 @@ export const useCollision = (
                             // Tick Damage
                             if (time - (e.lastHitTime || 0) > 100) { // 10 ticks per second
                                 e.lastHitTime = time;
+                                onEnemyHit(); // Track Stats (Laser counts as hit per tick)
+
                                 let dmg = pStats.damage * 0.2; // Continuous beam does less dmg per tick
                                 
                                 // Crits
@@ -115,6 +120,8 @@ export const useCollision = (
 
                     if (checkCircleCollision(p, e)) {
                         // HIT!
+                        onEnemyHit(); // Track Stats
+
                         let damage = pStats.damage;
                         const isCrit = Math.random() < pStats.critChance;
                         if (isCrit) damage *= pStats.critMultiplier;
@@ -219,17 +226,6 @@ export const useCollision = (
 
         // 5. Pickup Collection
         for (const p of pickups) {
-            // Already handled in usePickups movement logic? 
-            // usePickups handles movement and "collected" array return, 
-            // but stats processing happens here or in useGameLogic.
-            // Let's rely on usePickups to flag "collected" by setting alive=false and returning list
-            // But we need to process the EFFECTS here if we iterate them.
-            // Actually usePickups does the collection check distance < 50.
-            
-            // Wait, useGameLogic calls updatePickups which moves them. 
-            // We need to apply effects.
-            // Let's do it in updatePickups return in useGameLogic? 
-            // Or just check distance here again.
             const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
             if (dist < 40) { // Collection range
                 // Apply Effect
@@ -261,6 +257,7 @@ export const useCollision = (
                 } else if (p.type === EntityType.CREDIT) {
                     const amount = Math.floor((p.value || 0) * pStats.creditMultiplier);
                     setStats(prev => ({ ...prev, credits: prev.credits + amount }));
+                    onCreditCollected(amount);
                 } else if (p.type === EntityType.POWERUP && p.powerUpId) {
                      const config = POWER_UPS[p.powerUpId];
                      if (config) {
@@ -268,22 +265,21 @@ export const useCollision = (
                      }
                 }
                 
-                // Mark for removal
-                p.health = 0; // usePickups cleans up health<=0 or distance check
-                // Actually usePickups removes if distance < 50, so this redundant check matches visuals
+                p.health = 0; 
             }
         }
 
         // 6. Death Logic
         enemies.forEach(e => {
             if (e.health <= 0) {
+                onEnemyKilled(); // Track Stats
                 const scoreAdd = spawnDrops(e);
                 setScore(s => s + scoreAdd);
                 spawnExplosion(e.pos, e.radius * 2.5, e.color); // BOOM!
             }
         });
 
-    }, [gridRef]); // Dep depends
+    }, [gridRef, onCreditCollected, onEnemyHit, onEnemyKilled, triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, setScore, setStats, setOfferedUpgrades, setGameState, persistentData]);
 
     return { checkCollisions };
 };

@@ -23,6 +23,14 @@ export const useGameLogic = (
   const [score, setScore] = useState(0);
   const gameTimeRef = useRef(0);
   
+  // RUN STATS
+  const runMetricsRef = useRef({
+      shotsFired: 0,
+      shotsHit: 0,
+      enemiesKilled: 0,
+      creditsEarned: 0
+  });
+  
   const difficultyConfig = DIFFICULTY_CONFIGS[selectedDifficulty];
 
   // New: Aim Direction Ref for left joystick / mouse
@@ -37,14 +45,32 @@ export const useGameLogic = (
   } = usePlayer(gameState, persistentData, isPaused);
 
   const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig);
-  const { projectilesRef, autoAttack, setAutoAttack, initProjectiles, fireWeapon, updateProjectiles, addProjectiles } = useProjectiles(playerPosRef, statsRef);
+  
+  const handleShotFired = useCallback(() => {
+      runMetricsRef.current.shotsFired++;
+  }, []);
+  
+  const { projectilesRef, autoAttack, setAutoAttack, initProjectiles, fireWeapon, updateProjectiles, addProjectiles } = useProjectiles(playerPosRef, statsRef, handleShotFired);
   const { pickupsRef, initPickups, spawnDrops, updatePickups } = usePickups(playerPosRef, statsRef, difficultyConfig);
   const { particlesRef, initParticles, spawnDamageText, spawnExplosion, updateParticles, addParticles } = useParticles();
+
+  const handleEnemyHit = useCallback(() => {
+      runMetricsRef.current.shotsHit++;
+  }, []);
+
+  const handleEnemyKilled = useCallback(() => {
+      runMetricsRef.current.enemiesKilled++;
+  }, []);
+
+  const handleCreditCollected = useCallback((amount: number) => {
+      runMetricsRef.current.creditsEarned += amount;
+  }, []);
 
   const { checkCollisions } = useCollision(
     enemiesRef, projectilesRef, pickupsRef, playerPosRef, statsRef,
     triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, addParticles,
-    setScore, setStats, setOfferedUpgrades, setGameState, persistentData
+    setScore, setStats, setOfferedUpgrades, setGameState, persistentData,
+    handleEnemyHit, handleEnemyKilled, handleCreditCollected
   );
 
   // Initialize Game
@@ -56,6 +82,8 @@ export const useGameLogic = (
     initParticles();
     setScore(0);
     gameTimeRef.current = 0;
+    // Reset Run Metrics
+    runMetricsRef.current = { shotsFired: 0, shotsHit: 0, enemiesKilled: 0, creditsEarned: 0 };
     setGameState(GameState.PLAYING);
   }, [initPlayer, initEnemies, initProjectiles, initPickups, initParticles, setGameState]);
 
@@ -97,6 +125,7 @@ export const useGameLogic = (
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime: lastPlayerHitTimeRef,
     syncWithPersistentData, autoAttack, setAutoAttack,
     // Expose split refs for the renderer
-    enemiesRef, projectilesRef, pickupsRef, particlesRef
+    enemiesRef, projectilesRef, pickupsRef, particlesRef,
+    runMetricsRef
   };
 };

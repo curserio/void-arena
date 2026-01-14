@@ -186,6 +186,10 @@ export interface HighScoreEntry {
   date: number;
   ship?: ShipType;
   difficulty?: GameDifficulty;
+  // New Stats
+  accuracy?: number; // Percentage 0-100
+  enemiesKilled?: number;
+  creditsEarned?: number;
 }
 
 export interface PersistentData {

@@ -6,7 +6,8 @@ import { ObjectPool, createEntity } from '../../systems/ObjectPool';
 
 export const useProjectiles = (
     playerPosRef: React.MutableRefObject<Vector2D>,
-    statsRef: React.MutableRefObject<PlayerStats>
+    statsRef: React.MutableRefObject<PlayerStats>,
+    onShotFired: () => void
 ) => {
     const projectilesRef = useRef<Entity[]>([]);
     const lastFireTimeRef = useRef(0);
@@ -83,6 +84,7 @@ export const useProjectiles = (
 
             if (hasTarget) {
                 lastFireTimeRef.current = time;
+                onShotFired(); // Track stats
                 const pool = poolRef.current;
 
                 if (pStats.weaponType === WeaponType.LASER) {
@@ -147,7 +149,7 @@ export const useProjectiles = (
                 }
             }
         }
-    }, [autoAttack, playerPosRef, statsRef]);
+    }, [autoAttack, playerPosRef, statsRef, onShotFired]);
 
     const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[], aimDir: Vector2D) => {
         const pStats = statsRef.current;
@@ -168,26 +170,46 @@ export const useProjectiles = (
                          e.pos.x = playerPosRef.current.x;
                          e.pos.y = playerPosRef.current.y;
 
+                         // Calculate Target Angle (Manual or Auto)
+                         let targetAngle = e.angle || 0;
+                         if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
+                             targetAngle = Math.atan2(aimDir.y, aimDir.x);
+                         } else if (targets.length > 0 && autoAttack) {
+                             // Auto-track nearest
+                             let nearest: Entity | null = null;
+                             let minDist = TARGETING_RADIUS;
+                             targets.forEach(t => {
+                                 const d = Math.hypot(t.pos.x - playerPosRef.current.x, t.pos.y - playerPosRef.current.y);
+                                 if (d < minDist) { minDist = d; nearest = t; }
+                             });
+                             if (nearest) {
+                                 targetAngle = Math.atan2(nearest.pos.y - playerPosRef.current.y, nearest.pos.x - playerPosRef.current.x);
+                             }
+                         }
+
+                         // Apply Rotation with Inertia
+                         let currentAngle = e.angle || 0;
+                         let angleDiff = targetAngle - currentAngle;
+                         
+                         // Angle Wrapping (-PI to PI)
+                         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                         // Turn Speed (Radians per second)
+                         // Slower when firing to give "heavy beam" feel
+                         const turnSpeed = e.isFiring ? 3.0 : 8.0; 
+                         
+                         const step = turnSpeed * dt;
+                         if (Math.abs(angleDiff) < step) {
+                             e.angle = targetAngle;
+                         } else {
+                             e.angle = currentAngle + Math.sign(angleDiff) * step;
+                         }
+
                          // 2. Charging Logic
                          if (e.isCharging) {
                              const chargeSpeed = 1.0; // 1 second charge
                              e.chargeProgress = (e.chargeProgress || 0) + dt * chargeSpeed;
-
-                             // Update aim while charging if player is aiming
-                             if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
-                                 e.angle = Math.atan2(aimDir.y, aimDir.x);
-                             } else if (targets.length > 0 && autoAttack) {
-                                 // Auto-track nearest while charging if no manual input
-                                 let nearest: Entity | null = null;
-                                 let minDist = TARGETING_RADIUS;
-                                 targets.forEach(t => {
-                                     const d = Math.hypot(t.pos.x - playerPosRef.current.x, t.pos.y - playerPosRef.current.y);
-                                     if (d < minDist) { minDist = d; nearest = t; }
-                                 });
-                                 if (nearest) {
-                                     e.angle = Math.atan2(nearest.pos.y - playerPosRef.current.y, nearest.pos.x - playerPosRef.current.x);
-                                 }
-                             }
 
                              if (e.chargeProgress >= 1.0) {
                                  e.isCharging = false;

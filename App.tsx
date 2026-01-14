@@ -52,7 +52,7 @@ const App: React.FC = () => {
 
   // High Score Entry State
   const [newHighScoreName, setNewHighScoreName] = useState('');
-  const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number} | null>(null);
+  const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number, accuracy: number, kills: number, credits: number} | null>(null);
   const [hasSubmittedScore, setHasSubmittedScore] = useState(false);
   
   // Initialize Persistent Data with Auto-Detection and Migration
@@ -79,7 +79,8 @@ const App: React.FC = () => {
         data.highScores = (data.highScores as unknown as number[]).map(s => ({
             name: 'Unknown',
             score: s,
-            date: Date.now()
+            date: Date.now(),
+            difficulty: GameDifficulty.NORMAL
         }));
     }
 
@@ -97,7 +98,7 @@ const App: React.FC = () => {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
-    enemiesRef, projectilesRef, pickupsRef, particlesRef
+    enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef
   } = useGameLogic(
     gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty
   );
@@ -114,6 +115,12 @@ const App: React.FC = () => {
   // Handle Death / Game Over persistence logic
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
+      // Calculate Final Run Stats
+      const metrics = runMetricsRef.current;
+      const accuracy = metrics.shotsFired > 0 
+        ? Math.min(100, (metrics.shotsHit / metrics.shotsFired) * 100)
+        : 0;
+
       // 1. Save RPG Progress
       setPersistentData(p => ({ 
         ...p, 
@@ -125,7 +132,10 @@ const App: React.FC = () => {
       }));
 
       // 2. Leaderboard Logic
-      const currentScores = persistentData.highScores || [];
+      // Filter high scores by current difficulty for rank calculation
+      const currentScores = (persistentData.highScores || [])
+          .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL));
+      
       const newScore = score;
       const sorted = [...currentScores].sort((a, b) => b.score - a.score);
       
@@ -139,7 +149,13 @@ const App: React.FC = () => {
       }
 
       if (rank !== -1 && newScore > 0) {
-          setPendingHighScore({ score: newScore, rank });
+          setPendingHighScore({ 
+              score: newScore, 
+              rank,
+              accuracy: accuracy,
+              kills: metrics.enemiesKilled,
+              credits: metrics.creditsEarned
+          });
           setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
           setHasSubmittedScore(false);
       } else {
@@ -149,7 +165,7 @@ const App: React.FC = () => {
 
       setGameState(GameState.GAMEOVER);
     }
-  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, score]);
+  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, score, selectedDifficulty]);
 
   // Failsafe: If stuck in Leveling with no upgrades (rare race condition), force play
   useEffect(() => {
@@ -168,13 +184,17 @@ const App: React.FC = () => {
           score: pendingHighScore.score,
           date: Date.now(),
           ship: stats.shipType,
-          difficulty: selectedDifficulty
+          difficulty: selectedDifficulty,
+          accuracy: pendingHighScore.accuracy,
+          enemiesKilled: pendingHighScore.kills,
+          creditsEarned: pendingHighScore.credits
       };
 
       setPersistentData(p => {
+          // Keep ALL scores, simply append the new one
+          // Sorting and limiting happens at display/retrieval time per difficulty
           const newScores = [...(p.highScores || []), entry]
-             .sort((a, b) => b.score - a.score)
-             .slice(0, 10);
+             .sort((a, b) => b.score - a.score); // Global sort, though specific display will filter
           return { ...p, highScores: newScores };
       });
 
@@ -612,20 +632,41 @@ return (
             </div>
         ) : (
              <>
-                <div className="flex flex-col gap-2 items-center mb-8">
-                    <div className="text-slate-400 font-bold uppercase tracking-widest text-sm">Final Score</div>
-                    <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-                        {score.toLocaleString()}
+                <div className="flex gap-8 justify-center items-end mb-8">
+                    <div className="flex flex-col items-center">
+                        <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Score</div>
+                        <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
+                            {score.toLocaleString()}
+                        </div>
+                    </div>
+                    
+                    {/* Extended Stats */}
+                    <div className="flex flex-col gap-1 items-start bg-slate-900/40 p-3 rounded-xl border border-slate-800 min-w-[140px]">
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between">
+                            <span><i className="fa-solid fa-crosshairs mr-2 text-cyan-400" />Acc</span>
+                            <span className="text-white">{(runMetricsRef.current.shotsFired > 0 ? (runMetricsRef.current.shotsHit / runMetricsRef.current.shotsFired * 100) : 0).toFixed(1)}%</span>
+                        </div>
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between">
+                             <span><i className="fa-solid fa-skull mr-2 text-red-500" />Kills</span>
+                            <span className="text-white">{runMetricsRef.current.enemiesKilled.toLocaleString()}</span>
+                        </div>
+                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between border-t border-slate-800 pt-1 mt-1">
+                            <span><i className="fa-solid fa-coins mr-2 text-amber-400" />Cr</span>
+                            <span className="text-white">{runMetricsRef.current.creditsEarned.toLocaleString()}</span>
+                        </div>
                     </div>
                 </div>
                 
                 {/* Mini Leaderboard View */}
                 <div className="w-full max-w-sm bg-slate-900/50 border border-slate-800 rounded-2xl p-4 mb-8 overflow-hidden">
                     <div className="flex justify-between items-center mb-2 px-2">
-                         <h3 className="text-cyan-400 font-black uppercase italic text-sm">Top Aces</h3>
+                         <h3 className="text-cyan-400 font-black uppercase italic text-sm">Top Aces ({DIFFICULTY_CONFIGS[selectedDifficulty].name})</h3>
                     </div>
                     <div className="flex flex-col gap-1">
-                        {(persistentData.highScores || []).slice(0, 5).map((s, idx) => (
+                        {(persistentData.highScores || [])
+                            .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL))
+                            .slice(0, 5)
+                            .map((s, idx) => (
                             <div key={idx} className={`flex justify-between items-center p-2 rounded text-xs ${s.score === score && hasSubmittedScore ? 'bg-amber-400/10 border border-amber-400/30' : ''}`}>
                                 <div className="flex gap-2">
                                     <span className={`font-bold w-4 ${idx === 0 ? 'text-amber-400' : 'text-slate-500'}`}>#{idx + 1}</span>
@@ -657,7 +698,7 @@ return (
              onTouchMove={handleAimLayerTouchMove}
              onTouchEnd={handleAimLayerTouchEnd}
              onMouseDown={handleAimLayerMouseDown}
-             onMouseMove={handleAimLayerMouseMove}
+             onMouseMove={handleAimLayerMouseDown}
              onMouseUp={handleAimLayerMouseUp}
           />
         )}

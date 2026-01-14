@@ -1,3 +1,4 @@
+
 import React, { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D, PlayerStats, DifficultyConfig } from '../../types';
 import { XP_PER_GEM } from '../../constants';
@@ -105,22 +106,20 @@ export const usePickups = (
         const collected: Entity[] = [];
 
         pickupsRef.current.forEach(e => {
-            let alive = true;
-            const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
+            let alive = e.health > 0;
+            
+            if (alive) {
+                const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
 
-            if (d < pStats.magnetRange) {
-                const pullSpeed = 1800;
-                e.vel.x = ((playerPosRef.current.x - e.pos.x) / d) * pullSpeed;
-                e.vel.y = ((playerPosRef.current.y - e.pos.y) / d) * pullSpeed;
-                e.pos.x += e.vel.x * dt;
-                e.pos.y += e.vel.y * dt;
+                if (d < pStats.magnetRange) {
+                    const pullSpeed = 1800;
+                    e.vel.x = ((playerPosRef.current.x - e.pos.x) / d) * pullSpeed;
+                    e.vel.y = ((playerPosRef.current.y - e.pos.y) / d) * pullSpeed;
+                    e.pos.x += e.vel.x * dt;
+                    e.pos.y += e.vel.y * dt;
+                }
             }
-
-            if (d < 50) {
-                alive = false;
-                collected.push(e);
-            }
-
+            
             if (alive) nextPickups.push(e);
         });
 
