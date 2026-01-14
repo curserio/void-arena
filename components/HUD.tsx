@@ -1,0 +1,213 @@
+
+import React, { useState, useEffect } from 'react';
+import { PlayerStats, ShipType, PowerUpType } from '../types';
+import { SHIPS } from '../constants';
+
+interface HUDProps {
+  stats: PlayerStats;
+  score: number;
+  autoAttack: boolean;
+  setAutoAttack: (val: boolean) => void;
+  onPause: () => void;
+  onShowUpgrades: () => void;
+  onOpenGarage: () => void;
+}
+
+const PowerUpIndicator: React.FC<{ 
+  label: string; 
+  until: number; 
+  maxDuration: number; 
+  color: string; 
+  icon: string;
+}> = ({ until, maxDuration, color, icon }) => {
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = performance.now();
+      const remaining = Math.max(0, until - now);
+      setTimeLeft(remaining);
+      if (remaining <= 0) clearInterval(timer);
+    }, 50);
+    return () => clearInterval(timer);
+  }, [until]);
+
+  if (timeLeft <= 0) return null;
+
+  const size = 56;
+  const stroke = 4;
+  const radius = (size / 2) - stroke;
+  const circumference = radius * 2 * Math.PI;
+  const progress = timeLeft / maxDuration;
+  const offset = circumference - (progress * circumference);
+
+  return (
+    <div className="flex flex-col items-center gap-1 animate-in zoom-in fade-in duration-300 pointer-events-none">
+      <div className="relative w-14 h-14 flex items-center justify-center">
+        <svg width={size} height={size} className="absolute -rotate-90">
+          <circle 
+            cx={size/2} cy={size/2} r={radius} 
+            stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} fill="none" 
+          />
+          <circle 
+            cx={size/2} cy={size/2} r={radius} 
+            stroke={color} strokeWidth={stroke} fill="none" 
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="transition-[stroke-dashoffset] duration-100 ease-linear"
+          />
+        </svg>
+        <div className={`text-xl drop-shadow-lg`} style={{ color }}>
+          <i className={`fas ${icon}`} />
+        </div>
+      </div>
+      <span className="text-[10px] font-black uppercase text-white tracking-widest drop-shadow-md">
+        {(timeLeft / 1000).toFixed(1)}s
+      </span>
+    </div>
+  );
+};
+
+const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPause, onShowUpgrades, onOpenGarage }) => {
+  const healthPercent = Math.max(0, (stats.currentHealth / stats.maxHealth) * 100);
+  const shieldPercent = Math.max(0, (stats.currentShield / stats.maxShield) * 100);
+  const xpPercent = Math.max(0, Math.min(100, (stats.xp / stats.xpToNextLevel) * 100));
+
+  const currentShipName = SHIPS.find(s => s.type === stats.shipType)?.name || 'Vessel';
+
+  const DURATIONS = {
+    OVERDRIVE: 8000,
+    OMNI: 10000,
+    PIERCE: 7000
+  };
+
+  return (
+    <div className="fixed top-0 left-0 w-full p-4 pointer-events-none z-50 flex flex-col gap-4">
+      <div className="flex justify-between items-start w-full">
+        <div className="flex flex-col gap-2 pointer-events-auto">
+          <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-2xl p-3 flex flex-col shadow-2xl">
+            <span className="text-cyan-400/70 text-[10px] font-black uppercase tracking-widest mb-1">Current Vessel</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-cyan-400 text-2xl font-black italic uppercase leading-none drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]">{currentShipName}</span>
+              <span className="text-slate-500 text-xs font-bold uppercase tracking-tighter">LV {stats.level}</span>
+            </div>
+          </div>
+          
+          <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-2xl p-3 flex flex-col shadow-2xl">
+            <span className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">Credits</span>
+            <div className="flex items-center gap-2 text-amber-400 font-black text-2xl leading-none drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]">
+              <i className="fas fa-coins text-sm" />
+              <span>{Math.floor(stats.credits)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-4 items-center justify-center pt-2">
+          <PowerUpIndicator 
+            label="Overdrive" 
+            until={stats.buffs.overdriveUntil} 
+            maxDuration={DURATIONS.OVERDRIVE} 
+            color="#f0f" 
+            icon="fa-bolt-lightning" 
+          />
+          <PowerUpIndicator 
+            label="Omni" 
+            until={stats.buffs.omniUntil} 
+            maxDuration={DURATIONS.OMNI} 
+            color="#fbbf24" 
+            icon="fa-arrows-split-up-and-left" 
+          />
+          <PowerUpIndicator 
+            label="Pierce" 
+            until={stats.buffs.pierceUntil} 
+            maxDuration={DURATIONS.PIERCE} 
+            color="#22d3ee" 
+            icon="fa-ghost" 
+          />
+        </div>
+
+        <div className="flex flex-col items-end gap-3 pointer-events-auto">
+          <div className="flex gap-2">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setAutoAttack(!autoAttack); }}
+              className={`w-14 h-14 bg-slate-900/90 border-2 rounded-2xl flex items-center justify-center transition-all shadow-2xl active:scale-90 ${autoAttack ? 'border-emerald-500 text-emerald-400' : 'border-slate-700 text-slate-500 opacity-60'}`}
+              title={autoAttack ? "Auto-Fire Enabled" : "Auto-Fire Disabled"}
+            >
+              <i className={`fas ${autoAttack ? 'fa-crosshairs' : 'fa-slash'} text-xl`} />
+            </button>
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); onOpenGarage(); }}
+              className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-amber-400 active:scale-90 transition-all hover:bg-slate-800 hover:border-amber-500/50 shadow-2xl"
+              title="Arsenal & Hangar"
+            >
+              <i className="fas fa-screwdriver-wrench text-xl" />
+            </button>
+             <button 
+              onClick={(e) => { e.stopPropagation(); onShowUpgrades(); }}
+              className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-cyan-400 active:scale-90 transition-all hover:bg-slate-800 hover:border-cyan-500/50 shadow-2xl"
+              title="System Manifest"
+            >
+              <i className="fas fa-list text-xl" />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onPause(); }}
+              className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-white active:scale-90 transition-all hover:bg-slate-800 hover:border-cyan-500/50 shadow-2xl"
+            >
+              <i className="fas fa-pause text-xl" />
+            </button>
+          </div>
+          
+          <div className="bg-slate-900/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 flex flex-col items-end">
+            <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Stellar Score</span>
+            <span className="text-white text-2xl font-black italic leading-none">{score}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-md px-6 flex flex-col gap-3 pointer-events-none">
+        <div className="w-full flex flex-col gap-1.5">
+          <div className="flex justify-between items-end px-1">
+            <span className="text-cyan-400 text-[10px] font-black uppercase tracking-widest">Protocol XP</span>
+            <span className="text-cyan-400 text-[12px] font-black">{Math.floor(stats.xp)} / {stats.xpToNextLevel}</span>
+          </div>
+          <div className="w-full h-2.5 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden shadow-2xl">
+            <div 
+              className="h-full bg-gradient-to-r from-cyan-600 via-cyan-400 to-white transition-all duration-300 shadow-[0_0_15px_rgba(34,211,238,0.8)]"
+              style={{ width: `${xpPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="w-full flex flex-col gap-1.5">
+          <div className="flex justify-between items-end px-1">
+            <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">Energy Shield</span>
+            <span className="text-blue-400 text-[12px] font-black">{Math.round(stats.currentShield)} / {Math.round(stats.maxShield)} SP</span>
+          </div>
+          <div className="w-full h-3 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden shadow-2xl">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-700 to-blue-400 transition-all duration-300 shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+              style={{ width: `${shieldPercent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="w-full flex flex-col gap-1.5">
+          <div className="flex justify-between items-end px-1">
+            <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Hull Integrity</span>
+            <span className="text-emerald-400 text-[12px] font-black">{Math.round(stats.currentHealth)} / {Math.round(stats.maxHealth)} HP</span>
+          </div>
+          <div className="w-full h-5 bg-slate-950/90 rounded-xl border border-slate-800 overflow-hidden relative shadow-2xl">
+            <div 
+              className={`h-full transition-all duration-300 ${healthPercent < 30 ? 'bg-gradient-to-r from-red-600 to-red-400 animate-pulse' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
+              style={{ width: `${healthPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default HUD;
