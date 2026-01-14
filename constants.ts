@@ -6,7 +6,15 @@ export const CAMERA_LERP = 0.08;
 export const TARGETING_RADIUS = 450; 
 export const BULLET_MAX_DIST = 1200;
 export const LASER_LENGTH = 1800;
-export const GAME_ZOOM = 0.65; 
+export const GAME_ZOOM = 0.65; // Deprecated in favor of dynamic setting, kept for fallback
+export const DEFAULT_ZOOM = 0.65;
+
+export const ZOOM_PRESETS = [
+  { label: 'Close', value: 1.0, icon: 'fa-magnifying-glass-plus' },
+  { label: 'Standard', value: 0.65, icon: 'fa-eye' },
+  { label: 'Far', value: 0.45, icon: 'fa-binoculars' },
+  { label: 'Ultra', value: 0.35, icon: 'fa-earth-americas' }
+];
 
 // Difficulty Configurations
 export const DIFFICULTY_CONFIGS: Record<GameDifficulty, DifficultyConfig> = {

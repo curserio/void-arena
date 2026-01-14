@@ -1,6 +1,6 @@
 
 import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, ShipType } from '../types';
-import { SHIPS, GAME_ZOOM, WORLD_SIZE, LASER_LENGTH } from '../constants';
+import { SHIPS, WORLD_SIZE, LASER_LENGTH } from '../constants';
 import { POWER_UPS } from '../systems/PowerUpSystem';
 
 // --- Helpers ---
@@ -396,10 +396,6 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     ctx.translate(playerPos.x, playerPos.y);
 
     // --- AIM RETICLE ---
-    // Only draw if player is actively aiming with left stick AND NOT using Laser (Laser has its own telegraph)
-    // Actually, laser telegraph is part of the projectile, so we can hide default reticle if Laser is equipped AND charging?
-    // Or just keep the reticle for consistent "where am I aiming" feedback. 
-    // The prompt says "Aiming should continue", so seeing the reticle helps.
     if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
         const aimAngle = Math.atan2(aimDir.y, aimDir.x);
         ctx.save();
@@ -430,15 +426,9 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     }
 
     // --- PLAYER SHIP ROTATION ---
-    // Rotate ship towards movement direction
     if (joystickDir.x !== 0 || joystickDir.y !== 0) {
         ctx.rotate(Math.atan2(joystickDir.y, joystickDir.x) + Math.PI / 2);
     } else {
-        // If not moving, maybe keep last rotation or rotate to aim? 
-        // For now, let's keep it pointing UP if no movement, or previous rotation. 
-        // Simpler: Just don't rotate if 0,0, but we need to reset transforms if we do that logic.
-        // But since we are inside a fresh save/restore, we need a default.
-        // Let's face AIM direction if standing still, or just 0 (Up)
         if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
              ctx.rotate(Math.atan2(aimDir.y, aimDir.x) + Math.PI / 2);
         }
@@ -498,7 +488,8 @@ export const renderGame = (
     joystickDir: Vector2D,
     aimDir: Vector2D,
     time: number,
-    lastPlayerHitTime: number
+    lastPlayerHitTime: number,
+    zoomLevel: number
 ) => {
     const sCX = canvas.width / 2;
     const sCY = canvas.height / 2;
@@ -513,7 +504,10 @@ export const renderGame = (
         const shakeAmount = hitIntensity * 20;
         ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
     }
-    ctx.scale(GAME_ZOOM, GAME_ZOOM);
+    
+    // Dynamic Zoom Application
+    ctx.scale(zoomLevel, zoomLevel);
+    
     ctx.translate(-cameraPos.x, -cameraPos.y);
 
     // 1. Boundary Neon Wall

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ControlScheme, PersistentData } from '../types';
+import { ZOOM_PRESETS, DEFAULT_ZOOM } from '../constants';
 
 interface SettingsMenuProps {
   data: PersistentData;
@@ -12,6 +13,7 @@ interface SettingsMenuProps {
 const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, onClose }) => {
   const [confirmReset, setConfirmReset] = useState(false);
   const currentScheme = data.settings?.controlScheme || ControlScheme.TWIN_STICK;
+  const currentZoom = data.settings?.zoomLevel || DEFAULT_ZOOM;
 
   const setScheme = (scheme: ControlScheme) => {
     onUpdate({
@@ -19,6 +21,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
       settings: {
         ...data.settings,
         controlScheme: scheme
+      }
+    });
+  };
+
+  const setZoom = (zoom: number) => {
+    onUpdate({
+      ...data,
+      settings: {
+        ...data.settings,
+        zoomLevel: zoom
       }
     });
   };
@@ -89,6 +101,26 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
                </div>
             </button>
           </div>
+        </div>
+
+        <div className="flex flex-col gap-4">
+           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Camera Optic</h3>
+           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {ZOOM_PRESETS.map((preset) => {
+                  const isActive = Math.abs(currentZoom - preset.value) < 0.01;
+                  return (
+                      <button
+                        key={preset.value}
+                        onClick={() => setZoom(preset.value)}
+                        className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-2
+                             ${isActive ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
+                      >
+                         <i className={`fa-solid ${preset.icon} text-lg ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                         <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white' : 'text-slate-500'}`}>{preset.label}</span>
+                      </button>
+                  );
+              })}
+           </div>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-slate-800 pt-6">

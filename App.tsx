@@ -1,6 +1,6 @@
 
 import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty } from './types';
-import { DIFFICULTY_CONFIGS } from './constants';
+import { DIFFICULTY_CONFIGS, DEFAULT_ZOOM } from './constants';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
 import UpgradeMenu from './components/UpgradeMenu';
@@ -13,7 +13,6 @@ import LeaderboardMenu from './components/LeaderboardMenu';
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
-import { GAME_ZOOM } from './constants';
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
 const isTouchDevice = () => {
@@ -33,7 +32,8 @@ const DEFAULT_DATA: PersistentData = {
   acquiredUpgradeIds: [],
   highScores: [],
   settings: {
-    controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE
+    controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE,
+    zoomLevel: DEFAULT_ZOOM
   }
 };
 
@@ -63,8 +63,13 @@ const App: React.FC = () => {
     // Ensure settings exist (Migration or New)
     if (!data.settings) {
       data.settings = {
-        controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE
+        controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE,
+        zoomLevel: DEFAULT_ZOOM
       };
+    } else {
+      if (data.settings.zoomLevel === undefined) {
+          data.settings.zoomLevel = DEFAULT_ZOOM;
+      }
     }
     
     // Migration: Convert old number[] scores to HighScoreEntry[] objects
@@ -208,6 +213,8 @@ const App: React.FC = () => {
     if (!ctx) return;
 
     const currentScheme = persistentDataRef.current.settings.controlScheme;
+    const currentZoom = persistentDataRef.current.settings.zoomLevel || DEFAULT_ZOOM;
+
     const isPausedNow = isPausedRef.current || showMenusRef.current;
     const currentState = gameStateRef.current;
     const isAutoAttack = autoAttackRef.current;
@@ -229,13 +236,17 @@ const App: React.FC = () => {
             joystickDirRef.current = { x: 0, y: 0 };
         }
 
-        // 2. Aiming (Corrected for Camera Position)
+        // 2. Aiming (Corrected for Camera Position AND Zoom)
         const screenCX = window.innerWidth / 2;
         const screenCY = window.innerHeight / 2;
+        
+        // Calculate offset in WORLD space
         const relX = (playerPosRef.current.x - cameraPosRef.current.x);
         const relY = (playerPosRef.current.y - cameraPosRef.current.y);
-        const playerScreenX = screenCX + relX * GAME_ZOOM;
-        const playerScreenY = screenCY + relY * GAME_ZOOM;
+        
+        // Project player to SCREEN space, accounting for ZOOM
+        const playerScreenX = screenCX + relX * currentZoom;
+        const playerScreenY = screenCY + relY * currentZoom;
 
         const vx = mousePos.current.x - playerScreenX;
         const vy = mousePos.current.y - playerScreenY;
@@ -271,7 +282,8 @@ const App: React.FC = () => {
       joystickDirRef.current,
       aimDirRef.current, 
       time,
-      lastPlayerHitTime.current
+      lastPlayerHitTime.current,
+      currentZoom // Pass dynamic zoom
     );
 
     requestRef.current = requestAnimationFrame(frame);
@@ -634,10 +646,6 @@ return (
         
         <button onClick={() => setGameState(GameState.START)} className="px-12 py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
       </div>
-    )}
-
-    {gameState === GameState.LEVELING && (
-      <UpgradeMenu upgrades={offeredUpgrades} onSelect={(u) => { addUpgrade(u); setGameState(GameState.PLAYING); }} />
     )}
 
     {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isGamePaused && (

@@ -203,5 +203,6 @@ export interface PersistentData {
   // Settings
   settings: {
     controlScheme: ControlScheme;
+    zoomLevel?: number; // Optional primarily for old data migration
   };
 }
