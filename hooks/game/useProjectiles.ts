@@ -98,7 +98,8 @@ export const useProjectiles = (
                     e.pos.x += e.vel.x * dt;
                     e.pos.y += e.vel.y * dt;
 
-                    if (Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y) > BULLET_MAX_DIST) {
+                    const maxDist = e.weaponType === WeaponType.LASER ? 3600 : BULLET_MAX_DIST;
+                    if (Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y) > maxDist) {
                         alive = false;
                     }
                 }

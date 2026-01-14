@@ -150,8 +150,10 @@ export const useCollision = (
                     const dist = Math.hypot(dx, dy);
                     const playerAngle = Math.atan2(dy, dx);
                     const beamAngle = e.angle || 0;
-                    let angleDiff = Math.abs(beamAngle - playerAngle);
-                    if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                    
+                    // Robust shortest-angle difference
+                    const angleDiff = Math.abs(Math.atan2(Math.sin(beamAngle - playerAngle), Math.cos(beamAngle - playerAngle)));
+                    
                     if (angleDiff < 0.15 && dist < 800) { // Wider angle, longer range
                         triggerPlayerHit(time, 12 + (e.level || 1) * 3);
                     }

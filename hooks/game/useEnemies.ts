@@ -25,7 +25,7 @@ export const useEnemies = (
         }
     }, []);
 
-    const spawnEnemy = useCallback((gameTime: number) => {
+    const spawnEnemy = useCallback((gameTime: number, currentTime: number) => {
         const gameMinutes = gameTime / 60;
         
         // 1. Difficulty Scaling Formula: (1 + 0.4*M + 0.1*M^1.5)
@@ -86,7 +86,8 @@ export const useEnemies = (
             aiPhase: Math.random() * Math.PI * 2, 
             aiSeed: Math.random(),
             lastHitTime: 0, lastShieldHitTime: 0,
-            isCharging: false, isFiring: false, chargeProgress: 0, lastShotTime: 0
+            isCharging: false, isFiring: false, chargeProgress: 0, 
+            lastShotTime: currentTime + Math.random() * 1000 // Random delay before first shot
         });
     }, [playerPosRef]);
 
@@ -104,7 +105,7 @@ export const useEnemies = (
 
         spawnTimerRef.current += dt;
         if (spawnTimerRef.current > spawnDelay) {
-            spawnEnemy(gameTime);
+            spawnEnemy(gameTime, time);
             spawnTimerRef.current = 0;
         }
 
@@ -142,90 +143,106 @@ export const useEnemies = (
 
                 // --- AI BEHAVIORS ---
                 
-                // 1. Laser Scout: Kiting
+                // 1. Laser Scout: Natural Orbiting & Kiting
                 if (e.type === EntityType.ENEMY_LASER_SCOUT) {
-                    const optimalRange = 450;
+                    const optimalRange = 600; 
+                    const orbitDir = (e.aiSeed || 0) > 0.5 ? 1 : -1;
                     
-                    if (!e.isCharging && !e.isFiring) {
-                        if (d > optimalRange + 50) {
-                            // Approach
-                            e.vel.x = (dx / d) * baseSpd + sepX; 
-                            e.vel.y = (dy / d) * baseSpd + sepY;
-                        } else if (d < optimalRange - 50) {
-                            // Retreat (Kite)
-                            e.vel.x = (-dx / d) * baseSpd * 0.8 + sepX; 
-                            e.vel.y = (-dy / d) * baseSpd * 0.8 + sepY;
-                        } else {
-                            // Strafe
-                            e.vel.x = Math.sin(time * 0.001) * baseSpd * 0.5 + sepX; 
-                            e.vel.y = Math.cos(time * 0.001) * baseSpd * 0.5 + sepY;
-                        }
+                    // --- Natural Movement Calculation ---
+                    let moveX = 0; 
+                    let moveY = 0;
+
+                    if (d > optimalRange) {
+                        moveX += (dx / d) * baseSpd * 1.0;
+                        moveY += (dy / d) * baseSpd * 1.0;
                     } else {
-                        // Stop to shoot
-                        e.vel.x *= 0.9; e.vel.y *= 0.9;
+                        moveX += (-dx / d) * baseSpd * 1.2; 
+                        moveY += (-dy / d) * baseSpd * 1.2;
                     }
 
-                    // Firing Logic
-                    if (!e.isCharging && !e.isFiring && time - (e.lastShotTime || 0) > 4000) {
+                    moveX += (-dy / d) * baseSpd * 0.8 * orbitDir;
+                    moveY += (dx / d) * baseSpd * 0.8 * orbitDir;
+                    moveX += sepX;
+                    moveY += sepY;
+
+                    // Stop completely during charge/fire to allow dodging
+                    if (e.isFiring || e.isCharging) {
+                        e.vel.x = 0;
+                        e.vel.y = 0;
+                    } else {
+                        e.vel.x = moveX;
+                        e.vel.y = moveY;
+                    }
+
+                    // --- Firing Logic ---
+                    if (!e.isCharging && !e.isFiring && (time - (e.lastShotTime || 0) > 4000) && d < 850) {
                         e.isCharging = true; e.chargeProgress = 0; e.angle = Math.atan2(dy, dx);
                     }
                     if (e.isCharging) {
-                        // Track player slowly while charging
-                        const targetAngle = Math.atan2(dy, dx);
-                        const angleDiff = targetAngle - (e.angle || 0);
-                        e.angle = (e.angle || 0) + angleDiff * 0.05; // Slow tracking
+                        // Track player for first 50% of charge (1 second), then lock (1 second warning)
+                        if ((e.chargeProgress || 0) < 0.5) {
+                            const targetAngle = Math.atan2(dy, dx);
+                            let angleDiff = targetAngle - (e.angle || 0);
+                            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                            e.angle = (e.angle || 0) + angleDiff * 0.1; 
+                        }
                         
-                        e.chargeProgress = (e.chargeProgress || 0) + dt * 0.5; // 2s charge
+                        e.chargeProgress = (e.chargeProgress || 0) + dt * 0.5; // 2.0s total charge duration
                         if (e.chargeProgress >= 1.0) { e.isCharging = false; e.isFiring = true; e.chargeProgress = 0; e.lastShotTime = time; }
                     }
                     if (e.isFiring) {
-                        e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0; // 0.5s blast
+                        e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0; 
                         if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                     }
                 
                 // 2. Striker: Dash
                 } else if (e.isMelee) {
-                    // Dash Logic
                     if (d < 250 && !e.isDashing && time - (e.lastShotTime || 0) > 5000) {
                         e.isDashing = true;
-                        e.dashUntil = time + 600; // 0.6s dash
-                        e.lastShotTime = time; // Use lastShotTime as cooldown tracker
+                        e.dashUntil = time + 600; 
+                        e.lastShotTime = time; 
                         e.vel.x = (dx/d) * baseSpd * 3.5;
                         e.vel.y = (dy/d) * baseSpd * 3.5;
                     }
-
                     if (e.isDashing) {
                         if (time > (e.dashUntil || 0)) e.isDashing = false;
-                        // Velocity maintained during dash
                     } else {
                         const pulse = 1.0 + Math.sin(time * 0.005 + (e.aiPhase || 0)) * 0.2;
                         e.vel.x = (dx / d) * baseSpd * pulse + sepX;
                         e.vel.y = (dy / d) * baseSpd * pulse + sepY;
                     }
 
-                // 3. Scout: Swarm
+                // 3. Basic Scout: Swarm Orbiting
                 } else {
-                    const idealAngle = (e.aiSeed || 0) * Math.PI * 2 + (time * 0.0001);
-                    const tx = playerPos.x + Math.cos(idealAngle) * 200, ty = playerPos.y + Math.sin(idealAngle) * 200;
+                    const orbitRadius = 320 + (e.aiSeed || 0) * 100;
+                    const idealAngle = (e.aiSeed || 0) * Math.PI * 2 + (time * 0.0003); 
+                    
+                    const tx = playerPos.x + Math.cos(idealAngle) * orbitRadius;
+                    const ty = playerPos.y + Math.sin(idealAngle) * orbitRadius;
+                    
                     const toTX = tx - e.pos.x, toTY = ty - e.pos.y, distT = Math.hypot(toTX, toTY);
                     
-                    if (distT > 50) {
-                         e.vel.x = (toTX / distT) * baseSpd + sepX; 
-                         e.vel.y = (toTY / distT) * baseSpd + sepY;
-                    } else {
-                        // Shoot
-                         if (time - (e.lastShotTime || 0) > 3000) {
+                    e.vel.x = (toTX / distT) * baseSpd + sepX; 
+                    e.vel.y = (toTY / distT) * baseSpd + sepY;
+
+                    if (d < 600) {
+                         if (time - (e.lastShotTime || 0) > 2500 + (e.aiSeed || 0) * 500) {
                             e.lastShotTime = time;
-                            const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.2;
-                            enemyBulletsToSpawn.push({ id: Math.random().toString(36), type: EntityType.ENEMY_BULLET, pos: { ...e.pos }, vel: { x: Math.cos(a) * 300, y: Math.sin(a) * 300 }, radius: 7, health: 1, maxHealth: 1, color: '#f97316', level: e.level });
+                            const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
+                            enemyBulletsToSpawn.push({ 
+                                id: Math.random().toString(36), 
+                                type: EntityType.ENEMY_BULLET, 
+                                pos: { ...e.pos }, 
+                                vel: { x: Math.cos(a) * 320, y: Math.sin(a) * 320 }, 
+                                radius: 7, 
+                                health: 1, 
+                                maxHealth: 1, 
+                                color: '#f97316', 
+                                level: e.level 
+                            });
                         }
                     }
-                }
-                
-                // Physics update
-                if (!e.isDashing || e.type !== EntityType.ENEMY_STRIKER) {
-                     // Apply velocity if not locked in dash
-                     // Soft cap velocity
                 }
                 
                 e.pos.x += e.vel.x * dt; 
