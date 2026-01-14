@@ -37,13 +37,16 @@ const App: React.FC = () => {
 
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
+  // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
+  const isGamePaused = isPaused || showGarage || showUpgradesList;
+
   const {
-    stats, score, playerPosRef, cameraPosRef, joystickDirRef,
+    stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef,
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
     enemiesRef, projectilesRef, pickupsRef, particlesRef
   } = useGameLogic(
-    gameState, setGameState, persistentData, setOfferedUpgrades, isPaused || showGarage
+    gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused
   );
 
   const updateRef = useRef(update);
@@ -104,6 +107,7 @@ const App: React.FC = () => {
       cameraPosRef.current,
       statsRef.current,
       joystickDirRef.current,
+      aimDirRef.current, // Pass Aim Direction for Reticle rendering
       time,
       lastPlayerHitTime.current
     );
@@ -218,8 +222,20 @@ return (
       <UpgradeMenu upgrades={offeredUpgrades} onSelect={(u) => { addUpgrade(u); setGameState(GameState.PLAYING); }} />
     )}
 
-    {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isPaused && !showGarage && (
+    {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isGamePaused && (
       <>
+        {/* Left Side: AIM Joystick - Reduced height to prevent covering top UI */}
+        <Joystick 
+            className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" 
+            onMove={(dir) => aimDirRef.current = dir} 
+        />
+        
+        {/* Right Side: MOVE Joystick - Reduced height */}
+        <Joystick 
+            className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" 
+            onMove={(dir) => joystickDirRef.current = dir} 
+        />
+
         <HUD
           stats={stats}
           score={score}
@@ -229,7 +245,6 @@ return (
           onShowUpgrades={() => setShowUpgradesList(true)}
           onOpenGarage={() => setShowGarage(true)}
         />
-        <Joystick onMove={(dir) => joystickDirRef.current = dir} />
       </>
     )}
   </div>

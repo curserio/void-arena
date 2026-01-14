@@ -21,6 +21,9 @@ export const useGameLogic = (
 ) => {
   const [score, setScore] = useState(0);
   const gameTimeRef = useRef(0);
+  
+  // New: Aim Direction Ref for left joystick
+  const aimDirRef = useRef({ x: 0, y: 0 });
 
   const {
     stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef,
@@ -65,8 +68,8 @@ export const useGameLogic = (
     const isOmni = isBuffActive(statsRef.current, 'OMNI', time);
     const isPierce = isBuffActive(statsRef.current, 'PIERCE', time);
 
-    // Pass enemies as targets for auto-aim
-    fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current);
+    // Pass aimDirRef to fireWeapon
+    fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current, aimDirRef.current);
 
     // 3. Update Sub-systems
     const { enemyBulletsToSpawn } = updateEnemies(dt, time, gameTimeRef.current);
@@ -84,7 +87,7 @@ export const useGameLogic = (
   }, [gameState, isPaused, updatePlayer, handleShieldRegen, fireWeapon, updateEnemies, addProjectiles, updateProjectiles, updatePickups, updateParticles, checkCollisions]);
 
   return {
-    stats, score, playerPosRef, cameraPosRef, joystickDirRef,
+    stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef,
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime: lastPlayerHitTimeRef,
     syncWithPersistentData, autoAttack, setAutoAttack,
     // Expose split refs for the renderer

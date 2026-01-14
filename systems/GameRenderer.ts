@@ -290,13 +290,58 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
     });
 };
 
-const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joystickDir: Vector2D, stats: PlayerStats, time: number, lastHitTime: number) => {
+const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joystickDir: Vector2D, aimDir: Vector2D, stats: PlayerStats, time: number, lastHitTime: number) => {
     const hitAge = time - lastHitTime;
     const isHitActive = hitAge < 250;
 
     ctx.save();
     ctx.translate(playerPos.x, playerPos.y);
-    if (joystickDir.x !== 0 || joystickDir.y !== 0) ctx.rotate(Math.atan2(joystickDir.y, joystickDir.x) + Math.PI / 2);
+
+    // --- AIM RETICLE ---
+    // Only draw if player is actively aiming with left stick
+    if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
+        const aimAngle = Math.atan2(aimDir.y, aimDir.x);
+        ctx.save();
+        ctx.rotate(aimAngle);
+        
+        // Dashed Laser Line
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)'; // Faint Cyan
+        ctx.lineWidth = 2;
+        ctx.setLineDash([10, 10]); // Dashed
+        ctx.moveTo(35, 0); // Start outside ship
+        ctx.lineTo(250, 0); // Draw out
+        ctx.stroke();
+        
+        // Reticle End Marker (Chevron)
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 10; ctx.shadowColor = '#22d3ee';
+        ctx.strokeStyle = '#22d3ee';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        // Chevron shape at end of line
+        ctx.moveTo(240, -10);
+        ctx.lineTo(255, 0);
+        ctx.lineTo(240, 10);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // --- PLAYER SHIP ROTATION ---
+    // Rotate ship towards movement direction
+    if (joystickDir.x !== 0 || joystickDir.y !== 0) {
+        ctx.rotate(Math.atan2(joystickDir.y, joystickDir.x) + Math.PI / 2);
+    } else {
+        // If not moving, maybe keep last rotation or rotate to aim? 
+        // For now, let's keep it pointing UP if no movement, or previous rotation. 
+        // Simpler: Just don't rotate if 0,0, but we need to reset transforms if we do that logic.
+        // But since we are inside a fresh save/restore, we need a default.
+        // Let's face AIM direction if standing still, or just 0 (Up)
+        if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
+             ctx.rotate(Math.atan2(aimDir.y, aimDir.x) + Math.PI / 2);
+        }
+    }
 
     // Shield
     if (stats.currentShield >= 1.0) {
@@ -350,6 +395,7 @@ export const renderGame = (
     cameraPos: Vector2D,
     stats: PlayerStats,
     joystickDir: Vector2D,
+    aimDir: Vector2D,
     time: number,
     lastPlayerHitTime: number
 ) => {
@@ -385,7 +431,7 @@ export const renderGame = (
     renderPickups(ctx, pickups, time);
     renderEnemies(ctx, enemies, time);
     renderProjectiles(ctx, projectiles, time);
-    renderPlayer(ctx, playerPos, joystickDir, stats, time, lastPlayerHitTime);
+    renderPlayer(ctx, playerPos, joystickDir, aimDir, stats, time, lastPlayerHitTime);
     renderParticles(ctx, particles);
 
     ctx.restore();

@@ -33,28 +33,46 @@ export const useProjectiles = (
         lastFireTimeRef.current = 0;
     }, []);
 
-    const fireWeapon = useCallback((time: number, isOverdrive: boolean, isOmni: boolean, isPierce: boolean, targets: Entity[]) => {
+    const fireWeapon = useCallback((time: number, isOverdrive: boolean, isOmni: boolean, isPierce: boolean, targets: Entity[], aimDir: Vector2D) => {
         const pStats = statsRef.current;
         const fr = isOverdrive ? pStats.fireRate * 2.5 : pStats.fireRate;
 
-        if (autoAttack && (time - lastFireTimeRef.current > 1000 / fr)) {
-            let nearest: Entity | null = null;
-            let minDist = TARGETING_RADIUS;
+        // Check for manual aim (threshold to avoid jitter)
+        const isManualAim = Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1;
+        const shouldFire = isManualAim || (autoAttack && targets.length > 0);
 
-            targets.forEach(e => {
-                const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
-                if (d < minDist) { minDist = d; nearest = e; }
-            });
+        if (shouldFire && (time - lastFireTimeRef.current > 1000 / fr)) {
+            let fireAngle = 0;
+            let hasTarget = false;
 
-            if (nearest) {
+            if (isManualAim) {
+                // Manual Aim Direction
+                fireAngle = Math.atan2(aimDir.y, aimDir.x);
+                hasTarget = true;
+            } else {
+                // Auto-Aim Logic
+                let nearest: Entity | null = null;
+                let minDist = TARGETING_RADIUS;
+
+                targets.forEach(e => {
+                    const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
+                    if (d < minDist) { minDist = d; nearest = e; }
+                });
+
+                if (nearest) {
+                    const n = nearest as Entity;
+                    fireAngle = Math.atan2(n.pos.y - playerPosRef.current.y, n.pos.x - playerPosRef.current.x);
+                    hasTarget = true;
+                }
+            }
+
+            if (hasTarget) {
                 lastFireTimeRef.current = time;
-                const n = nearest as Entity;
-                const baseAngle = Math.atan2(n.pos.y - playerPosRef.current.y, n.pos.x - playerPosRef.current.x);
                 const angles = isOmni ? [-0.3, 0, 0.3] : [0];
                 const pool = poolRef.current;
 
                 angles.forEach(spreadAngle => {
-                    const currentAngle = baseAngle + spreadAngle;
+                    const currentAngle = fireAngle + spreadAngle;
                     if (pStats.weaponType === WeaponType.PLASMA) {
                         const spacing = 15;
                         const startOffset = -(pStats.bulletCount - 1) * spacing / 2;
@@ -64,7 +82,7 @@ export const useProjectiles = (
                             const py = playerPosRef.current.y + Math.sin(currentAngle + Math.PI / 2) * offset;
                             
                             const p = pool.get();
-                            p.id = Math.random().toString(36); // Keeping ID for react keys if needed, though mostly canvas
+                            p.id = Math.random().toString(36); 
                             p.type = EntityType.BULLET;
                             p.pos.x = px; p.pos.y = py;
                             p.vel.x = Math.cos(currentAngle) * pStats.bulletSpeed;
@@ -127,17 +145,10 @@ export const useProjectiles = (
                         e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0;
                         e.pos.x = playerPosRef.current.x; e.pos.y = playerPosRef.current.y;
 
-                        let nearest: Entity | null = null; let minD = TARGETING_RADIUS;
-                        targets.forEach(en => { 
-                            const d = Math.hypot(en.pos.x - e.pos.x, en.pos.y - e.pos.y); 
-                            if (d < minD) { minD = d; nearest = en; } 
-                        });
-                        
-                        if (nearest) { 
-                            const target = nearest as Entity; 
-                            e.angle = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x); 
-                        }
-
+                        // Only re-aim charging laser if it was AUTO-AIMED (no manual aim info stored here currently)
+                        // For simplicity, locked lasers stay locked on angle, tracking position only
+                        // Or we can simple keep angle fixed. 
+                    
                         if (e.chargeProgress >= 1.0) {
                             e.isCharging = false;
                             e.vel.x = Math.cos(e.angle || 0) * pStats.bulletSpeed;
@@ -180,9 +191,6 @@ export const useProjectiles = (
     }, [playerPosRef, statsRef]);
 
     const addProjectiles = useCallback((newProjs: Entity[]) => {
-        // Note: Enemy bullets are currently created fresh. 
-        // ideally update spawnEnemy to use pool too, but for now we adopt them
-        // or we could just push them.
         projectilesRef.current.push(...newProjs);
     }, []);
 
