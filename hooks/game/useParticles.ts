@@ -1,33 +1,67 @@
 
 import { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D } from '../../types';
+import { ObjectPool, createEntity } from '../../systems/ObjectPool';
 
 export const useParticles = () => {
     const particlesRef = useRef<Entity[]>([]);
 
+    const poolRef = useRef<ObjectPool<Entity>>(
+        new ObjectPool<Entity>(createEntity, (e) => {
+            e.duration = 0;
+            e.maxDuration = 0;
+            e.value = 0;
+            // pos/vel/color set on spawn
+        })
+    );
+
     const initParticles = useCallback(() => {
-        particlesRef.current = [];
+        const pool = poolRef.current;
+        particlesRef.current.forEach(p => pool.release(p));
+        particlesRef.current.length = 0;
     }, []);
 
     const spawnDamageText = useCallback((pos: Vector2D, dmg: number, color: string = '#ffffff') => {
         if (dmg <= 0) return;
-        particlesRef.current.push({
-            id: Math.random().toString(36),
-            type: EntityType.DAMAGE_NUMBER,
-            pos: { x: pos.x + (Math.random() - 0.5) * 30, y: pos.y - 15 },
-            vel: { x: (Math.random() - 0.5) * 60, y: -120 },
-            radius: 0, health: 1, maxHealth: 1, color: color,
-            value: Math.floor(dmg), duration: 0, maxDuration: 0.8
-        });
+        const pool = poolRef.current;
+        const p = pool.get();
+        
+        p.id = Math.random().toString(36);
+        p.type = EntityType.DAMAGE_NUMBER;
+        p.pos.x = pos.x + (Math.random() - 0.5) * 30;
+        p.pos.y = pos.y - 15;
+        p.vel.x = (Math.random() - 0.5) * 60;
+        p.vel.y = -120;
+        p.radius = 0;
+        p.health = 1; p.maxHealth = 1;
+        p.color = color;
+        p.value = Math.floor(dmg);
+        p.duration = 0;
+        p.maxDuration = 0.8;
+
+        particlesRef.current.push(p);
     }, []);
 
     const addParticles = useCallback((newParticles: Entity[]) => {
-        particlesRef.current.push(...newParticles);
+        // Adopt new particles. Ideally should copy data into pooled objects if these came from external
+        // but simple push is okay as long as we clean them up correctly later
+        // or we can manually copy here if strict pooling is needed for explosions
+        const pool = poolRef.current;
+        
+        newParticles.forEach(src => {
+            const p = pool.get();
+            Object.assign(p, src); // Copy props
+            particlesRef.current.push(p);
+        });
     }, []);
 
     const updateParticles = useCallback((dt: number) => {
-        const nextParticles: Entity[] = [];
-        particlesRef.current.forEach(e => {
+        const pool = poolRef.current;
+        const particles = particlesRef.current;
+
+        // Backward loop for swap-remove
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const e = particles[i];
             let alive = true;
             e.duration = (e.duration || 0) + dt;
 
@@ -37,11 +71,17 @@ export const useParticles = () => {
                 if (e.duration >= (e.maxDuration || 0.8)) alive = false;
             } else if (e.type === EntityType.EXPLOSION) {
                 if (e.duration > (e.maxDuration || 0.4)) alive = false;
+            } else {
+                // Failsafe for unknown particle types
+                if (e.duration > 2.0) alive = false;
             }
 
-            if (alive) nextParticles.push(e);
-        });
-        particlesRef.current = nextParticles;
+            if (!alive) {
+                pool.release(e);
+                particles[i] = particles[particles.length - 1];
+                particles.pop();
+            }
+        }
     }, []);
 
     return { particlesRef, initParticles, spawnDamageText, updateParticles, addParticles };

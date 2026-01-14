@@ -2,6 +2,7 @@
 import { useRef, useCallback, useState } from 'react';
 import { Entity, EntityType, Vector2D, WeaponType, PlayerStats } from '../../types';
 import { TARGETING_RADIUS, BULLET_MAX_DIST } from '../../constants';
+import { ObjectPool, createEntity } from '../../systems/ObjectPool';
 
 export const useProjectiles = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -11,8 +12,24 @@ export const useProjectiles = (
     const lastFireTimeRef = useRef(0);
     const [autoAttack, setAutoAttack] = useState(true);
 
+    // Initialize Pool
+    const poolRef = useRef<ObjectPool<Entity>>(
+        new ObjectPool<Entity>(createEntity, (e) => {
+            // Reset logic
+            e.health = 1;
+            e.maxHealth = 1;
+            e.isCharging = false;
+            e.chargeProgress = 0;
+            e.angle = 0;
+            e.pierceCount = 1;
+        })
+    );
+
     const initProjectiles = useCallback(() => {
-        projectilesRef.current = [];
+        // Return all current projectiles to pool
+        const pool = poolRef.current;
+        projectilesRef.current.forEach(p => pool.release(p));
+        projectilesRef.current.length = 0;
         lastFireTimeRef.current = 0;
     }, []);
 
@@ -34,6 +51,7 @@ export const useProjectiles = (
                 const n = nearest as Entity;
                 const baseAngle = Math.atan2(n.pos.y - playerPosRef.current.y, n.pos.x - playerPosRef.current.x);
                 const angles = isOmni ? [-0.3, 0, 0.3] : [0];
+                const pool = poolRef.current;
 
                 angles.forEach(spreadAngle => {
                     const currentAngle = baseAngle + spreadAngle;
@@ -44,27 +62,48 @@ export const useProjectiles = (
                             const offset = startOffset + i * spacing;
                             const px = playerPosRef.current.x + Math.cos(currentAngle + Math.PI / 2) * offset;
                             const py = playerPosRef.current.y + Math.sin(currentAngle + Math.PI / 2) * offset;
-                            projectilesRef.current.push({
-                                id: Math.random().toString(36), type: EntityType.BULLET, pos: { x: px, y: py },
-                                vel: { x: Math.cos(currentAngle) * pStats.bulletSpeed, y: Math.sin(currentAngle) * pStats.bulletSpeed },
-                                radius: 8, health: 1, maxHealth: 1, color: '#22d3ee', pierceCount: isPierce ? 99 : 1,
-                                weaponType: WeaponType.PLASMA
-                            });
+                            
+                            const p = pool.get();
+                            p.id = Math.random().toString(36); // Keeping ID for react keys if needed, though mostly canvas
+                            p.type = EntityType.BULLET;
+                            p.pos.x = px; p.pos.y = py;
+                            p.vel.x = Math.cos(currentAngle) * pStats.bulletSpeed;
+                            p.vel.y = Math.sin(currentAngle) * pStats.bulletSpeed;
+                            p.radius = 8;
+                            p.color = '#22d3ee';
+                            p.pierceCount = isPierce ? 99 : 1;
+                            p.weaponType = WeaponType.PLASMA;
+                            
+                            projectilesRef.current.push(p);
                         }
                     } else if (pStats.weaponType === WeaponType.MISSILE) {
-                        projectilesRef.current.push({
-                            id: Math.random().toString(36), type: EntityType.BULLET, pos: { ...playerPosRef.current },
-                            vel: { x: Math.cos(currentAngle) * pStats.bulletSpeed, y: Math.sin(currentAngle) * pStats.bulletSpeed },
-                            radius: 14, health: 1, maxHealth: 1, color: '#fb923c', weaponType: WeaponType.MISSILE
-                        });
+                        const p = pool.get();
+                        p.id = Math.random().toString(36);
+                        p.type = EntityType.BULLET;
+                        p.pos.x = playerPosRef.current.x; p.pos.y = playerPosRef.current.y;
+                        p.vel.x = Math.cos(currentAngle) * pStats.bulletSpeed;
+                        p.vel.y = Math.sin(currentAngle) * pStats.bulletSpeed;
+                        p.radius = 14;
+                        p.color = '#fb923c';
+                        p.weaponType = WeaponType.MISSILE;
+                        
+                        projectilesRef.current.push(p);
+
                     } else if (pStats.weaponType === WeaponType.LASER) {
-                        projectilesRef.current.push({
-                            id: Math.random().toString(36), type: EntityType.BULLET, pos: { ...playerPosRef.current },
-                            vel: { x: 0, y: 0 },
-                            radius: 18, health: 1, maxHealth: 1, color: '#a855f7', weaponType: WeaponType.LASER,
-                            isCharging: true, chargeProgress: 0, angle: currentAngle,
-                            pierceCount: isPierce ? 99 : pStats.pierceCount
-                        });
+                        const p = pool.get();
+                        p.id = Math.random().toString(36);
+                        p.type = EntityType.BULLET;
+                        p.pos.x = playerPosRef.current.x; p.pos.y = playerPosRef.current.y;
+                        p.vel.x = 0; p.vel.y = 0;
+                        p.radius = 18;
+                        p.color = '#a855f7';
+                        p.weaponType = WeaponType.LASER;
+                        p.isCharging = true;
+                        p.chargeProgress = 0;
+                        p.angle = currentAngle;
+                        p.pierceCount = isPierce ? 99 : pStats.pierceCount;
+
+                        projectilesRef.current.push(p);
                     }
                 });
             }
@@ -73,52 +112,77 @@ export const useProjectiles = (
 
     const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[]) => {
         const pStats = statsRef.current;
-        const nextProjs: Entity[] = [];
-
-        projectilesRef.current.forEach(e => {
+        const pool = poolRef.current;
+        
+        // Iterate BACKWARDS to allow safe swap-remove
+        const projs = projectilesRef.current;
+        
+        for (let i = projs.length - 1; i >= 0; i--) {
+            const e = projs[i];
             let alive = e.health > 0;
-            if (!alive) return;
 
-            if (e.type === EntityType.BULLET) {
-                if (e.weaponType === WeaponType.LASER && e.isCharging) {
-                    e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0;
-                    e.pos = { ...playerPosRef.current };
+            if (alive) {
+                if (e.type === EntityType.BULLET) {
+                    if (e.weaponType === WeaponType.LASER && e.isCharging) {
+                        e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0;
+                        e.pos.x = playerPosRef.current.x; e.pos.y = playerPosRef.current.y;
 
-                    let nearest: Entity | null = null; let minD = TARGETING_RADIUS;
-                    targets.forEach(en => { const d = Math.hypot(en.pos.x - e.pos.x, en.pos.y - e.pos.y); if (d < minD) { minD = d; nearest = en; } });
-                    if (nearest) { const target = nearest as Entity; e.angle = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x); }
+                        let nearest: Entity | null = null; let minD = TARGETING_RADIUS;
+                        targets.forEach(en => { 
+                            const d = Math.hypot(en.pos.x - e.pos.x, en.pos.y - e.pos.y); 
+                            if (d < minD) { minD = d; nearest = en; } 
+                        });
+                        
+                        if (nearest) { 
+                            const target = nearest as Entity; 
+                            e.angle = Math.atan2(target.pos.y - e.pos.y, target.pos.x - e.pos.x); 
+                        }
 
-                    if (e.chargeProgress >= 1.0) {
-                        e.isCharging = false;
-                        e.vel = { x: Math.cos(e.angle || 0) * pStats.bulletSpeed, y: Math.sin(e.angle || 0) * pStats.bulletSpeed };
+                        if (e.chargeProgress >= 1.0) {
+                            e.isCharging = false;
+                            e.vel.x = Math.cos(e.angle || 0) * pStats.bulletSpeed;
+                            e.vel.y = Math.sin(e.angle || 0) * pStats.bulletSpeed;
+                        }
                     }
-                }
 
-                if (!e.isCharging) {
+                    if (!e.isCharging) {
+                        e.pos.x += e.vel.x * dt;
+                        e.pos.y += e.vel.y * dt;
+
+                        const maxDist = e.weaponType === WeaponType.LASER ? 3600 : BULLET_MAX_DIST;
+                        // Manual hypot for speed
+                        const dx = e.pos.x - playerPosRef.current.x;
+                        const dy = e.pos.y - playerPosRef.current.y;
+                        if (dx*dx + dy*dy > maxDist*maxDist) {
+                            alive = false;
+                        }
+                    }
+                } else if (e.type === EntityType.ENEMY_BULLET) {
                     e.pos.x += e.vel.x * dt;
                     e.pos.y += e.vel.y * dt;
-
-                    const maxDist = e.weaponType === WeaponType.LASER ? 3600 : BULLET_MAX_DIST;
-                    if (Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y) > maxDist) {
+                    const dx = e.pos.x - playerPosRef.current.x;
+                    const dy = e.pos.y - playerPosRef.current.y;
+                    if (dx*dx + dy*dy > BULLET_MAX_DIST*BULLET_MAX_DIST) {
                         alive = false;
                     }
                 }
-            } else if (e.type === EntityType.ENEMY_BULLET) {
-                e.pos.x += e.vel.x * dt;
-                e.pos.y += e.vel.y * dt;
-                if (Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y) > BULLET_MAX_DIST) {
-                    alive = false;
-                }
             }
 
-            if (alive) nextProjs.push(e);
-        });
+            if (!alive) {
+                // Return to pool and swap-remove
+                pool.release(e);
+                projs[i] = projs[projs.length - 1];
+                projs.pop();
+            }
+        }
 
-        projectilesRef.current = nextProjs;
         return { newExplosions: [] };
     }, [playerPosRef, statsRef]);
 
     const addProjectiles = useCallback((newProjs: Entity[]) => {
+        // Note: Enemy bullets are currently created fresh. 
+        // ideally update spawnEnemy to use pool too, but for now we adopt them
+        // or we could just push them.
         projectilesRef.current.push(...newProjs);
     }, []);
 
