@@ -352,6 +352,10 @@ return (
         <div className="mt-2 text-cyan-400/60 font-bold text-sm uppercase tracking-widest">
            RANK: LV {persistentData.currentLevel || 1}
         </div>
+
+        <div className="absolute bottom-6 text-slate-600 font-bold text-xs tracking-widest opacity-50">
+          v0.1.0
+        </div>
       </div>
     )}
 

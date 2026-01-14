@@ -203,8 +203,8 @@ export const useEnemies = (
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                 
-                // Slow rotation speed
-                e.angle = currentAngle + angleDiff * 2.0 * dt;
+                // Slow rotation speed (Reduced from 2.0 to 0.8 for easier dodging)
+                e.angle = currentAngle + angleDiff * 0.8 * dt;
 
                 // Firing Logic
                 if (!e.isCharging && !e.isFiring && (time - (e.lastShotTime || 0) > 6000)) {

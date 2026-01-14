@@ -177,11 +177,20 @@ export const META_UPGRADES: MetaUpgrade[] = [
   { 
     id: 'meta_magnet', 
     name: 'Tractor Beam', 
-    description: '+15% Pickup Radius per level.', 
+    description: '+5% Pickup Radius per level.', // Nerfed from 15%
     icon: 'fa-magnet', 
     maxLevel: 20, 
     costBase: 100, 
     costFactor: 1.25 
+  },
+  { 
+    id: 'meta_speed', 
+    name: 'Thruster Tuning', 
+    description: '+2% Flight Speed per level.', 
+    icon: 'fa-forward-fast', 
+    maxLevel: 20, 
+    costBase: 800, 
+    costFactor: 1.4 
   },
   { 
     id: 'meta_salvage', 

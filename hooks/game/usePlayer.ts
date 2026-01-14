@@ -27,6 +27,7 @@ export const usePlayer = (
         const hpL = data.metaLevels['meta_hp'] || 0;
         const dmgL = data.metaLevels['meta_dmg'] || 0;
         const magL = data.metaLevels['meta_magnet'] || 0;
+        const spdL = data.metaLevels['meta_speed'] || 0;
         const shL = data.metaLevels['meta_shield'] || 0;
         const regenL = data.metaLevels['meta_regen'] || 0;
         const critChL = data.metaLevels['meta_crit_chance'] || 0;
@@ -78,9 +79,10 @@ export const usePlayer = (
             currentShield: finalMaxShield,
             shieldRegen: finalShieldRegen,
             
+            speed: (shipConfig.baseStats.speed || 240) * (1 + spdL * 0.02),
             damage: baseWStats.damage * (1 + dmgL * 0.05) * bDamageMult,
             fireRate: fRate,
-            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.15),
+            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.05), // Updated to 5% per level
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
