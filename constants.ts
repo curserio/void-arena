@@ -3,7 +3,7 @@ import { PlayerStats, Upgrade, WeaponType, ShipType, MetaUpgrade, ShipConfig } f
 
 export const WORLD_SIZE = 4000;
 export const CAMERA_LERP = 0.08;
-export const TARGETING_RADIUS = 600; 
+export const TARGETING_RADIUS = 450; 
 export const BULLET_MAX_DIST = 1200;
 export const LASER_LENGTH = 1800;
 export const GAME_ZOOM = 0.65; 

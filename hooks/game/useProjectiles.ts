@@ -76,9 +76,8 @@ export const useProjectiles = (
                     fireAngle = Math.atan2(n.pos.y - playerPosRef.current.y, n.pos.x - playerPosRef.current.x);
                     hasTarget = true;
                 } else {
-                    // Default to facing movement direction or UP if standing still
-                    fireAngle = -Math.PI / 2;
-                    hasTarget = true; // Allow firing blindly if trigger is held (mostly for testing or prep)
+                    // Auto-aim active but no target in range: Do NOT fire.
+                    hasTarget = false;
                 }
             }
 
