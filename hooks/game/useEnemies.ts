@@ -37,8 +37,18 @@ export const useEnemies = (
         if (roll > 0.90 && gameTime > 60) type = EntityType.ENEMY_LASER_SCOUT;
         else if (roll > 0.75) type = EntityType.ENEMY_STRIKER;
 
-        // Elite Chance
-        const isElite = Math.random() < Math.min(0.2, 0.01 + gameMinutes * 0.02);
+        // 3. Miniboss & Elite Logic
+        const activeMinibosses = enemiesRef.current.filter(e => e.isMiniboss).length;
+        // Minibosses can start appearing after 90 seconds. Max 2 active.
+        const allowMiniboss = gameTime > 90 && activeMinibosses < 2;
+
+        let isMiniboss = false;
+        let isElite = Math.random() < Math.min(0.2, 0.01 + gameMinutes * 0.02);
+
+        if (allowMiniboss && Math.random() < 0.03) { // 3% chance if permitted
+            isMiniboss = true;
+            isElite = false; // Override elite status
+        }
 
         // Spawn Position (Offscreen)
         const a = Math.random() * Math.PI * 2;
@@ -64,13 +74,17 @@ export const useEnemies = (
             color = '#a855f7';
         }
 
-        if (isElite) {
+        if (isMiniboss) {
+            baseHp *= 12; // Extremely Tanky
+            baseRadius *= 2.0; // Giant
+            color = '#ef4444'; // Red-500/600 visual
+        } else if (isElite) {
             baseHp *= 3;
             baseRadius *= 1.3;
             color = '#f0f'; // Elite color override
         }
 
-        const maxShield = (isElite || (gameMinutes > 5 && Math.random() > 0.7)) ? baseHp * 0.5 : 0;
+        const maxShield = (isMiniboss || isElite || (gameMinutes > 5 && Math.random() > 0.7)) ? baseHp * 0.5 : 0;
 
         enemiesRef.current.push({
             id: Math.random().toString(36),
@@ -81,8 +95,9 @@ export const useEnemies = (
             shield: maxShield, maxShield: maxShield,
             color: color,
             isMelee: type === EntityType.ENEMY_STRIKER,
-            level: Math.floor(difficultyMultiplier), // Fix: Level is now directly related to difficulty multiplier (1, 2, 3...)
-            isElite: isElite, // Explicit elite flag
+            level: Math.floor(difficultyMultiplier), 
+            isElite: isElite, 
+            isMiniboss: isMiniboss,
             aiPhase: Math.random() * Math.PI * 2, 
             aiSeed: Math.random(),
             lastHitTime: 0, lastShieldHitTime: 0,
@@ -128,13 +143,16 @@ export const useEnemies = (
                 
                 // Base Speed Scaling with Level (Time)
                 const speedScale = 1 + (gameTime / 600) * 0.5; // +50% speed over 10 mins
-                const baseSpd = (e.type === EntityType.ENEMY_STRIKER ? 110 : 80) * speedScale * speedMult;
+                let baseSpd = (e.type === EntityType.ENEMY_STRIKER ? 110 : 80) * speedScale * speedMult;
                 
+                // Minibosses move slower due to size
+                if (e.isMiniboss) baseSpd *= 0.65;
+
                 // Separation (Swarming)
                 let sepX = 0, sepY = 0;
                 enemiesRef.current.forEach(other => {
                     if (other.id === e.id) return;
-                    if (Math.abs(other.pos.x - e.pos.x) > 80 || Math.abs(other.pos.y - e.pos.y) > 80) return; 
+                    if (Math.abs(other.pos.x - e.pos.x) > (e.radius + other.radius + 50)) return; 
                     const odx = e.pos.x - other.pos.x, ody = e.pos.y - other.pos.y, od = Math.hypot(odx, ody);
                     if (od < e.radius + other.radius + 10) { 
                         sepX += (odx / od) * 150; sepY += (ody / od) * 150; 

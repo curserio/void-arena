@@ -228,13 +228,18 @@ export const useCollision = (
                 const e = enemies[i];
                 if (e.health <= 0) continue;
                 
-                // Melee
-                if (e.isMelee) {
+                // Melee (Strikers / Scouts)
+                if (e.isMelee || e.type === EntityType.ENEMY_SCOUT || e.isMiniboss) {
                     const dist = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
                     if (dist < e.radius + 20) {
                         if (time - (e.lastMeleeHitTime || 0) > 500) {
                             e.lastMeleeHitTime = time;
-                            triggerPlayerHit(time, 15 + (e.level || 1) * 4);
+                            
+                            let baseHit = 15 + (e.level || 1) * 4;
+                            if (e.isMiniboss) baseHit *= 3; // Miniboss hits like a truck
+                            else if (e.isElite) baseHit *= 1.5;
+
+                            triggerPlayerHit(time, baseHit);
                         }
                     }
                 }
@@ -251,7 +256,11 @@ export const useCollision = (
                         const angleDiff = Math.abs(Math.atan2(Math.sin(beamAngle - playerAngle), Math.cos(beamAngle - playerAngle)));
                         
                         if (angleDiff < 0.15) {
-                            triggerPlayerHit(time, 12 + (e.level || 1) * 3);
+                            let beamDmg = 12 + (e.level || 1) * 3;
+                            if (e.isMiniboss) beamDmg *= 2.5;
+                            else if (e.isElite) beamDmg *= 1.5;
+
+                            triggerPlayerHit(time, beamDmg);
                         }
                     }
                 }

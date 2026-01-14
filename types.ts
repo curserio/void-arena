@@ -91,7 +91,8 @@ export interface Entity {
   slowFactor?: number;
   isDashing?: boolean;
   dashUntil?: number;
-  isElite?: boolean; 
+  isElite?: boolean;
+  isMiniboss?: boolean; 
 }
 
 export interface Upgrade {

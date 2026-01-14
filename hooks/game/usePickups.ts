@@ -16,27 +16,68 @@ export const usePickups = (
 
     const spawnDrops = useCallback((enemy: Entity) => {
         const drops: Entity[] = [];
-        const baseVal = enemy.type === EntityType.ENEMY_LASER_SCOUT ? 500 : (enemy.isMelee ? 250 : 100);
+        
+        // Scaling Factors
         const level = enemy.level || 1;
+        const isElite = enemy.isElite || false;
+        const isMiniboss = enemy.isMiniboss || false;
+        
+        // Multipliers
+        let rewardMult = 1.0;
+        if (isMiniboss) rewardMult = 15.0; // Miniboss Jackpot
+        else if (isElite) rewardMult = 5.0; // Elite Bonus
 
-        // XP Gem
+        const levelMult = 1 + (level * 0.2);    // +20% value per enemy level
+
+        // 1. SCORE CALCULATION
+        let baseScore = 100; // Scout
+        if (enemy.type === EntityType.ENEMY_STRIKER) baseScore = 250;
+        if (enemy.type === EntityType.ENEMY_LASER_SCOUT) baseScore = 500;
+        
+        const finalScore = Math.floor(baseScore * levelMult * rewardMult);
+
+        // 2. XP GEM GENERATION
+        // Base Multipliers based on enemy difficulty
+        let typeXpMult = 1; // Scout
+        if (enemy.isMelee) typeXpMult = 3; // Striker
+        if (enemy.type === EntityType.ENEMY_LASER_SCOUT) typeXpMult = 5;
+
+        // Formula: BaseGem(15) * Type * LevelScaling * EliteBonus
+        const xpValue = Math.ceil(XP_PER_GEM * typeXpMult * (1 + (level * 0.1)) * rewardMult);
+
         drops.push({
             id: Math.random().toString(36), type: EntityType.XP_GEM,
             pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 14, health: 1, maxHealth: 1, color: '#06b6d4',
-            value: XP_PER_GEM * (enemy.type === EntityType.ENEMY_LASER_SCOUT ? 5 : (enemy.isMelee ? 3 : 1))
+            value: xpValue
         });
 
-        // Credit Drop
-        if (Math.random() < 0.25) {
+        // 3. CREDIT DROP GENERATION
+        // Chance: 33% base, 100% for Elites/Minibosses
+        const dropChance = (isElite || isMiniboss) ? 1.0 : 0.33;
+
+        if (Math.random() < dropChance) {
+            // Increased Base Values: Scout(30), Striker(60), Laser(150)
+            let baseCredits = 30; 
+            if (enemy.type === EntityType.ENEMY_STRIKER) baseCredits = 60;
+            if (enemy.type === EntityType.ENEMY_LASER_SCOUT) baseCredits = 150;
+
+            // Formula: Base * LevelScaling * EliteBonus
+            const creditValue = Math.floor(baseCredits * levelMult * rewardMult);
+
             drops.push({
                 id: Math.random().toString(36), type: EntityType.CREDIT,
                 pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 15, health: 1, maxHealth: 1, color: '#fbbf24',
-                value: (enemy.type === EntityType.ENEMY_LASER_SCOUT ? 100 : (enemy.isMelee ? 35 : 15))
+                value: creditValue
             });
         }
 
-        // PowerUp Drop (Consolidated logic for all powerups including health/shield)
-        if (Math.random() < 0.05) { // 5% chance
+        // 4. POWERUP GENERATION
+        // Chance: 5% base, 25% Elite, 50% Miniboss
+        let powerUpChance = 0.05;
+        if (isMiniboss) powerUpChance = 0.5;
+        else if (isElite) powerUpChance = 0.25;
+
+        if (Math.random() < powerUpChance) { 
             const powerUpId = getWeightedRandomPowerUp();
             const config = POWER_UPS[powerUpId];
             
@@ -48,7 +89,7 @@ export const usePickups = (
         }
 
         pickupsRef.current.push(...drops);
-        return baseVal * level; 
+        return finalScore; 
     }, []);
 
     const updatePickups = useCallback((dt: number) => {

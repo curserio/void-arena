@@ -105,6 +105,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         const isRecentlyHit = hitAge < 80;
         const isShieldHit = (time - (e.lastShieldHitTime || 0)) < 120;
         const isElite = !!e.isElite;
+        const isMiniboss = !!e.isMiniboss;
 
         // Health Bars & Stats
         ctx.save();
@@ -113,7 +114,12 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
 
-        if (isElite) {
+        if (isMiniboss) {
+            ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444';
+            ctx.fillStyle = '#ef4444';
+            ctx.font = '900 12px Arial';
+            ctx.fillText("MINIBOSS", 0, hudY - 20);
+        } else if (isElite) {
             ctx.shadowBlur = 10; ctx.shadowColor = '#f0f';
             ctx.fillStyle = '#f0f';
             ctx.fillText("ELITE", 0, hudY - 20);
@@ -167,7 +173,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             ctx.rotate(Math.atan2(e.vel.y, e.vel.x) + Math.PI / 2);
         }
 
-        ctx.shadowBlur = isElite ? 25 : 15; 
+        ctx.shadowBlur = isMiniboss ? 35 : (isElite ? 25 : 15); 
         ctx.shadowColor = e.color;
         
         if (isShieldHit) ctx.fillStyle = '#ffffff';
