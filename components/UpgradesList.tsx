@@ -9,7 +9,7 @@ interface UpgradesListProps {
 
 const UpgradesList: React.FC<UpgradesListProps> = ({ acquired, onClose }) => {
   return (
-    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[200] p-6 animate-in fade-in duration-200">
+    <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[400] p-6 animate-in fade-in duration-200">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-cyan-400 text-2xl font-black italic uppercase">System Manifest</h2>

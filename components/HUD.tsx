@@ -131,29 +131,31 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
       }
     `}
     </style>
-    <div className="fixed top-0 left-0 w-full p-4 pointer-events-none z-50 flex flex-col gap-4">
+    <div className="fixed top-0 left-0 w-full p-2 pointer-events-none z-50 flex flex-col gap-4">
       <div className="flex justify-between items-start w-full">
-        {/* Left Stats Block */}
-        <div className="flex flex-col gap-2 pointer-events-auto">
-          <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-2xl p-3 flex flex-col shadow-2xl min-w-[140px]">
-            <span className="text-cyan-400/70 text-[10px] font-black uppercase tracking-widest mb-1">COMMAND VESSEL</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-cyan-400 text-2xl font-black italic uppercase leading-none drop-shadow-[0_0_15px_rgba(34,211,238,0.6)]">{currentShipName}</span>
-            </div>
-            <div className="mt-1.5 flex items-center gap-2">
-                <div className="bg-cyan-500 text-slate-950 px-1.5 py-0.5 rounded text-[9px] font-black">RANK {stats.level}</div>
-            </div>
+        {/* Left Stats Block (Compacted) */}
+        <div className="flex flex-col gap-2 pointer-events-auto max-w-[45%]">
+          
+          {/* Ship Info & XP Bar */}
+          <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2 flex flex-col shadow-2xl min-w-[110px]">
+             <div className="flex justify-between items-center mb-1">
+                 <span className="text-cyan-400/70 text-[9px] font-black uppercase tracking-widest truncate">{currentShipName}</span>
+                 <div className="bg-cyan-500 text-slate-950 px-1.5 rounded text-[9px] font-black shrink-0">LV {stats.level}</div>
+             </div>
+             
+             {/* Embedded XP Bar */}
+             <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-700/50 mb-1">
+                <div className="h-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all duration-700" style={{ width: `${xpPercent}%` }} />
+             </div>
           </div>
           
-          <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-2xl p-3 flex flex-col shadow-2xl min-w-[140px]">
-            <span className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">TOTAL CREDITS</span>
-            <div className="flex items-center gap-2 text-amber-400 font-black text-2xl leading-none drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]">
-              <i className="fa-solid fa-coins text-sm" />
-              <span>{formatCredits(totalCredits)}</span>
-            </div>
+          {/* Credits (Compacted) */}
+          <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-xl p-2 flex items-center gap-2 shadow-2xl min-w-[110px] w-fit">
+            <i className="fa-solid fa-coins text-amber-400 text-xs" />
+            <span className="text-amber-400 font-black text-sm leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">{formatCredits(totalCredits)}</span>
           </div>
 
-          {/* Active Power-ups (Moved Here) */}
+          {/* Active Power-ups */}
           <div className="flex flex-col gap-2 mt-2 items-start">
             {Object.entries(stats.activeBuffs).map(([id, until]) => {
                 // Assert until as number to avoid unknown type error
@@ -175,56 +177,50 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
           </div>
         </div>
 
-        {/* Right Controls Block */}
+        {/* Right Controls Block (Simplified) */}
         <div className="flex flex-col items-end gap-3 pointer-events-auto">
           <div className="flex gap-2">
             <button 
               onClick={(e) => { e.stopPropagation(); setAutoAttack(!autoAttack); }}
-              className={`w-14 h-14 bg-slate-900/90 border-2 rounded-2xl flex items-center justify-center transition-all shadow-2xl active:scale-90 ${autoAttack ? 'border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-700 text-slate-500 opacity-60'}`}
+              className={`w-12 h-12 bg-slate-900/90 border-2 rounded-xl flex items-center justify-center transition-all shadow-2xl active:scale-90 ${autoAttack ? 'border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-700 text-slate-500 opacity-60'}`}
             >
-              <i className={`fa-solid ${autoAttack ? 'fa-crosshairs' : 'fa-slash'} text-xl`} />
+              <i className={`fa-solid ${autoAttack ? 'fa-crosshairs' : 'fa-slash'} text-lg`} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onOpenGarage(); }} className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-amber-400 active:scale-90 transition-all shadow-2xl">
-              <i className="fa-solid fa-screwdriver-wrench text-xl" />
-            </button>
-             <button onClick={(e) => { e.stopPropagation(); onShowUpgrades(); }} className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-cyan-400 active:scale-90 transition-all shadow-2xl">
-              <i className="fa-solid fa-list text-xl" />
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); onPause(); }} className="w-14 h-14 bg-slate-900/90 border-2 border-slate-700 rounded-2xl flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl">
-              <i className="fa-solid fa-pause text-xl" />
+            <button onClick={(e) => { e.stopPropagation(); onPause(); }} className="w-12 h-12 bg-slate-900/90 border-2 border-slate-700 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl">
+              <i className="fa-solid fa-pause text-lg" />
             </button>
           </div>
-          <div className="bg-slate-900/60 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/10 flex flex-col items-end shadow-xl">
-            <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">MISSION SCORE</span>
-            <span className="text-white text-2xl font-black italic leading-none tabular-nums">{score.toLocaleString()}</span>
+          <div className="bg-slate-900/60 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-white/10 flex flex-col items-end shadow-xl">
+            <span className="text-white/40 text-[9px] font-black uppercase tracking-widest">SCORE</span>
+            <span className="text-white text-lg font-black italic leading-none tabular-nums">{score.toLocaleString()}</span>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM HUD BARS */}
-      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 flex flex-col gap-4 pointer-events-none">
+      {/* BOTTOM HUD BARS (XP removed, only Health/Shield) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg flex flex-col gap-3 pointer-events-none">
         
         {/* Hull Health */}
-        <div className="flex flex-col gap-1.5 relative">
+        <div className="flex flex-col gap-1 relative">
             {/* Popups for Hull */}
             <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end pointer-events-none">
                 {popups.filter(p => p.type === 'HULL').map(p => (
-                    <div key={p.id} className="text-red-500 font-black text-2xl drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
+                    <div key={p.id} className="text-red-500 font-black text-xl drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
                         -{p.value}
                     </div>
                 ))}
             </div>
 
           <div className="flex justify-between items-end px-1">
-            <span className={`text-[11px] font-black uppercase tracking-widest ${healthPercent < 30 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
+            <span className={`text-[10px] font-black uppercase tracking-widest ${healthPercent < 30 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
               <i className="fa-solid fa-shield-heart mr-2" />
-              INTEGRITY HULL
+              HULL
             </span>
-            <span className="text-white text-[11px] font-black tabular-nums drop-shadow-md">
-              {Math.round(stats.currentHealth)} / {Math.round(stats.maxHealth)}
+            <span className="text-white text-[10px] font-black tabular-nums drop-shadow-md">
+              {Math.round(stats.currentHealth)}/{Math.round(stats.maxHealth)}
             </span>
           </div>
-          <div className="w-full h-6 bg-slate-950/90 rounded-xl border-2 border-slate-800 overflow-hidden relative shadow-2xl">
+          <div className="w-full h-4 bg-slate-950/90 rounded-lg border border-slate-800 overflow-hidden relative shadow-2xl">
             <div 
               className={`h-full transition-all duration-300 ${isInvulnerable ? 'bg-white opacity-40' : healthPercent < 30 ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'}`}
               style={{ width: `${healthPercent}%` }}
@@ -235,44 +231,32 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
         </div>
 
         {/* Shields */}
-        <div className="flex flex-col gap-1.5 -mt-1 relative">
+        <div className="flex flex-col gap-1 relative">
              {/* Popups for Shield */}
              <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end pointer-events-none">
                 {popups.filter(p => p.type === 'SHIELD').map(p => (
-                    <div key={p.id} className="text-cyan-300 font-black text-xl drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
+                    <div key={p.id} className="text-cyan-300 font-black text-lg drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
                         -{p.value}
                     </div>
                 ))}
             </div>
 
           <div className="flex justify-between items-end px-1">
-            <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">
+            <span className="text-blue-400 text-[9px] font-black uppercase tracking-widest">
               <i className="fa-solid fa-shield-halved mr-2" />
-              PLASMA SHIELDS
+              SHIELD
             </span>
-            <span className="text-blue-200 text-[10px] font-black tabular-nums">
-              {Math.round(stats.currentShield)} / {Math.round(stats.maxShield)}
+            <span className="text-blue-200 text-[9px] font-black tabular-nums">
+              {Math.round(stats.currentShield)}/{Math.round(stats.maxShield)}
             </span>
           </div>
-          <div className="w-full h-3 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden shadow-2xl">
-            {/* Reduced transition duration from 500 to 200 for snappier feel */}
+          <div className="w-full h-2 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden shadow-2xl">
             <div 
               className="h-full bg-gradient-to-r from-blue-700 to-blue-400 transition-all duration-200 relative" 
               style={{ width: `${shieldPercent}%` }} 
             >
                 <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
             </div>
-          </div>
-        </div>
-
-        {/* XP Progress */}
-        <div className="flex flex-col gap-1 mt-1">
-          <div className="flex justify-between items-center px-1">
-             <span className="text-cyan-400/60 text-[9px] font-black uppercase tracking-widest">NEURAL XP SYNC</span>
-             <span className="text-cyan-400/60 text-[9px] font-black">{Math.round(xpPercent)}%</span>
-          </div>
-          <div className="w-full h-2 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden">
-            <div className="h-full bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] transition-all duration-700" style={{ width: `${xpPercent}%` }} />
           </div>
         </div>
         

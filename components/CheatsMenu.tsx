@@ -30,20 +30,22 @@ const CheatsMenu: React.FC<CheatsMenuProps> = ({ data, onUpdate, onClose }) => {
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest text-center">Authorization Level: OMNI</p>
           
           <button 
-            onClick={() => addCredits(10000)}
-            className="group relative overflow-hidden py-6 bg-slate-950 border border-red-500/30 rounded-2xl text-red-500 font-black text-2xl uppercase transition-all active:scale-95 hover:bg-red-500/10 hover:border-red-500"
+            onClick={() => addCredits(100000)}
+            className="group relative overflow-hidden py-4 bg-slate-950 border border-red-500/30 rounded-2xl text-red-500 font-black text-xl uppercase transition-all active:scale-95 hover:bg-red-500/10 hover:border-red-500"
           >
             <div className="relative z-10 flex flex-col items-center">
-              <span>Add 10,000 Credits</span>
-              <span className="text-[10px] opacity-50 font-bold mt-1 tracking-widest">Injection Successful</span>
+              <span>Add 100,000 Credits</span>
             </div>
           </button>
 
           <button 
-            onClick={() => addCredits(100000)}
-            className="group relative overflow-hidden py-4 bg-slate-950 border border-amber-500/30 rounded-2xl text-amber-500 font-black text-lg uppercase transition-all active:scale-95 hover:bg-amber-500/10 hover:border-amber-500"
+            onClick={() => addCredits(10000000)}
+            className="group relative overflow-hidden py-6 bg-slate-950 border border-pink-500/50 rounded-2xl text-pink-500 font-black text-2xl uppercase transition-all active:scale-95 hover:bg-pink-500/10 hover:border-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.2)]"
           >
-            Add 100,000 Credits
+             <div className="relative z-10 flex flex-col items-center">
+              <span>DASHA MODE</span>
+              <span className="text-[10px] opacity-70 font-bold mt-1 tracking-widest">+10,000,000 C</span>
+            </div>
           </button>
         </div>
 
