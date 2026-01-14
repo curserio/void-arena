@@ -14,10 +14,17 @@ interface GarageMenuProps {
 const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, onUpdate, onApplyEffect }) => {
   const totalCredits = useMemo(() => data.credits + sessionCredits, [data.credits, sessionCredits]);
 
+  const getUpgradeCost = (upgrade: MetaUpgrade, currentLevel: number) => {
+    // Geometric Progression: Base * (Factor ^ Level)
+    return Math.floor(upgrade.costBase * Math.pow(upgrade.costFactor, currentLevel));
+  };
+
   const buyMeta = (upgrade: MetaUpgrade) => {
     const currentLevel = data.metaLevels[upgrade.id] || 0;
     if (currentLevel >= upgrade.maxLevel) return;
-    const cost = upgrade.costBase + (currentLevel * upgrade.costStep);
+    
+    const cost = getUpgradeCost(upgrade, currentLevel);
+    
     if (totalCredits >= cost) {
       let spentFromSession = Math.min(sessionCredits, cost);
       let newPersistentCredits = data.credits - (cost - spentFromSession);
@@ -110,7 +117,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                      <div className="mt-2 pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
                        {specificMetas.map(mu => {
                          const level = data.metaLevels[mu.id] || 0;
-                         const cost = mu.costBase + (level * mu.costStep);
+                         const cost = getUpgradeCost(mu, level);
                          const isMax = level >= mu.maxLevel;
                          return (
                            <div key={mu.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex flex-col gap-2 shadow-inner">
@@ -118,6 +125,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                                 <span className="text-cyan-400 text-[10px] font-black uppercase tracking-tight">{mu.name}</span>
                                 <span className="text-slate-500 text-[9px] font-black">LV {level}/{mu.maxLevel}</span>
                               </div>
+                              <p className="text-slate-500 text-[9px] leading-tight h-6 overflow-hidden">{mu.description}</p>
                               <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(mu)} className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}>
                                 {isMax ? 'MAXED' : `${cost.toLocaleString()} C`}
                               </button>
@@ -137,7 +145,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
           <div className="flex flex-col gap-4">
             {META_UPGRADES.filter(m => !m.weaponType).map(u => {
               const level = data.metaLevels[u.id] || 0;
-              const cost = u.costBase + (level * u.costStep);
+              const cost = getUpgradeCost(u, level);
               const isMax = level >= u.maxLevel;
               return (
                 <div key={u.id} className="p-4 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col gap-3 shadow-sm hover:border-slate-700 transition-colors">

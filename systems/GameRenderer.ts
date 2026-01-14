@@ -5,13 +5,26 @@ import { SHIPS, GAME_ZOOM, WORLD_SIZE } from '../constants';
 // --- Helpers ---
 const getAsteroidPoints = (seed: number, radius: number) => {
     const points: Vector2D[] = [];
-    const segments = 12;
+    const segments = 10 + Math.floor(seed * 5); // 10-14 segments
+    
+    // Use a simple seeded pseudo-random approach for deterministic shapes
+    const seededRandom = (s: number) => {
+        const x = Math.sin(s) * 10000;
+        return x - Math.floor(x);
+    };
+
     for (let i = 0; i < segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const noise = Math.sin(seed * 123.45 + angle * 67.89) * 0.35 + 1;
+        const angleBase = (i / segments) * Math.PI * 2;
+        // Add random angular jitter
+        const angleJitter = (seededRandom(seed + i * 0.1) - 0.5) * (Math.PI / segments);
+        const angle = angleBase + angleJitter;
+
+        // Radius variation (0.7 to 1.3 of base radius)
+        const radVar = 0.7 + seededRandom(seed + i * 1.1) * 0.6;
+        
         points.push({
-            x: Math.cos(angle) * radius * noise,
-            y: Math.sin(angle) * radius * noise
+            x: Math.cos(angle) * radius * radVar,
+            y: Math.sin(angle) * radius * radVar
         });
     }
     return points;
@@ -67,19 +80,19 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             ctx.closePath();
             
             const grad = ctx.createRadialGradient(-e.radius * 0.3, -e.radius * 0.3, 0.1, 0, 0, Math.max(0.1, e.radius));
-            grad.addColorStop(0, isRecentlyHit ? '#ffffff' : '#4b5563'); 
-            grad.addColorStop(1, isRecentlyHit ? '#ffffff' : '#111827');
+            grad.addColorStop(0, isRecentlyHit ? '#ffffff' : '#64748b'); 
+            grad.addColorStop(1, isRecentlyHit ? '#ffffff' : '#1e293b');
             ctx.fillStyle = grad; ctx.fill();
             
-            ctx.strokeStyle = isRecentlyHit ? '#ffffff' : '#6b7280'; 
+            ctx.strokeStyle = isRecentlyHit ? '#ffffff' : '#475569'; 
             ctx.lineWidth = 2; ctx.stroke();
             
-            // Texture/Cracks
+            // Texture detail
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(pts[0].x * 0.5, pts[0].y * 0.5);
-            ctx.lineTo(pts[4].x * 0.2, pts[4].y * 0.2);
+            ctx.moveTo(pts[0].x * 0.4, pts[0].y * 0.4);
+            ctx.lineTo(pts[4].x * 0.6, pts[4].y * 0.6);
             ctx.stroke();
 
             ctx.restore();
@@ -90,17 +103,23 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         const hitAge = time - (e.lastHitTime || 0);
         const isRecentlyHit = hitAge < 80;
         const isShieldHit = (time - (e.lastShieldHitTime || 0)) < 120;
-        const isElite = (e.level || 1) >= 5;
+        const isElite = !!e.isElite;
 
         // Health Bars & Stats
         ctx.save();
         const hudY = -e.radius - 20;
         
+        ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center';
+
         if (isElite) {
             ctx.shadowBlur = 10; ctx.shadowColor = '#f0f';
             ctx.fillStyle = '#f0f';
-            ctx.font = 'black 14px Arial';
-            ctx.fillText("ELITE", 0, hudY - 25);
+            ctx.fillText("ELITE", 0, hudY - 20);
+        } else {
+             // Show Level for non-elites too to show progression
+             ctx.fillStyle = 'rgba(255,255,255,0.5)';
+             ctx.fillText(`LV ${e.level || 1}`, 0, hudY - 10);
         }
 
         const barW = Math.max(40, e.radius * 2); 

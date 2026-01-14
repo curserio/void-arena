@@ -17,61 +17,77 @@ export const usePlayer = (
 
     useEffect(() => { statsRef.current = stats; }, [stats]);
 
-    const initPlayer = useCallback(() => {
-        const shipConfig = SHIPS.find(s => s.type === persistentData.equippedShip) || SHIPS[0];
-        const weapon = persistentData.equippedWeapon || WeaponType.PLASMA;
+    const calculateStats = useCallback((data: PersistentData) => {
+        const shipConfig = SHIPS.find(s => s.type === data.equippedShip) || SHIPS[0];
+        const weapon = data.equippedWeapon || WeaponType.PLASMA;
         const baseWStats = WEAPON_BASE_STATS[weapon];
 
-        const hpL = persistentData.metaLevels['meta_hp'] || 0;
-        const dmgL = persistentData.metaLevels['meta_dmg'] || 0;
-        const magL = persistentData.metaLevels['meta_magnet'] || 0;
-        const spdL = persistentData.metaLevels['meta_speed'] || 0;
-        const shL = persistentData.metaLevels['meta_shield_max'] || 0;
+        // Meta Levels
+        const hpL = data.metaLevels['meta_hp'] || 0;
+        const dmgL = data.metaLevels['meta_dmg'] || 0;
+        const magL = data.metaLevels['meta_magnet'] || 0;
+        const shL = data.metaLevels['meta_shield'] || 0;
+        const regenL = data.metaLevels['meta_regen'] || 0;
+        const critChL = data.metaLevels['meta_crit_chance'] || 0;
+        const critDmgL = data.metaLevels['meta_crit_dmg'] || 0;
+        const salvageL = data.metaLevels['meta_salvage'] || 0;
 
-        let bCount = 1;
+        // Weapon Specific Metas
+        let bCount = (shipConfig.baseStats.bulletCount || 1);
         let bSpeed = baseWStats.bulletSpeed;
         let bDamageMult = 1.0;
         let bPierce = 1;
+        let fRate = baseWStats.fireRate;
 
         if (weapon === WeaponType.PLASMA) {
-            bCount = 1 + (persistentData.metaLevels['meta_plas_count'] || 0);
-            bSpeed *= (1 + (persistentData.metaLevels['meta_plas_spd'] || 0) * 0.15);
-            bDamageMult *= (1 + (persistentData.metaLevels['meta_plas_dmg'] || 0) * 0.15);
+            // No specific plasma dmg meta anymore, purely global or other
         } else if (weapon === WeaponType.MISSILE) {
-            bDamageMult *= (1 + (persistentData.metaLevels['meta_msl_dmg'] || 0) * 0.2);
+             // Warhead yield (radius) handled in collision
         } else if (weapon === WeaponType.LASER) {
-            bDamageMult *= (1 + (persistentData.metaLevels['meta_lsr_burn'] || 0) * 0.25);
-            bPierce = 2 + (persistentData.metaLevels['meta_lsr_pierce'] || 0);
+             fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
+             bPierce = 999; // Railgun
         }
 
-        const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.15);
-        const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.20);
-        const finalSpeed = (shipConfig.baseStats.speed || 230) * (1 + spdL * 0.10);
-
+        const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
+        const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.15);
+        const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * (1 + regenL * 0.10);
+        
+        // Base stats from ship config + Meta scaling
         const metaStats: PlayerStats = {
             ...INITIAL_STATS,
-            ...shipConfig.baseStats,
-            shipType: persistentData.equippedShip,
+            ...shipConfig.baseStats, // Apply ship overrides
+            shipType: data.equippedShip,
             weaponType: weapon,
             maxHealth: finalMaxHP,
-            currentHealth: finalMaxHP,
+            currentHealth: finalMaxHP, // Full health on init
             maxShield: finalMaxShield,
             currentShield: finalMaxShield,
-            speed: finalSpeed,
-            damage: baseWStats.damage * (1 + dmgL * 0.10) * bDamageMult,
-            fireRate: baseWStats.fireRate,
-            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.25),
+            shieldRegen: finalShieldRegen,
+            
+            damage: baseWStats.damage * (1 + dmgL * 0.05) * bDamageMult,
+            fireRate: fRate,
+            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.15),
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
+            
+            critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
+            critMultiplier: 1.5 + (critDmgL * 0.05),
+            creditMultiplier: 1.0 + (salvageL * 0.05),
+
             invulnerableUntil: 0
         };
 
+        return metaStats;
+    }, []);
+
+    const initPlayer = useCallback(() => {
+        const newStats = calculateStats(persistentData);
         playerPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
         cameraPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
-        setStats(metaStats);
+        setStats(newStats);
         lastPlayerHitTimeRef.current = 0;
-    }, [persistentData]);
+    }, [persistentData, calculateStats]);
 
     const updatePlayer = useCallback((dt: number, time: number) => {
         if (gameState !== GameState.PLAYING || isPaused) return;
@@ -116,66 +132,37 @@ export const usePlayer = (
                 remainingDmg -= shieldDamage;
             }
             if (remainingDmg > 0) newHealth = Math.max(0, newHealth - remainingDmg);
-            // 300ms i-frames to prevent instant vaporization
             return { ...prev, currentShield: newShield, currentHealth: newHealth, lastShieldHitTime: time, invulnerableUntil: time + 300 };
         });
     }, []);
 
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
+        const baseStats = calculateStats(newData);
         setStats(current => {
-            const shipConfig = SHIPS.find(s => s.type === newData.equippedShip) || SHIPS[0];
-            const weapon = newData.equippedWeapon || WeaponType.PLASMA;
-            const baseWStats = WEAPON_BASE_STATS[weapon];
-            const hpL = newData.metaLevels['meta_hp'] || 0;
-            const dmgL = newData.metaLevels['meta_dmg'] || 0;
-            const magL = newData.metaLevels['meta_magnet'] || 0;
-            const spdL = newData.metaLevels['meta_speed'] || 0;
-            const shL = newData.metaLevels['meta_shield_max'] || 0;
-
-            let bCount = 1;
-            let bSpeed = baseWStats.bulletSpeed;
-            let bDamageMult = 1.0;
-            let bPierce = 1;
-
-            if (weapon === WeaponType.PLASMA) {
-                bCount = 1 + (newData.metaLevels['meta_plas_count'] || 0);
-                bSpeed *= (1 + (newData.metaLevels['meta_plas_spd'] || 0) * 0.15);
-                bDamageMult *= (1 + (newData.metaLevels['meta_plas_dmg'] || 0) * 0.15);
-            } else if (weapon === WeaponType.MISSILE) {
-                bDamageMult *= (1 + (newData.metaLevels['meta_msl_dmg'] || 0) * 0.2);
-            } else if (weapon === WeaponType.LASER) {
-                bDamageMult *= (1 + (newData.metaLevels['meta_lsr_burn'] || 0) * 0.25);
-                bPierce = 2 + (newData.metaLevels['meta_lsr_pierce'] || 0);
-            }
-
-            let baseMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.15);
-            let baseMaxShield = (shipConfig.baseStats.maxShield || 25) * (1 + shL * 0.20);
-            let baseDamage = (baseWStats.damage) * (1 + dmgL * 0.10) * bDamageMult;
-            let baseMagnet = (INITIAL_STATS.magnetRange) * (1 + magL * 0.25);
-            let baseSpeed = (shipConfig.baseStats.speed || 230) * (1 + spdL * 0.10);
-
-            let finalStats: PlayerStats = {
-                ...current,
-                shipType: newData.equippedShip,
-                weaponType: weapon,
-                maxHealth: baseMaxHP,
-                maxShield: baseMaxShield,
-                shieldRegen: shipConfig.baseStats.shieldRegen || 2.5,
-                speed: baseSpeed,
-                damage: baseDamage,
-                fireRate: baseWStats.fireRate,
-                magnetRange: baseMagnet,
-                bulletCount: bCount,
-                bulletSpeed: bSpeed,
-                pierceCount: bPierce
-            };
+            // Re-apply in-game upgrades to the new base stats
+            let finalStats = { ...baseStats };
+            
+            // Preserve current health/shield state ratios or values logic
+            // Actually, keep current HP but clamp to new Max
+            const hpRatio = current.maxHealth > 0 ? current.currentHealth / current.maxHealth : 1;
+            const shieldRatio = current.maxShield > 0 ? current.currentShield / current.maxShield : 1;
 
             current.acquiredUpgrades.forEach(upg => { finalStats = upg.effect(finalStats); });
-            finalStats.currentHealth = Math.min(finalStats.maxHealth, current.currentHealth);
-            finalStats.currentShield = Math.min(finalStats.maxShield, current.currentShield);
+
+            finalStats.currentHealth = Math.min(finalStats.maxHealth, finalStats.maxHealth * hpRatio);
+            finalStats.currentShield = Math.min(finalStats.maxShield, finalStats.maxShield * shieldRatio);
+            
+            // Preserve in-game currency
+            finalStats.credits = current.credits;
+            finalStats.xp = current.xp;
+            finalStats.level = current.level;
+            finalStats.xpToNextLevel = current.xpToNextLevel;
+            finalStats.acquiredUpgrades = current.acquiredUpgrades;
+            finalStats.buffs = current.buffs;
+
             return finalStats;
         });
-    }, []);
+    }, [calculateStats]);
 
     return {
         stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef, lastPlayerHitTimeRef,

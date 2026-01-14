@@ -40,8 +40,16 @@ export const useCollision = (
                 for (const e of enemies) {
                     if (e.health <= 0) continue; 
                     if (checkCircleCollision(p, e)) {
-                        let damage = pStats.damage;
+                        
+                        // --- DAMAGE CALCULATION ---
+                        const isCrit = Math.random() < pStats.critChance;
+                        let baseDamage = pStats.damage;
+                        if (isCrit) baseDamage *= pStats.critMultiplier;
+                        
+                        let damage = baseDamage;
                         let isShieldHit = false;
+
+                        // Shield Logic
                         if (e.shield && e.shield > 0) {
                             const shieldHit = Math.min(e.shield, damage);
                             e.shield -= shieldHit;
@@ -49,39 +57,54 @@ export const useCollision = (
                             e.lastShieldHitTime = time;
                             isShieldHit = true;
                         }
+
+                        // Hull Logic
                         if (damage > 0) e.health -= damage;
+                        
                         e.lastHitTime = time;
-                        spawnDamageText(e.pos, pStats.damage, isShieldHit && damage <= 0 ? '#06fdfd' : '#ffffff');
+                        spawnDamageText(e.pos, baseDamage, isCrit ? '#facc15' : (isShieldHit && damage <= 0 ? '#06fdfd' : '#ffffff'));
+
+                        // --- WEAPON EFFECTS ---
+                        if (p.weaponType === WeaponType.PLASMA) {
+                            // Plasma Slow Effect
+                            e.slowUntil = time + 2000;
+                            e.slowFactor = 0.3; // 30% slow
+                        }
 
                         if (e.health <= 0) {
                             const scoreGain = spawnDrops(e);
                             setScore(s => s + scoreGain);
                         }
 
-                        // Projectile Consumption Logic
+                        // --- PROJECTILE CONSUMPTION ---
                         if (p.weaponType === WeaponType.MISSILE) {
-                            p.health = 0; // Missiles always explode
+                            p.health = 0; 
                             const mRad = 110 * (1 + (persistentData.metaLevels['meta_msl_rad'] || 0) * 0.3);
-                            const aoeDmg = pStats.damage * 0.5;
+                            // Area Damage with Falloff
                             addParticles([{
                                 id: Math.random().toString(36), type: EntityType.EXPLOSION, pos: { ...p.pos },
                                 vel: { x: 0, y: 0 }, radius: mRad, health: 1, maxHealth: 1, color: '#fb923c',
                                 duration: 0, maxDuration: 0.6
                             }]);
+                            
                             enemies.forEach(other => {
                                 if (other.id !== e.id && other.health > 0) {
                                     const dist = Math.hypot(other.pos.x - p.pos.x, other.pos.y - p.pos.y);
                                     if (dist < mRad) {
-                                        let ad = aoeDmg;
+                                        // Falloff: 100% at center, 25% at edge
+                                        const falloff = 1 - (dist / mRad);
+                                        const finalScale = 0.25 + (falloff * 0.75);
+                                        let aoeDmg = pStats.damage * 0.8 * finalScale; // Missiles base splash is 80% of hit
+                                        
                                         if (other.shield && other.shield > 0) {
-                                            const sd = Math.min(other.shield, ad);
+                                            const sd = Math.min(other.shield, aoeDmg);
                                             other.shield -= sd;
-                                            ad -= sd;
+                                            aoeDmg -= sd;
                                             other.lastShieldHitTime = time;
                                         }
-                                        if (ad > 0) other.health -= ad;
+                                        if (aoeDmg > 0) other.health -= aoeDmg;
                                         other.lastHitTime = time;
-                                        spawnDamageText(other.pos, aoeDmg, '#fb923c');
+                                        spawnDamageText(other.pos, Math.floor(aoeDmg), '#fb923c');
                                         if (other.health <= 0) {
                                             const sg = spawnDrops(other);
                                             setScore(s => s + sg);
@@ -90,14 +113,14 @@ export const useCollision = (
                                 }
                             });
                         } else {
-                            // Non-missile bullets (Plasma, Laser)
+                            // Plasma/Laser
                             if (p.pierceCount && p.pierceCount > 1) {
-                                p.pierceCount--; // Subtract one pierce
+                                p.pierceCount--;
                             } else {
-                                p.health = 0; // Bullet is consumed
+                                p.health = 0; 
                             }
                         }
-                        break; // Stop checking other enemies for this bullet in this frame
+                        break; 
                     }
                 }
             }
@@ -107,15 +130,20 @@ export const useCollision = (
         if (!isInvulnerable) {
             enemies.forEach(e => {
                 if (e.health <= 0) return;
+                
+                // Melee
                 if (e.isMelee) {
                     const dist = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
                     if (dist < e.radius + 20) {
                         if (time - (e.lastMeleeHitTime || 0) > 500) {
                             e.lastMeleeHitTime = time;
-                            triggerPlayerHit(time, 15 + (e.level || 1) * 3);
+                            // Damage scales with level
+                            triggerPlayerHit(time, 15 + (e.level || 1) * 4);
                         }
                     }
                 }
+                
+                // Laser Beam
                 if (e.type === EntityType.ENEMY_LASER_SCOUT && e.isFiring) {
                     const dx = playerPosRef.current.x - e.pos.x;
                     const dy = playerPosRef.current.y - e.pos.y;
@@ -124,19 +152,19 @@ export const useCollision = (
                     const beamAngle = e.angle || 0;
                     let angleDiff = Math.abs(beamAngle - playerAngle);
                     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                    if (angleDiff < 0.1 && dist < 700) {
-                        triggerPlayerHit(time, 10 + (e.level || 1) * 2);
+                    if (angleDiff < 0.15 && dist < 800) { // Wider angle, longer range
+                        triggerPlayerHit(time, 12 + (e.level || 1) * 3);
                     }
                 }
             });
 
-            // 3. Enemy Bullets vs Player
+            // Enemy Bullets
             projectiles.forEach(p => {
                 if (p.type === EntityType.ENEMY_BULLET && p.health > 0) {
                     const dist = Math.hypot(p.pos.x - playerPosRef.current.x, p.pos.y - playerPosRef.current.y);
                     if (dist < 22 + p.radius) { 
                         p.health = 0;
-                        triggerPlayerHit(time, 8 + (p.level || 1) * 2);
+                        triggerPlayerHit(time, 10 + (p.level || 1) * 2.5);
                     }
                 }
             });
@@ -160,12 +188,14 @@ export const useCollision = (
                                 setOfferedUpgrades([...UPGRADES].sort(() => 0.5 - Math.random()).slice(0, 3));
                                 setGameState(GameState.LEVELING);
                             }, 0);
-                            return { ...st, xp: 0, level: st.level + 1, xpToNextLevel: Math.floor(st.xpToNextLevel * 1.5) };
+                            // New XP Curve: 250 * (Level ^ 1.5)
+                            return { ...st, xp: 0, level: st.level + 1, xpToNextLevel: Math.floor(250 * Math.pow(st.level + 1, 1.5)) };
                         }
                         return { ...st, xp: nx };
                     });
                 } else if (p.type === EntityType.CREDIT) {
-                    setStats(st => ({ ...st, credits: st.credits + (p.value || 0) }));
+                    const val = (p.value || 0) * pStats.creditMultiplier;
+                    setStats(st => ({ ...st, credits: st.credits + val }));
                 } else if (p.type === EntityType.HEAL_PICKUP) {
                     setStats(st => ({ ...st, currentHealth: Math.min(st.maxHealth, st.currentHealth + (p.value || 0)) }));
                 }

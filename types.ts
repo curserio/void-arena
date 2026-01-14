@@ -73,6 +73,12 @@ export interface Entity {
   chargeProgress?: number;
   angle?: number;
   isFiring?: boolean;
+  // New AI & Status properties
+  slowUntil?: number; 
+  slowFactor?: number;
+  isDashing?: boolean;
+  dashUntil?: number;
+  isElite?: boolean; // Explicit elite flag
 }
 
 export interface Upgrade {
@@ -81,6 +87,7 @@ export interface Upgrade {
   description: string;
   icon: string;
   effect: (stats: PlayerStats) => PlayerStats;
+  rarity?: 'COMMON' | 'RARE' | 'LEGENDARY';
 }
 
 export interface MetaUpgrade {
@@ -90,7 +97,7 @@ export interface MetaUpgrade {
   icon: string;
   maxLevel: number;
   costBase: number;
-  costStep: number;
+  costFactor: number; // Geometric growth factor
   weaponType?: WeaponType;
 }
 
@@ -125,7 +132,11 @@ export interface PlayerStats {
   credits: number;
   shipType: ShipType;
   acquiredUpgrades: Upgrade[];
-  invulnerableUntil: number; // Added for hit mitigation
+  invulnerableUntil: number;
+  // New Stats
+  critChance: number;
+  critMultiplier: number;
+  creditMultiplier: number;
   buffs: {
     overdriveUntil: number;
     omniUntil: number;
