@@ -1,10 +1,12 @@
+
 import React, { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D, DifficultyConfig } from '../../types';
 import { WORLD_SIZE } from '../../constants';
 
 export const useEnemies = (
     playerPosRef: React.MutableRefObject<Vector2D>,
-    difficulty: DifficultyConfig
+    difficulty: DifficultyConfig,
+    spawnSpawnFlash: (pos: Vector2D) => void
 ) => {
     const enemiesRef = useRef<Entity[]>([]);
     const spawnTimerRef = useRef(0);
@@ -45,7 +47,7 @@ export const useEnemies = (
             
             // Spawn Boss
             const a = Math.random() * Math.PI * 2;
-            const d = 900;
+            const d = 1100; // Force boss distance
             const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
             const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
             
@@ -70,6 +72,9 @@ export const useEnemies = (
                 lastShotTime: currentTime + 2000 // Initial delay
             });
             
+            // Trigger Spawn Flash for Boss
+            spawnSpawnFlash({ x, y });
+            
             // Don't spawn other enemies this frame
             return;
         }
@@ -92,9 +97,10 @@ export const useEnemies = (
             isElite = false; 
         }
 
-        // Spawn Position (Offscreen)
+        // Spawn Position (Safe Distance)
+        // Previous was 800+300. Increased to 1000+400 to push them further out initially.
         const a = Math.random() * Math.PI * 2;
-        const d = 800 + Math.random() * 300;
+        const d = 1000 + Math.random() * 400; 
         const x = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(a) * d));
         const y = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(a) * d));
 
@@ -128,6 +134,13 @@ export const useEnemies = (
 
         const maxShield = (isMiniboss || isElite || (gameMinutes > 5 && Math.random() > 0.7)) ? baseHp * 0.5 : 0;
 
+        // Check distance for "On-Screen Flash" logic
+        // If enemy spawns within ~1300 pixels (reasonable visible range on desktop or zoomed out), trigger flash
+        const distToPlayer = Math.hypot(x - playerPosRef.current.x, y - playerPosRef.current.y);
+        if (distToPlayer < 1300) {
+            spawnSpawnFlash({ x, y });
+        }
+
         enemiesRef.current.push({
             id: Math.random().toString(36),
             type: type,
@@ -146,7 +159,7 @@ export const useEnemies = (
             isCharging: false, isFiring: false, chargeProgress: 0, 
             lastShotTime: currentTime + Math.random() * 1000
         });
-    }, [playerPosRef, difficulty]);
+    }, [playerPosRef, difficulty, spawnSpawnFlash]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
         // --- SPAWNING LOGIC ---

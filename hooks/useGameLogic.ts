@@ -44,7 +44,9 @@ export const useGameLogic = (
     addUpgrade, triggerPlayerHit, syncWithPersistentData
   } = usePlayer(gameState, persistentData, isPaused);
 
-  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig);
+  const { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles } = useParticles();
+
+  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig, spawnSpawnFlash);
   
   const handleShotFired = useCallback(() => {
       runMetricsRef.current.shotsFired++;
@@ -52,7 +54,6 @@ export const useGameLogic = (
   
   const { projectilesRef, autoAttack, setAutoAttack, initProjectiles, fireWeapon, updateProjectiles, addProjectiles } = useProjectiles(playerPosRef, statsRef, handleShotFired);
   const { pickupsRef, initPickups, spawnDrops, updatePickups } = usePickups(playerPosRef, statsRef, difficultyConfig);
-  const { particlesRef, initParticles, spawnDamageText, spawnExplosion, updateParticles, addParticles } = useParticles();
 
   const handleEnemyHit = useCallback(() => {
       runMetricsRef.current.shotsHit++;

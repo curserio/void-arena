@@ -40,7 +40,8 @@ export enum EntityType {
   POWERUP = 'POWERUP',
   CREDIT = 'CREDIT',
   EXPLOSION = 'EXPLOSION',
-  DAMAGE_NUMBER = 'DAMAGE_NUMBER'
+  DAMAGE_NUMBER = 'DAMAGE_NUMBER',
+  SPAWN_FLASH = 'SPAWN_FLASH'
 }
 
 export enum WeaponType {

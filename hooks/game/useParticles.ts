@@ -61,6 +61,23 @@ export const useParticles = () => {
         particlesRef.current.push(p);
     }, []);
 
+    const spawnSpawnFlash = useCallback((pos: Vector2D) => {
+        const pool = poolRef.current;
+        const p = pool.get();
+        
+        p.id = Math.random().toString(36);
+        p.type = EntityType.SPAWN_FLASH;
+        p.pos.x = pos.x;
+        p.pos.y = pos.y;
+        p.vel.x = 0; p.vel.y = 0;
+        p.radius = 60; // Max radius of flash
+        p.color = '#ffffff';
+        p.duration = 0;
+        p.maxDuration = 0.5;
+
+        particlesRef.current.push(p);
+    }, []);
+
     const addParticles = useCallback((newParticles: Entity[]) => {
         // Adopt new particles. Ideally should copy data into pooled objects if these came from external
         // but simple push is okay as long as we clean them up correctly later
@@ -90,6 +107,8 @@ export const useParticles = () => {
                 if (e.duration >= (e.maxDuration || 0.8)) alive = false;
             } else if (e.type === EntityType.EXPLOSION) {
                 if (e.duration > (e.maxDuration || 0.4)) alive = false;
+            } else if (e.type === EntityType.SPAWN_FLASH) {
+                if (e.duration > (e.maxDuration || 0.5)) alive = false;
             } else {
                 // Failsafe for unknown particle types
                 if (e.duration > 2.0) alive = false;
@@ -103,5 +122,5 @@ export const useParticles = () => {
         }
     }, []);
 
-    return { particlesRef, initParticles, spawnDamageText, spawnExplosion, updateParticles, addParticles };
+    return { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles };
 };

@@ -418,6 +418,37 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
                 const size = (e.radius * 0.15) * fade;
                 ctx.fillRect(dx - size/2, dy - size/2, size, size);
             }
+        } else if (e.type === EntityType.SPAWN_FLASH) {
+            const prog = (e.duration || 0) / (e.maxDuration || 0.5);
+            const scale = Math.sin(prog * Math.PI); // Grow then shrink slightly? No, just grow and fade
+            
+            // Hyperspace Flash Effect
+            // Quick expansion from 0 to large, then fade out
+            
+            // 1. Bright Core
+            ctx.globalAlpha = Math.max(0, 1 - prog);
+            ctx.shadowBlur = 40; ctx.shadowColor = '#fff';
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(0, 0, e.radius * prog, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. Cross Streak
+            if (prog < 0.5) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#22d3ee';
+                const w = e.radius * 2 * prog;
+                const h = 4 * (1 - prog);
+                ctx.fillRect(-w/2, -h/2, w, h);
+                ctx.fillRect(-h/2, -w/2, h, w);
+            }
+            
+            // 3. Shockwave Ring
+            ctx.strokeStyle = '#22d3ee';
+            ctx.lineWidth = 4 * (1-prog);
+            ctx.beginPath();
+            ctx.arc(0, 0, e.radius * 1.5 * prog, 0, Math.PI*2);
+            ctx.stroke();
         }
         ctx.restore();
     });
