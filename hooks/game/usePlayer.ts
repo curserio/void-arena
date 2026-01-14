@@ -35,6 +35,8 @@ export const usePlayer = (
         // Weapon Specific Meta Levels
         const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
         const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
+        const plasCountL = data.metaLevels['meta_plas_count'] || 0; // New Meta
+        
         const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
         const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
         const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
@@ -49,6 +51,7 @@ export const usePlayer = (
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
             bSpeed *= (1 + plasSpdL * 0.08);
+            bCount += plasCountL; // Apply Split Chamber Meta
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);

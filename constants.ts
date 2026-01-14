@@ -89,13 +89,7 @@ export const UPGRADES: Upgrade[] = [
     icon: 'fa-skull',
     effect: (s) => ({ ...s, critMultiplier: s.critMultiplier + 0.3 })
   },
-  {
-    id: 'multishot',
-    name: 'Split Chamber',
-    description: '+1 Projectile (Plasma/Missile)',
-    icon: 'fa-clone',
-    effect: (s) => ({ ...s, bulletCount: s.bulletCount + 1 })
-  },
+  // Multishot removed from here
   {
     id: 'speed_boost',
     name: 'Ion Thrusters',
@@ -202,17 +196,18 @@ export const META_UPGRADES: MetaUpgrade[] = [
 
   // --- WEAPON SPECIFIC: PLASMA ---
   { id: 'meta_plas_area', name: 'Cryo-Plasma', description: 'Plasma slows enemies effectively (Chill).', icon: 'fa-snowflake', maxLevel: 10, costBase: 1000, costFactor: 1.6, weaponType: WeaponType.PLASMA },
-  { id: 'meta_plas_dmg', name: 'Plasma Intensity', description: '+5% Damage per level. Long-term upgrade.', icon: 'fa-fire-burner', maxLevel: 100, costBase: 200, costFactor: 1.12, weaponType: WeaponType.PLASMA },
+  { id: 'meta_plas_dmg', name: 'Plasma Intensity', description: '+5% Damage per level.', icon: 'fa-fire-burner', maxLevel: 100, costBase: 200, costFactor: 1.12, weaponType: WeaponType.PLASMA },
   { id: 'meta_plas_speed', name: 'Velocity Coil', description: '+8% Projectile Speed per level.', icon: 'fa-wind', maxLevel: 30, costBase: 400, costFactor: 1.2, weaponType: WeaponType.PLASMA },
+  { id: 'meta_plas_count', name: 'Split Chamber', description: '+1 Projectile count.', icon: 'fa-clone', maxLevel: 3, costBase: 5000, costFactor: 2.5, weaponType: WeaponType.PLASMA },
 
   // --- WEAPON SPECIFIC: MISSILE ---
   { id: 'meta_msl_rad', name: 'Warhead Yield', description: 'Increases missile explosion radius.', icon: 'fa-bomb', maxLevel: 20, costBase: 1500, costFactor: 1.4, weaponType: WeaponType.MISSILE },
-  { id: 'meta_msl_dmg', name: 'Payload Potency', description: '+5% Damage per level. Long-term upgrade.', icon: 'fa-explosion', maxLevel: 100, costBase: 500, costFactor: 1.12, weaponType: WeaponType.MISSILE },
+  { id: 'meta_msl_dmg', name: 'Payload Potency', description: '+5% Damage per level.', icon: 'fa-explosion', maxLevel: 100, costBase: 500, costFactor: 1.12, weaponType: WeaponType.MISSILE },
   { id: 'meta_msl_reload', name: 'Auto-Loader', description: '+5% Fire Rate per level.', icon: 'fa-repeat', maxLevel: 40, costBase: 1000, costFactor: 1.25, weaponType: WeaponType.MISSILE },
 
   // --- WEAPON SPECIFIC: LASER ---
   { id: 'meta_lsr_recharge', name: 'Capacitor Banks', description: 'Reduces Laser recharge time.', icon: 'fa-battery-full', maxLevel: 20, costBase: 2000, costFactor: 1.45, weaponType: WeaponType.LASER },
-  { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level. Long-term upgrade.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER }
+  { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER }
 ];
 
 export const SHIPS: ShipConfig[] = [

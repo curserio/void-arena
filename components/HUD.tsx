@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlayerStats, ShipType, PowerUpType } from '../types';
 import { SHIPS } from '../constants';
 
@@ -11,6 +11,12 @@ interface HUDProps {
   onPause: () => void;
   onShowUpgrades: () => void;
   onOpenGarage: () => void;
+}
+
+interface DamagePopup {
+  id: number;
+  value: number;
+  type: 'HULL' | 'SHIELD';
 }
 
 const formatCredits = (num: number) => {
@@ -89,7 +95,46 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
     PIERCE: 7000
   };
 
+  // --- DAMAGE POPUP LOGIC ---
+  const [popups, setPopups] = useState<DamagePopup[]>([]);
+  const prevHealth = useRef(stats.currentHealth);
+  const prevShield = useRef(stats.currentShield);
+
+  useEffect(() => {
+    // Detect Hull Damage
+    if (stats.currentHealth < prevHealth.current) {
+        const diff = Math.floor(prevHealth.current - stats.currentHealth);
+        if (diff > 0) addPopup(diff, 'HULL');
+    }
+    prevHealth.current = stats.currentHealth;
+
+    // Detect Shield Damage
+    if (stats.currentShield < prevShield.current) {
+        const diff = Math.floor(prevShield.current - stats.currentShield);
+        if (diff > 0) addPopup(diff, 'SHIELD');
+    }
+    prevShield.current = stats.currentShield;
+  }, [stats.currentHealth, stats.currentShield]);
+
+  const addPopup = (value: number, type: 'HULL' | 'SHIELD') => {
+      const id = Date.now() + Math.random();
+      setPopups(prev => [...prev, { id, value, type }]);
+      setTimeout(() => {
+          setPopups(prev => prev.filter(p => p.id !== id));
+      }, 800);
+  };
+
   return (
+    <>
+    <style>
+    {`
+      @keyframes floatUp {
+        0% { transform: translateY(0) scale(1); opacity: 1; }
+        50% { transform: translateY(-20px) scale(1.2); opacity: 1; }
+        100% { transform: translateY(-40px) scale(1); opacity: 0; }
+      }
+    `}
+    </style>
     <div className="fixed top-0 left-0 w-full p-4 pointer-events-none z-50 flex flex-col gap-4">
       <div className="flex justify-between items-start w-full">
         {/* Left Stats Block */}
@@ -150,14 +195,23 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-lg px-6 flex flex-col gap-4 pointer-events-none">
         
         {/* Hull Health */}
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5 relative">
+            {/* Popups for Hull */}
+            <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end pointer-events-none">
+                {popups.filter(p => p.type === 'HULL').map(p => (
+                    <div key={p.id} className="text-red-500 font-black text-2xl drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
+                        -{p.value}
+                    </div>
+                ))}
+            </div>
+
           <div className="flex justify-between items-end px-1">
             <span className={`text-[11px] font-black uppercase tracking-widest ${healthPercent < 30 ? 'text-red-500 animate-pulse' : 'text-emerald-400'}`}>
               <i className="fa-solid fa-shield-heart mr-2" />
               INTEGRITY HULL
             </span>
             <span className="text-white text-[11px] font-black tabular-nums drop-shadow-md">
-              {Math.round(stats.currentHealth)} / {stats.maxHealth}
+              {Math.round(stats.currentHealth)} / {Math.round(stats.maxHealth)}
             </span>
           </div>
           <div className="w-full h-6 bg-slate-950/90 rounded-xl border-2 border-slate-800 overflow-hidden relative shadow-2xl">
@@ -171,19 +225,29 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
         </div>
 
         {/* Shields */}
-        <div className="flex flex-col gap-1.5 -mt-1">
+        <div className="flex flex-col gap-1.5 -mt-1 relative">
+             {/* Popups for Shield */}
+             <div className="absolute bottom-full right-0 mb-2 flex flex-col items-end pointer-events-none">
+                {popups.filter(p => p.type === 'SHIELD').map(p => (
+                    <div key={p.id} className="text-cyan-300 font-black text-xl drop-shadow-md" style={{ animation: 'floatUp 0.8s ease-out forwards' }}>
+                        -{p.value}
+                    </div>
+                ))}
+            </div>
+
           <div className="flex justify-between items-end px-1">
             <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest">
               <i className="fa-solid fa-shield-halved mr-2" />
               PLASMA SHIELDS
             </span>
             <span className="text-blue-200 text-[10px] font-black tabular-nums">
-              {Math.round(stats.currentShield)}% ACTIVE
+              {Math.round(stats.currentShield)} / {Math.round(stats.maxShield)}
             </span>
           </div>
           <div className="w-full h-3 bg-slate-950/90 rounded-full border border-slate-800 overflow-hidden shadow-2xl">
+            {/* Reduced transition duration from 500 to 200 for snappier feel */}
             <div 
-              className="h-full bg-gradient-to-r from-blue-700 to-blue-400 transition-all duration-500 relative" 
+              className="h-full bg-gradient-to-r from-blue-700 to-blue-400 transition-all duration-200 relative" 
               style={{ width: `${shieldPercent}%` }} 
             >
                 <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
@@ -204,6 +268,7 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
         
       </div>
     </div>
+    </>
   );
 };
 
