@@ -32,6 +32,13 @@ export const usePlayer = (
         const critDmgL = data.metaLevels['meta_crit_dmg'] || 0;
         const salvageL = data.metaLevels['meta_salvage'] || 0;
 
+        // Weapon Specific Meta Levels
+        const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
+        const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
+        const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
+        const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
+        const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
+
         // Weapon Specific Metas
         let bCount = (shipConfig.baseStats.bulletCount || 1);
         let bSpeed = baseWStats.bulletSpeed;
@@ -40,10 +47,14 @@ export const usePlayer = (
         let fRate = baseWStats.fireRate;
 
         if (weapon === WeaponType.PLASMA) {
-            // No specific plasma dmg meta anymore, purely global or other
+            bDamageMult *= (1 + plasDmgL * 0.05);
+            bSpeed *= (1 + plasSpdL * 0.08);
         } else if (weapon === WeaponType.MISSILE) {
+            bDamageMult *= (1 + mslDmgL * 0.05);
+            fRate *= (1 + mslRelL * 0.05);
              // Warhead yield (radius) handled in collision
         } else if (weapon === WeaponType.LASER) {
+             bDamageMult *= (1 + lsrDmgL * 0.05);
              fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
              bPierce = 999; // Railgun
         }

@@ -13,6 +13,12 @@ interface HUDProps {
   onOpenGarage: () => void;
 }
 
+const formatCredits = (num: number) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  return Math.floor(num).toLocaleString();
+};
+
 const PowerUpIndicator: React.FC<{ 
   label: string; 
   until: number; 
@@ -98,11 +104,11 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, onPa
             </div>
           </div>
           
-          <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-2xl p-3 flex flex-col shadow-2xl">
+          <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-2xl p-3 flex flex-col shadow-2xl min-w-[140px]">
             <span className="text-amber-400/70 text-[10px] font-black uppercase tracking-widest mb-1">BANK CREDITS</span>
             <div className="flex items-center gap-2 text-amber-400 font-black text-2xl leading-none drop-shadow-[0_0_15px_rgba(251,191,36,0.6)]">
               <i className="fa-solid fa-coins text-sm" />
-              <span>{Math.floor(stats.credits).toLocaleString()}</span>
+              <span>{formatCredits(stats.credits)}</span>
             </div>
           </div>
         </div>

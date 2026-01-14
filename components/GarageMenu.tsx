@@ -11,6 +11,12 @@ interface GarageMenuProps {
   onApplyEffect?: (effect: (s: PlayerStats) => PlayerStats) => void;
 }
 
+const formatCredits = (num: number) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+  return Math.floor(num).toLocaleString();
+};
+
 const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, onUpdate, onApplyEffect }) => {
   const totalCredits = useMemo(() => data.credits + sessionCredits, [data.credits, sessionCredits]);
 
@@ -62,7 +68,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
           <div className="flex items-center gap-4 mt-1">
             <div className="flex items-center gap-2 text-amber-400 font-bold bg-amber-400/10 px-3 py-1 rounded-lg border border-amber-400/20 shadow-[0_0_15px_rgba(251,191,36,0.2)]">
               <i className="fa-solid fa-coins" />
-              <span>{Math.floor(totalCredits).toLocaleString()} CREDITS</span>
+              <span>{formatCredits(totalCredits)} CREDITS</span>
             </div>
           </div>
         </div>
@@ -85,7 +91,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                     </div>
                     <div className="w-6 h-6 rounded-full shrink-0 shadow-lg" style={{ backgroundColor: s.color }} />
                   </div>
-                  {!isUnlocked && <div className="text-amber-500 text-[10px] font-black">PRICE: {s.cost.toLocaleString()} C</div>}
+                  {!isUnlocked && <div className="text-amber-500 text-[10px] font-black">PRICE: {formatCredits(s.cost)} C</div>}
                   <button disabled={!isUnlocked && totalCredits < s.cost} onClick={() => buyShip(s)} className={`w-full py-2.5 rounded-xl font-black text-xs shadow-md active:scale-95 transition-all ${isEquipped ? 'bg-cyan-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-amber-600 text-white'}`}>
                     {isEquipped ? 'ACTIVE' : isUnlocked ? 'SELECT' : 'PURCHASE'}
                   </button>
@@ -110,7 +116,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                       <span className="text-white text-xl font-black italic uppercase tracking-tighter">{w} SYSTEM</span>
                     </div>
                     <button disabled={!isUnlocked && totalCredits < price} onClick={() => handleWeaponAction(w)} className={`px-6 py-2.5 rounded-xl text-xs font-black shadow-md transition-all shrink-0 ${isEquipped ? 'bg-amber-500 text-slate-950' : isUnlocked ? 'bg-slate-700 text-white' : 'bg-cyan-600 text-white'}`}>
-                      {isEquipped ? 'EQUIPPED' : isUnlocked ? 'SELECT' : `UNLOCK: ${price.toLocaleString()} C`}
+                      {isEquipped ? 'EQUIPPED' : isUnlocked ? 'SELECT' : `UNLOCK: ${formatCredits(price)} C`}
                     </button>
                    </div>
                    {isUnlocked && (
@@ -122,12 +128,12 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                          return (
                            <div key={mu.id} className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex flex-col gap-2 shadow-inner">
                               <div className="flex justify-between items-center">
-                                <span className="text-cyan-400 text-[10px] font-black uppercase tracking-tight">{mu.name}</span>
-                                <span className="text-slate-500 text-[9px] font-black">LV {level}/{mu.maxLevel}</span>
+                                <span className="text-cyan-400 text-[10px] font-black uppercase tracking-tight truncate max-w-[100px]">{mu.name}</span>
+                                <span className="text-slate-500 text-[9px] font-black shrink-0">LV {level}/{mu.maxLevel}</span>
                               </div>
-                              <p className="text-slate-500 text-[9px] leading-tight h-6 overflow-hidden">{mu.description}</p>
+                              <p className="text-slate-500 text-[9px] leading-tight h-8 overflow-hidden">{mu.description}</p>
                               <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(mu)} className={`w-full py-2 rounded-lg font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 text-cyan-400 border border-cyan-400/20 active:bg-cyan-900/40'}`}>
-                                {isMax ? 'MAXED' : `${cost.toLocaleString()} C`}
+                                {isMax ? 'MAXED' : `${formatCredits(cost)} C`}
                               </button>
                            </div>
                          );
@@ -158,8 +164,11 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                       <div className="text-slate-500 text-[8px] font-bold">LV {level} / {u.maxLevel}</div>
                     </div>
                   </div>
+                  {/* Added Description Here */}
+                  <p className="text-slate-500 text-[9px] leading-tight">{u.description}</p>
+                  
                   <button disabled={isMax || totalCredits < cost} onClick={() => buyMeta(u)} className={`w-full py-2.5 rounded-xl flex items-center justify-center font-black text-[10px] transition-all ${isMax ? 'bg-slate-800 text-slate-500' : 'bg-cyan-600 text-white shadow-lg active:scale-95'}`}>
-                    {isMax ? 'MAXED' : `UPGRADE: ${cost.toLocaleString()} C`}
+                    {isMax ? 'MAXED' : `UPGRADE: ${formatCredits(cost)} C`}
                   </button>
                 </div>
               );
