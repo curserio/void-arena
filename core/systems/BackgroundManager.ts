@@ -1,5 +1,5 @@
 
-import { WORLD_SIZE } from '../constants';
+import { WORLD_SIZE } from '../../constants';
 
 export interface BackgroundStar {
   x: number;

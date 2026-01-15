@@ -61,12 +61,20 @@ export class Dreadnought extends BaseBoss {
         this.pos.x += this.vel.x * dt;
         this.pos.y += this.vel.y * dt;
 
-        // Rotation towards player
+        // Rotation towards player with constant speed
         const targetAngle = Math.atan2(dy, dx);
         let angleDiff = targetAngle - this.angle;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-        this.angle += angleDiff * 0.8 * dt;
+
+        const turnRate = 0.3;
+        const maxTurn = turnRate * dt;
+
+        if (Math.abs(angleDiff) > maxTurn) {
+            this.angle += Math.sign(angleDiff) * maxTurn;
+        } else {
+            this.angle += angleDiff;
+        }
 
         // Charged beam attack
         const attackCooldown = this.definition.attackCooldown;

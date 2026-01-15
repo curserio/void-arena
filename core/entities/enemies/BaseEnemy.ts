@@ -221,6 +221,7 @@ export abstract class BaseEnemy implements IEnemy {
             color,
             level: this.level,
             isElite: this.isElite,
+            isLegendary: this.isLegendary
         };
     }
 

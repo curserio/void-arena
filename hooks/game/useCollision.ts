@@ -1,12 +1,14 @@
 
 import React, { useCallback, useRef, useEffect } from 'react';
 import { Entity, EntityType, PlayerStats, WeaponType, PersistentData, Upgrade, GameState, Vector2D } from '../../types';
-import { EnemyType } from '../../types/enemies';
+import { EnemyType, IEnemy } from '../../types/enemies';
+import { IProjectile } from '../../types/projectiles';
 import { UPGRADES, LASER_LENGTH } from '../../constants';
-import { POWER_UPS } from '../../systems/PowerUpSystem';
-import { SpatialHashGrid } from '../../systems/SpatialHashGrid';
+import { POWER_UPS } from '../../core/systems/PowerUpSystem';
+import { SpatialHashGrid } from '../../core/utils/SpatialHashGrid';
 
-const checkCircleCollision = (a: Entity, b: Entity) => {
+// Helper: Check collision between two circular entities
+const checkCircleCollision = (a: { pos: Vector2D, radius: number }, b: { pos: Vector2D, radius: number }) => {
     // Optimization: Pre-check bounding box before doing expensive Math.hypot (sqrt)
     if (Math.abs(a.pos.x - b.pos.x) > a.radius + b.radius) return false;
     if (Math.abs(a.pos.y - b.pos.y) > a.radius + b.radius) return false;
@@ -18,7 +20,7 @@ const checkCircleCollision = (a: Entity, b: Entity) => {
     return distSq < radSum * radSum;
 };
 
-// Distance from point P to line segment VW
+// Helper: Distance from point P to line segment VW
 const distToSegmentSq = (p: Vector2D, v: Vector2D, w: Vector2D) => {
     const l2 = (w.x - v.x) ** 2 + (w.y - v.y) ** 2;
     if (l2 === 0) return (p.x - v.x) ** 2 + (p.y - v.y) ** 2;
@@ -29,26 +31,26 @@ const distToSegmentSq = (p: Vector2D, v: Vector2D, w: Vector2D) => {
 };
 
 export const useCollision = (
-    enemiesRef: React.MutableRefObject<(Entity | import('../../types/enemies').IEnemy)[]>,
-    projectilesRef: React.MutableRefObject<Entity[]>,
+    enemiesRef: React.MutableRefObject<IEnemy[]>,
+    projectilesRef: React.MutableRefObject<IProjectile[]>,
     pickupsRef: React.MutableRefObject<Entity[]>,
     playerPosRef: React.MutableRefObject<Vector2D>,
     statsRef: React.MutableRefObject<PlayerStats>,
     triggerPlayerHit: (time: number, damage: number, source: Entity | string) => void,
-    spawnDrops: (enemy: Entity) => number,
+    spawnDrops: (enemy: IEnemy) => number,
     spawnDamageText: (pos: Vector2D, dmg: number, color: string) => void,
     spawnExplosion: (pos: Vector2D, radius: number, color: string) => void,
-    addParticles: (p: Entity[]) => void,
+    addParticles: (p: Entity[]) => void, // Pickups/Particles still generic Entity for now
     setScore: React.Dispatch<React.SetStateAction<number>>,
     setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
     setOfferedUpgrades: (u: any[]) => void,
-    // setGameState removed from here to fix race condition
     persistentData: PersistentData,
     onEnemyHit: () => void,
     onEnemyKilled: () => void,
     onCreditCollected: (amount: number) => void
 ) => {
-    const gridRef = useRef<SpatialHashGrid>(new SpatialHashGrid(250));
+    // Grid now stores IEnemy specifically
+    const gridRef = useRef<SpatialHashGrid<IEnemy>>(new SpatialHashGrid<IEnemy>(250));
 
     const checkCollisions = useCallback((time: number, dt: number) => {
         const grid = gridRef.current;
@@ -61,9 +63,12 @@ export const useCollision = (
         const pStats = statsRef.current;
 
         // 1. Insert Enemies into Grid
-        enemies.forEach(e => grid.insert(e));
+        // IEnemy guarantees pos and radius
+        enemies.forEach(e => {
+            if (e.isAlive) grid.insert(e);
+        });
 
-        const applyDamageToEnemy = (e: Entity, dmg: number, isCrit: boolean, explosionColor?: string) => {
+        const applyDamageToEnemy = (e: IEnemy, dmg: number, isCrit: boolean, explosionColor?: string) => {
             let hullDmg = dmg;
 
             // Shield Logic
@@ -79,6 +84,8 @@ export const useCollision = (
             }
 
             // Death Defiance (Elite Kamikaze Ability)
+            // 'hasDeathDefiance' is specific to certain enemies but checking it safely if it exists on IEnemy OR checking type
+            // We added optional props to IEnemy/EnemyDefinition so it should be safe.
             if (hullDmg >= e.health && e.hasDeathDefiance) {
                 hullDmg = 0;
                 e.shield = 0;
@@ -99,11 +106,13 @@ export const useCollision = (
 
         // 2. Projectile vs Enemy
         for (const p of projectiles) {
-            if (p.health <= 0) continue;
+            if (!p.isAlive) continue;
             // Enemy Bullets don't hit enemies
             if (p.type === EntityType.ENEMY_BULLET) continue;
 
             if (p.weaponType === WeaponType.LASER) {
+                // Determine if firing (Laser Logic)
+                // We need to cast or check property as IProjectile has optional isFiring
                 if (p.isFiring) {
                     const angle = p.angle || 0;
                     const startX = playerPos.x;
@@ -111,7 +120,11 @@ export const useCollision = (
                     const endX = startX + Math.cos(angle) * LASER_LENGTH;
                     const endY = startY + Math.sin(angle) * LASER_LENGTH;
 
+                    // For lasers, we iterate all enemies? Or use a broadphase line check?
+                    // Iterating all is safer for beam accuracy, or we can query grid cells along the line.
+                    // For now, iterate all (simpler for lasers as they are instant)
                     enemies.forEach(e => {
+                        if (!e.isAlive) return;
                         const distSq = distToSegmentSq(e.pos, { x: startX, y: startY }, { x: endX, y: endY });
                         if (distSq < (e.radius + 20) ** 2) {
                             if (time - (e.lastHitTime || 0) > 100) {
@@ -128,7 +141,7 @@ export const useCollision = (
                 }
             } else {
                 // STANDARD PROJECTILE (Plasma / Missile / Swarm)
-                const candidates = grid.retrieve(p);
+                const candidates = grid.retrieve(p.pos);
                 for (const e of candidates) {
                     if (e.health <= 0) continue;
 
@@ -147,7 +160,14 @@ export const useCollision = (
 
                             spawnExplosion(p.pos, explosionRad, boomColor);
 
+                            // Splash Damage - iterate all enemies again or query grid?
+                            // Query grid with larger radius
+                            // For simplicity, iterating candidates from current cell might miss edge cases, 
+                            // but iterate all is expensive.
+                            // Let's iterate all for splash to be safe for now, or use query.
+                            // Optimization: Check distance.
                             enemies.forEach(subE => {
+                                if (!subE.isAlive) return;
                                 const dist = Math.hypot(subE.pos.x - p.pos.x, subE.pos.y - p.pos.y);
                                 if (dist < explosionRad) {
                                     let subDmg = damage;
@@ -155,8 +175,10 @@ export const useCollision = (
                                     applyDamageToEnemy(subE, subDmg, isCrit, boomColor);
                                 }
                             });
-                            p.health = 0;
+                            p.isAlive = false;
+                            p.health = 0; // Sync
                         } else {
+                            // PLASMA
                             if (pStats.weaponType === WeaponType.PLASMA) {
                                 const chillLvl = persistentData.metaLevels['meta_plas_area'] || 0;
                                 if (chillLvl > 0) {
@@ -166,20 +188,33 @@ export const useCollision = (
                             }
 
                             applyDamageToEnemy(e, damage, isCrit);
-
                             spawnExplosion(p.pos, 20, '#22d3ee');
 
-                            p.pierceCount = (p.pierceCount || 1) - 1;
-                            if (p.pierceCount <= 0) p.health = 0;
+                            if (p.pierceCount !== undefined) {
+                                p.pierceCount -= 1;
+                                if (p.pierceCount <= 0) {
+                                    p.isAlive = false;
+                                    p.health = 0;
+                                }
+                            } else {
+                                p.isAlive = false;
+                                p.health = 0;
+                            }
                         }
-                        break;
+                        break; // Hit one enemy per frame per projectile (unless piercing handled differently?)
+                        // If piercing, we shouldn't break? 
+                        // Current logic: break after hitting ONE candidate to prevent hitting multiple in same frame?
+                        // But piercing allows hitting multiple?
+                        // Implementation of Pierce in loop:
+                        // Typically you track 'hitEntities' to not hit same one twice.
+                        // For Void Arena, simpler check matches legacy.
                     }
                 }
             }
         }
 
         // 3. Player vs Enemy (Body Collision)
-        const playerCandidates = grid.retrieve({ pos: playerPos, radius: 20 } as Entity);
+        const playerCandidates = grid.retrieve(playerPos);
         for (const e of playerCandidates) {
             const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
             if (dist < 20 + e.radius) {
@@ -192,43 +227,56 @@ export const useCollision = (
                 let collisionDmg = 15; // Base collision damage
 
                 // SCALING: Only Melee units scale body damage with level
-                if (e.isMelee) {
+                // Checking isMelee property on IEnemy?
+                // Or check type.
+                const isMelee = e.enemyType === EnemyType.KAMIKAZE || e.enemyType === EnemyType.STRIKER || e.enemyType === EnemyType.ASTEROID;
+                if (isMelee) {
                     collisionDmg += (e.level || 1) * 1.5;
                 }
 
-                // Bosses have massive mass multiplier, but no level scaling on body hit
-                // (Unless you want Boss body slam to one-shot at high levels, but safer to keep it flat + multiplier)
-                if (e.isBoss) collisionDmg *= 1.5;
+                // Bosses have massive mass multiplier
+                const isBoss = e.enemyType === EnemyType.BOSS_DREADNOUGHT || e.enemyType === EnemyType.BOSS_DESTROYER;
+                if (isBoss) collisionDmg *= 1.5;
 
-                triggerPlayerHit(time, collisionDmg, e);
+                // We trigger hit with 'e' as source. triggerPlayerHit expects Entity or string.
+                // IEnemy is compatible with Entity structure mostly, but we should cast or ensure compatibility.
+                // triggerPlayerHit should ideally accept IEnemy too.
+                // For now, casting to any or Entity is safe as they share shape.
+                triggerPlayerHit(time, collisionDmg, e as unknown as Entity);
             }
         }
 
         // 4. Enemy Projectiles vs Player
         for (const p of projectiles) {
+            if (!p.isAlive) continue;
             if (p.type !== EntityType.ENEMY_BULLET) continue;
+
             const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
             if (dist < 20 + p.radius) {
                 // Enemy Bullet Hit
                 let dmg = 10;
+                // isElite/isMiniboss props check
                 if (p.isElite) dmg = 20;
+                if (p.isLegendary) dmg = 30; // New Legendary Scaling
                 if (p.isMiniboss) dmg = 35;
 
-                // Extra check for Heavy Plasma (Boss)
+                // Heavy Plasma (Boss) check
                 if (p.radius > 10 && p.isElite) dmg = 45;
 
-                // SCALING: Bullets scale with level (Scouts/Snipers/Bosses become deadlier)
+                // SCALING
                 if (p.level) {
                     dmg += p.level * 0.5;
                 }
 
-                triggerPlayerHit(time, dmg, p);
+                triggerPlayerHit(time, dmg, p as unknown as Entity);
 
                 // Visual Effect for Homing Missile Impact
-                if (p.isHoming) {
+                // Check weaponType or custom prop
+                if (p.weaponType === WeaponType.MISSILE) {
                     spawnExplosion(p.pos, 80, '#f97316'); // Medium explosion
                 }
 
+                p.isAlive = false;
                 p.health = 0;
             }
         }
@@ -257,7 +305,7 @@ export const useCollision = (
                 if (distSq < (width / 2 + 20) ** 2) {
                     let dmg = isBoss ? 20 : 12; // Per Tick
 
-                    // Level Scaling for Beams (Continuous damage needs scaling too)
+                    // Level Scaling for Beams
                     const lvl = e.level || 1;
                     if (isBoss) dmg += (lvl * 0.5);
                     else dmg += (lvl * 0.2);
@@ -285,7 +333,7 @@ export const useCollision = (
                         setStats(prev => config.onPickup(prev, time));
                     }
                 }
-                p.health = 0;
+                p.health = 0; // Pickups use health=0 to die
             }
         }
 
@@ -321,6 +369,8 @@ export const useCollision = (
         // 6. Death Logic
         enemies.forEach(e => {
             if (e.health <= 0) {
+                // Ensure we haven't already processed death (optional check if e.isAlive)
+                // But health <= 0 is the trigger.
                 onEnemyKilled(); // Track Stats
                 const scoreAdd = spawnDrops(e);
                 setScore(s => s + scoreAdd);

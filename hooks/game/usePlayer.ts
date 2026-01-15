@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType, ModuleType } from '../../types';
 import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
-import { isBuffActive } from '../../systems/PowerUpSystem';
+import { isBuffActive } from '../../core/systems/PowerUpSystem';
 
 export const usePlayer = (
     gameState: GameState,

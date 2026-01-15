@@ -1,5 +1,5 @@
 
-import { PlayerStats, PowerUpConfig, PowerUpId } from '../types';
+import { PlayerStats, PowerUpConfig, PowerUpId } from '../../types';
 
 // Helper to apply a duration buff
 const applyBuff = (stats: PlayerStats, id: PowerUpId, duration: number, time: number): PlayerStats => {
@@ -92,7 +92,7 @@ export const getWeightedRandomPowerUp = (): PowerUpId => {
   const items = Object.values(POWER_UPS);
   const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
   let random = Math.random() * totalWeight;
-  
+
   for (const item of items) {
     if (random < item.weight) {
       return item.id;

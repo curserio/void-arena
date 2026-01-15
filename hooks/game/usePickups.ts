@@ -3,7 +3,7 @@ import React, { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D, PlayerStats, DifficultyConfig } from '../../types';
 import { EnemyType } from '../../types/enemies';
 import { XP_PER_GEM } from '../../constants';
-import { getWeightedRandomPowerUp, POWER_UPS } from '../../systems/PowerUpSystem';
+import { getWeightedRandomPowerUp, POWER_UPS } from '../../core/systems/PowerUpSystem';
 
 export const usePickups = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -33,14 +33,16 @@ export const usePickups = (
                 pos: { ...enemy.pos }, vel: { x: 0, y: 0 },
                 radius: 22, // Bigger visual for high value
                 health: 1, maxHealth: 1, color: '#fbbf24',
-                value: creditVal
+                value: creditVal,
+                isAlive: true
             });
             // Small XP (Mining Experience)
             drops.push({
                 id: Math.random().toString(36), type: EntityType.XP_GEM,
                 pos: { x: enemy.pos.x + (Math.random() - 0.5) * 30, y: enemy.pos.y + (Math.random() - 0.5) * 30 },
                 vel: { x: 0, y: 0 }, radius: 12, health: 1, maxHealth: 1, color: '#06b6d4',
-                value: 10
+                value: 10,
+                isAlive: true
             });
 
             pickupsRef.current.push(...drops);
@@ -84,7 +86,8 @@ export const usePickups = (
         drops.push({
             id: Math.random().toString(36), type: EntityType.XP_GEM,
             pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 14, health: 1, maxHealth: 1, color: '#06b6d4',
-            value: xpValue
+            value: xpValue,
+            isAlive: true
         });
 
         // 3. CREDIT DROP GENERATION
@@ -104,7 +107,8 @@ export const usePickups = (
             drops.push({
                 id: Math.random().toString(36), type: EntityType.CREDIT,
                 pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 15, health: 1, maxHealth: 1, color: '#fbbf24',
-                value: creditValue
+                value: creditValue,
+                isAlive: true
             });
         }
 
@@ -122,7 +126,8 @@ export const usePickups = (
             drops.push({
                 id: Math.random().toString(36), type: EntityType.POWERUP,
                 pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, radius: 24, health: 1, maxHealth: 1, color: config.color,
-                powerUpId: powerUpId
+                powerUpId: powerUpId,
+                isAlive: true
             });
         }
 

@@ -316,6 +316,7 @@ export const useEnemies = (
                     turnRate: bullet.turnRate,
                     duration: 0,
                     maxDuration: bullet.maxDuration,
+                    isAlive: true
                 } as Entity);
             }
 

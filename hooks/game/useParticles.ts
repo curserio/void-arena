@@ -1,7 +1,7 @@
 
 import { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D } from '../../types';
-import { ObjectPool, createEntity } from '../../systems/ObjectPool';
+import { ObjectPool, createEntity } from '../../core/utils/ObjectPool';
 
 export const useParticles = () => {
     const particlesRef = useRef<Entity[]>([]);

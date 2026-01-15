@@ -16,8 +16,8 @@ import MainMenuScreen from './screens/MainMenuScreen'; // New
 import PauseScreen from './screens/PauseScreen'; // New
 import GameOverScreen from './screens/GameOverScreen'; // New
 import { useGameLogic } from './hooks/useGameLogic';
-import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
-import { renderGame } from './systems/GameRenderer';
+import { generateStars, drawBackground, BackgroundStar } from './core/systems/BackgroundManager';
+import { renderGame } from './core/systems/GameRenderer';
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 
 const isTouchDevice = () => {

@@ -4,9 +4,9 @@
  * Extracted from GameRenderer.ts for separation of concerns
  */
 
-import { Entity, Vector2D } from '../types';
-import { EnemyType, EnemyTier, IEnemy } from '../types/enemies';
-import { getEnemyDefinition } from '../data/enemies/definitions';
+import { Entity, Vector2D } from '../../../types';
+import { EnemyType, EnemyTier, IEnemy } from '../../../types/enemies';
+import { getEnemyDefinition } from '../../../data/enemies/definitions';
 
 // Helper to check if entity has new enemy type system
 function isEnemy(e: Entity | IEnemy): e is IEnemy {
@@ -155,7 +155,7 @@ export function renderEnemies(
 function renderAsteroid(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, time: number): void {
     const isRecentlyHit = (time - (e.lastHitTime || 0)) < 80;
     const seed = 'seed' in e ? (e.seed || 0) : 0;
-    const pts = getAsteroidPoints(seed, e.radius);
+    const pts = getAsteroidPoints(seed as number, e.radius);
 
     ctx.beginPath();
     ctx.moveTo(pts[0].x, pts[0].y);
@@ -277,6 +277,7 @@ function renderLaserBeam(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, isBo
     if (e.isFiring) {
         const prog = e.chargeProgress || 0;
         const width = 30 * (1 - prog) * beamScale;
+
         ctx.shadowBlur = 50;
         ctx.shadowColor = beamHex;
         ctx.fillStyle = '#fff';

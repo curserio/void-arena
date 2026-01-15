@@ -1,10 +1,10 @@
 
-import { Entity, EntityType, PlayerStats, Vector2D, GameState } from '../types';
-import { WORLD_SIZE } from '../constants';
+import { Entity, EntityType, PlayerStats, Vector2D, GameState } from '../../types';
+import { WORLD_SIZE } from '../../constants';
 import { POWER_UPS } from '../systems/PowerUpSystem';
-import { renderEnemies } from './EnemyRenderer';
-import { renderPlayer } from './PlayerRenderer';
-import { renderProjectiles } from './ProjectileRenderer';
+import { renderEnemies } from './renderers/EnemyRenderer';
+import { renderPlayer } from './renderers/PlayerRenderer';
+import { renderProjectiles } from './renderers/ProjectileRenderer';
 
 // --- Sub-renderers ---
 
@@ -137,11 +137,13 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
     });
 };
 
+import { BaseProjectile } from '../entities/projectiles/BaseProjectile';
+
 export const renderGame = (
     ctx: CanvasRenderingContext2D,
     canvas: HTMLCanvasElement,
-    enemies: (Entity | import('../types/enemies').IEnemy)[],
-    projectiles: Entity[],
+    enemies: (Entity | import('../../types/enemies').IEnemy)[],
+    projectiles: BaseProjectile[],
     pickups: Entity[],
     particles: Entity[],
     playerPos: Vector2D,

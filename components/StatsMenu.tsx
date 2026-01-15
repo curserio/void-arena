@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { PlayerStats, WeaponType } from '../types';
-import { isBuffActive } from '../systems/PowerUpSystem';
+import { isBuffActive } from '../core/systems/PowerUpSystem';
 
 interface StatsMenuProps {
   stats: PlayerStats;
@@ -25,7 +25,7 @@ const StatRow: React.FC<{ label: string; value: string | number; subValue?: stri
 );
 
 const StatsMenu: React.FC<StatsMenuProps> = ({ stats, onClose, gameTime = performance.now() }) => {
-  
+
   // Calculate Effective Stats (Including Buffs)
   const isSpeedBuff = isBuffActive(stats, 'SPEED', gameTime);
   const isFireRateBuff = isBuffActive(stats, 'OVERDRIVE', gameTime);
@@ -38,7 +38,7 @@ const StatsMenu: React.FC<StatsMenuProps> = ({ stats, onClose, gameTime = perfor
   return (
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-xl flex items-center justify-center z-[450] p-6 animate-in fade-in duration-200">
       <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col max-h-[90vh]">
-        
+
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-cyan-400 text-3xl font-black italic uppercase tracking-tighter">System Diagnostic</h2>
@@ -50,95 +50,95 @@ const StatsMenu: React.FC<StatsMenuProps> = ({ stats, onClose, gameTime = perfor
         </div>
 
         <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* DEFENSE */}
-                <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-2">Integrity Systems</div>
-                
-                <StatRow 
-                    label="Hull Integrity" 
-                    value={`${Math.round(stats.currentHealth)} / ${Math.round(stats.maxHealth)}`} 
-                    icon="fa-heart-pulse"
-                />
-                <StatRow 
-                    label="Plasma Shield" 
-                    value={`${Math.round(stats.currentShield)} / ${Math.round(stats.maxShield)}`} 
-                    subValue={`Regen: ${stats.shieldRegen.toFixed(1)}/sec`}
-                    icon="fa-shield-halved"
-                />
 
-                {/* OFFENSE */}
-                <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Weapons Systems</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <StatRow 
-                    label="Damage Output" 
-                    value={Math.round(stats.damage)} 
-                    subValue={`~${dps} DPS (Est.)`}
-                    icon="fa-burst"
-                />
-                <StatRow 
-                    label="Fire Cycle" 
-                    value={`${effectiveFireRate.toFixed(2)} /s`}
-                    subValue={isFireRateBuff ? "OVERDRIVE ACTIVE" : "Standard Cycle"}
-                    icon="fa-bolt"
-                    highlight={isFireRateBuff}
-                />
-                <StatRow 
-                    label="Critical Hit" 
-                    value={`${(stats.critChance * 100).toFixed(0)}%`}
-                    subValue={`Multiplier: x${stats.critMultiplier.toFixed(1)}`}
-                    icon="fa-crosshairs"
-                />
-                <StatRow 
-                    label="Projectiles" 
-                    value={stats.bulletCount}
-                    subValue={stats.weaponType === WeaponType.LASER ? 'Beam Emitters' : 'Per Shot'}
-                    icon="fa-clone"
-                />
+            {/* DEFENSE */}
+            <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-2">Integrity Systems</div>
 
-                {/* MOBILITY & UTILITY */}
-                <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Navigation & Utility</div>
+            <StatRow
+              label="Hull Integrity"
+              value={`${Math.round(stats.currentHealth)} / ${Math.round(stats.maxHealth)}`}
+              icon="fa-heart-pulse"
+            />
+            <StatRow
+              label="Plasma Shield"
+              value={`${Math.round(stats.currentShield)} / ${Math.round(stats.maxShield)}`}
+              subValue={`Regen: ${stats.shieldRegen.toFixed(1)}/sec`}
+              icon="fa-shield-halved"
+            />
 
-                <StatRow 
-                    label="Thruster Output" 
-                    value={Math.round(effectiveSpeed)}
-                    subValue={isSpeedBuff ? "NITRO INJECTION" : "Standard Cruise"}
-                    icon="fa-gauge-high"
-                    highlight={isSpeedBuff}
-                />
-                <StatRow 
-                    label="Magnet Field" 
-                    value={`${Math.round(stats.magnetRange)}m`}
-                    icon="fa-magnet"
-                />
-                <StatRow 
-                    label="Salvage Efficiency" 
-                    value={`x${stats.creditMultiplier.toFixed(2)}`}
-                    icon="fa-coins"
-                />
+            {/* OFFENSE */}
+            <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Weapons Systems</div>
 
-                {/* WEAPON SPECIFICS */}
-                {stats.weaponType !== WeaponType.PLASMA && (
-                    <>
-                        <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Class Specifics ({stats.weaponType})</div>
-                        
-                        {stats.weaponType === WeaponType.MISSILE && (
-                            <StatRow label="Blast Radius" value={`${Math.round(stats.missileRadius)}px`} icon="fa-bomb" />
-                        )}
-                        {stats.weaponType === WeaponType.SWARM_LAUNCHER && (
-                            <>
-                                <StatRow label="Burst Count" value={stats.swarmCount} icon="fa-layer-group" />
-                                <StatRow label="Homing Agility" value={stats.swarmAgility.toFixed(1)} icon="fa-paper-plane" />
-                            </>
-                        )}
-                        {stats.weaponType === WeaponType.LASER && (
-                            <StatRow label="Beam Duration" value={`${stats.laserDuration.toFixed(2)}s`} icon="fa-stopwatch" />
-                        )}
-                    </>
+            <StatRow
+              label="Damage Output"
+              value={Math.round(stats.damage)}
+              subValue={`~${dps} DPS (Est.)`}
+              icon="fa-burst"
+            />
+            <StatRow
+              label="Fire Cycle"
+              value={`${effectiveFireRate.toFixed(2)} /s`}
+              subValue={isFireRateBuff ? "OVERDRIVE ACTIVE" : "Standard Cycle"}
+              icon="fa-bolt"
+              highlight={isFireRateBuff}
+            />
+            <StatRow
+              label="Critical Hit"
+              value={`${(stats.critChance * 100).toFixed(0)}%`}
+              subValue={`Multiplier: x${stats.critMultiplier.toFixed(1)}`}
+              icon="fa-crosshairs"
+            />
+            <StatRow
+              label="Projectiles"
+              value={stats.bulletCount}
+              subValue={stats.weaponType === WeaponType.LASER ? 'Beam Emitters' : 'Per Shot'}
+              icon="fa-clone"
+            />
+
+            {/* MOBILITY & UTILITY */}
+            <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Navigation & Utility</div>
+
+            <StatRow
+              label="Thruster Output"
+              value={Math.round(effectiveSpeed)}
+              subValue={isSpeedBuff ? "NITRO INJECTION" : "Standard Cruise"}
+              icon="fa-gauge-high"
+              highlight={isSpeedBuff}
+            />
+            <StatRow
+              label="Magnet Field"
+              value={`${Math.round(stats.magnetRange)}m`}
+              icon="fa-magnet"
+            />
+            <StatRow
+              label="Salvage Efficiency"
+              value={`x${stats.creditMultiplier.toFixed(2)}`}
+              icon="fa-coins"
+            />
+
+            {/* WEAPON SPECIFICS */}
+            {stats.weaponType !== WeaponType.PLASMA && (
+              <>
+                <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Class Specifics ({stats.weaponType})</div>
+
+                {stats.weaponType === WeaponType.MISSILE && (
+                  <StatRow label="Blast Radius" value={`${Math.round(stats.missileRadius)}px`} icon="fa-bomb" />
                 )}
+                {stats.weaponType === WeaponType.SWARM_LAUNCHER && (
+                  <>
+                    <StatRow label="Burst Count" value={stats.swarmCount} icon="fa-layer-group" />
+                    <StatRow label="Homing Agility" value={stats.swarmAgility.toFixed(1)} icon="fa-paper-plane" />
+                  </>
+                )}
+                {stats.weaponType === WeaponType.LASER && (
+                  <StatRow label="Beam Duration" value={`${stats.laserDuration.toFixed(2)}s`} icon="fa-stopwatch" />
+                )}
+              </>
+            )}
 
-            </div>
+          </div>
         </div>
       </div>
     </div>

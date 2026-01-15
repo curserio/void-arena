@@ -10,7 +10,9 @@ import { useProjectiles } from './game/useProjectiles';
 import { usePickups } from './game/usePickups';
 import { useParticles } from './game/useParticles';
 import { useCollision } from './game/useCollision';
-import { isBuffActive } from '../systems/PowerUpSystem';
+import { isBuffActive } from '../core/systems/PowerUpSystem';
+import { UpgradeManager } from '../core/systems/UpgradeManager';
+import { CONSUMABLE_EFFECTS } from '../core/registries/ConsumableRegistry';
 
 export const useGameLogic = (
     gameState: GameState,
@@ -107,41 +109,8 @@ export const useGameLogic = (
             const currentPending = stats.pendingLevelUps;
 
             if (currentPending > 0 && !hasGeneratedOffers) {
-                // Generate Upgrades Logic
-                const currentUpgrades = stats.acquiredUpgrades;
-
-                // Filter Pool
-                const pool = UPGRADES.filter(u => {
-                    // If it's a Consumable (infinite), it's always valid
-                    if (u.type === UpgradeType.CONSUMABLE) return true;
-
-                    // If it's a Stat/Weapon upgrade, check Max Stacks
-                    const count = currentUpgrades.filter(owned => owned.id === u.id).length;
-                    return count < u.maxStacks;
-                });
-
-                // Weighted Random Selection
-                const selection = [];
-                const poolCopy = [...pool];
-
-                for (let i = 0; i < 3; i++) {
-                    if (poolCopy.length === 0) break;
-
-                    // Calculate Total Weight
-                    const totalWeight = poolCopy.reduce((sum, u) => sum + u.weight, 0);
-                    let r = Math.random() * totalWeight;
-
-                    for (let j = 0; j < poolCopy.length; j++) {
-                        r -= poolCopy[j].weight;
-                        if (r <= 0) {
-                            selection.push(poolCopy[j]);
-                            // If unique, remove from temp pool so we don't pick it twice in same hand
-                            poolCopy.splice(j, 1);
-                            break;
-                        }
-                    }
-                }
-
+                // Use UpgradeManager to generate offers
+                const selection = UpgradeManager.generateOffers(stats.acquiredUpgrades);
                 setOfferedUpgrades(selection);
                 setHasGeneratedOffers(true);
             }
@@ -155,44 +124,19 @@ export const useGameLogic = (
 
         // 1. Handle Consumables (Logic-based)
         if (upgrade.type === UpgradeType.CONSUMABLE) {
-            switch (upgrade.id) {
-                case 'cons_heal':
-                    setStats(s => ({ ...s, currentHealth: s.maxHealth }));
-                    spawnSpawnFlash(playerPosRef.current);
-                    spawnDamageText(playerPosRef.current, 0, '#4ade80'); // Green text
-                    break;
-                case 'cons_shield':
-                    setStats(s => ({ ...s, currentShield: s.maxShield }));
-                    spawnSpawnFlash(playerPosRef.current);
-                    break;
-                case 'cons_emp':
-                    // Kill all non-boss enemies
-                    enemiesRef.current.forEach(e => {
-                        if (!e.isBoss) {
-                            e.health = 0; // Collision logic will handle death next frame
-                            spawnExplosion(e.pos, 50, '#06b6d4');
-                        }
-                    });
-                    // Clear Enemy Bullets
-                    projectilesRef.current = projectilesRef.current.filter(p => p.type !== EntityType.ENEMY_BULLET);
-                    // Flash Screen
-                    spawnSpawnFlash(playerPosRef.current);
-                    break;
-                case 'cons_nuke':
-                    // Massive Damage in Radius
-                    spawnExplosion(playerPosRef.current, 600, '#f97316'); // Visual
-                    enemiesRef.current.forEach(e => {
-                        const d = Math.hypot(e.pos.x - playerPosRef.current.x, e.pos.y - playerPosRef.current.y);
-                        if (d < 800) {
-                            e.health -= 5000;
-                            spawnDamageText(e.pos, 5000, '#f97316');
-                        }
-                    });
-                    break;
-                case 'cons_score':
-                    setScore(s => s + 2500);
-                    spawnDamageText({ x: playerPosRef.current.x, y: playerPosRef.current.y - 50 }, 2500, '#fbbf24');
-                    break;
+            const effect = CONSUMABLE_EFFECTS[upgrade.id];
+            if (effect) {
+                effect({
+                    setStats,
+                    playerPos: playerPosRef.current,
+                    enemies: enemiesRef.current,
+                    projectiles: projectilesRef.current,
+                    setProjectiles: (p) => { projectilesRef.current = p; }, // Direct ref update wrapper
+                    setScore,
+                    spawnSpawnFlash,
+                    spawnDamageText,
+                    spawnExplosion
+                });
             }
 
             // Manually decrement level since we aren't calling addUpgrade for consumables
@@ -200,14 +144,10 @@ export const useGameLogic = (
         }
         // 2. Handle Stat/Permanent Upgrades
         else {
-            addUpgrade(upgrade);
+            UpgradeManager.applyUpgrade(upgrade, addUpgrade);
         }
 
         // Check if we need to close menu or stay open
-        // Use ref-like access via stats (closure might be stale, but we just modified it via setStats logic above)
-        // Actually, since setStats is async, we can't trust stats.pendingLevelUps immediately here.
-        // However, we know we just decremented it by 1.
-
         const prevPending = stats.pendingLevelUps;
         const nextPending = Math.max(0, prevPending - 1);
 

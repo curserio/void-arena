@@ -1,5 +1,5 @@
 
-import { Entity, EntityType } from '../types';
+import { Entity, EntityType } from '../../types';
 
 type Factory<T> = () => T;
 type Reset<T> = (item: T) => void;
@@ -29,13 +29,16 @@ export class ObjectPool<T> {
 }
 
 // Specific factories to keep code clean
-export const createEntity = (): Entity => ({
-  id: '',
-  type: EntityType.BULLET, // Default
-  pos: { x: 0, y: 0 },
-  vel: { x: 0, y: 0 },
-  radius: 0,
-  health: 0,
-  maxHealth: 0,
-  color: '#fff'
-});
+export const createEntity = (type: EntityType = EntityType.BULLET): Entity => {
+  return {
+    id: Math.random().toString(36),
+    type,
+    pos: { x: 0, y: 0 },
+    vel: { x: 0, y: 0 },
+    radius: 5,
+    health: 1,
+    maxHealth: 1,
+    color: '#fff',
+    isAlive: true
+  };
+};
