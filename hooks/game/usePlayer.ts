@@ -1,6 +1,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType } from '../../types';
+import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType } from '../../types';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { isBuffActive } from '../../systems/PowerUpSystem';
 
@@ -138,7 +138,8 @@ export const usePlayer = (
             const rehydratedUpgrades: Upgrade[] = [];
             data.acquiredUpgradeIds.forEach(id => {
                 const upgrade = UPGRADES.find(u => u.id === id);
-                if (upgrade) {
+                // Only re-apply STAT upgrades. Consumables are instant and not saved.
+                if (upgrade && upgrade.type === UpgradeType.STAT && upgrade.effect) {
                     metaStats = upgrade.effect(metaStats);
                     rehydratedUpgrades.push(upgrade);
                 }
@@ -196,10 +197,16 @@ export const usePlayer = (
 
     const addUpgrade = useCallback((upgrade: Upgrade) => {
         setStats(p => {
-            const newStats = upgrade.effect(p);
+            let newStats = { ...p };
+            
+            // Only apply effect if it's a STAT upgrade and has an effect function
+            if (upgrade.type === UpgradeType.STAT && upgrade.effect) {
+                newStats = upgrade.effect(newStats);
+                newStats.acquiredUpgrades = [...p.acquiredUpgrades, upgrade];
+            }
+            
             return { 
                 ...newStats, 
-                acquiredUpgrades: [...p.acquiredUpgrades, upgrade],
                 pendingLevelUps: Math.max(0, p.pendingLevelUps - 1)
             };
         });

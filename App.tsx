@@ -756,9 +756,7 @@ return (
           <UpgradeMenu 
             upgrades={offeredUpgrades} 
             onSelect={(u) => { 
-                addUpgrade(u);
-                setOfferedUpgrades([]); // Clear to trigger next generation step or close
-                onUpgradeSelected();
+                onUpgradeSelected(u);
             }} 
           />
         )}

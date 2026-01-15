@@ -121,13 +121,22 @@ export interface Entity {
   hasDeathDefiance?: boolean; // For Elite Kamikaze (Shield Gate)
 }
 
+export enum UpgradeType {
+  STAT = 'STAT',
+  CONSUMABLE = 'CONSUMABLE'
+}
+
 export interface Upgrade {
   id: string;
+  type: UpgradeType;
   name: string;
   description: string;
   icon: string;
-  effect: (stats: PlayerStats) => PlayerStats;
-  rarity?: 'COMMON' | 'RARE' | 'LEGENDARY';
+  rarity: 'COMMON' | 'RARE' | 'LEGENDARY';
+  maxStacks: number; // 1 for Unique, Infinity for stackable/consumable
+  weight: number; // Relative chance to appear in pool
+  // For STAT upgrades: The function to modify stats permanently
+  effect?: (stats: PlayerStats) => PlayerStats;
 }
 
 export interface MetaUpgrade {
@@ -180,7 +189,10 @@ export interface PlayerStats {
   hasShield: boolean;
   credits: number;
   shipType: ShipType;
+  
+  // Stored upgrade history (Only STAT upgrades)
   acquiredUpgrades: Upgrade[];
+  
   invulnerableUntil: number;
   critChance: number;
   critMultiplier: number;

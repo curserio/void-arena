@@ -1,5 +1,5 @@
 
-import { PlayerStats, Upgrade, WeaponType, ShipType, MetaUpgrade, ShipConfig, GameDifficulty, DifficultyConfig } from './types';
+import { PlayerStats, Upgrade, WeaponType, ShipType, MetaUpgrade, ShipConfig, GameDifficulty, DifficultyConfig, UpgradeType } from './types';
 
 export const WORLD_SIZE = 4000;
 export const CAMERA_LERP = 0.08;
@@ -123,58 +123,173 @@ export const WEAPON_PRICES: Record<WeaponType, number> = {
   [WeaponType.SWARM_LAUNCHER]: 40000
 };
 
-// In-Game Upgrades (Roguelike Elements)
+// --- UPGRADE POOL ---
+
 export const UPGRADES: Upgrade[] = [
-  {
-    id: 'dmg_boost',
-    name: 'Core Reactor',
-    description: '+15% Damage Output',
-    icon: 'fa-burst',
-    effect: (s) => ({ ...s, damage: s.damage * 1.15 })
-  },
-  {
-    id: 'fire_rate',
-    name: 'Rapid Cycler',
-    description: '+12% Fire Rate',
-    icon: 'fa-bolt',
-    effect: (s) => ({ ...s, fireRate: s.fireRate * 1.12 })
-  },
-  {
-    id: 'crit_chance',
-    name: 'Targeting AI',
-    description: '+10% Crit Chance',
-    icon: 'fa-crosshairs',
-    effect: (s) => ({ ...s, critChance: Math.min(1.0, s.critChance + 0.1) })
-  },
-  {
-    id: 'crit_dmg',
-    name: 'Plasma Spikes',
-    description: '+30% Crit Damage',
-    icon: 'fa-skull',
-    effect: (s) => ({ ...s, critMultiplier: s.critMultiplier + 0.3 })
-  },
-  // Multishot removed from here
-  {
-    id: 'speed_boost',
-    name: 'Ion Thrusters',
-    description: '+10% Movement Speed',
-    icon: 'fa-forward',
-    effect: (s) => ({ ...s, speed: s.speed * 1.1 })
-  },
-  {
-    id: 'magnet',
-    name: 'Gravity Field',
-    description: '+30% Pickup Range',
-    icon: 'fa-magnet',
-    effect: (s) => ({ ...s, magnetRange: s.magnetRange * 1.3 })
-  },
-  {
-    id: 'health_pack',
-    name: 'Nanite Cloud',
-    description: 'Heal 50% HP & +20 Max HP',
-    icon: 'fa-heart-pulse',
-    effect: (s) => ({ ...s, maxHealth: s.maxHealth + 20, currentHealth: Math.min(s.maxHealth + 20, s.currentHealth + (s.maxHealth * 0.5)) })
-  }
+    // --- UNIQUE UPGRADES (One Time Only, Strong Effects) ---
+    {
+        id: 'titan_gen',
+        type: UpgradeType.STAT,
+        name: 'Titan Generator',
+        description: 'Significantly increases Max Shield capacity.',
+        icon: 'fa-shield-halved',
+        rarity: 'LEGENDARY',
+        maxStacks: 1,
+        weight: 3,
+        effect: (s) => ({ ...s, maxShield: s.maxShield + 50, currentShield: s.currentShield + 50 })
+    },
+    {
+        id: 'berserker_mod',
+        type: UpgradeType.STAT,
+        name: 'Berserker Module',
+        description: '+35% Damage, but -20% Max Integrity.',
+        icon: 'fa-skull',
+        rarity: 'LEGENDARY',
+        maxStacks: 1,
+        weight: 3,
+        effect: (s) => ({ 
+            ...s, 
+            damage: s.damage * 1.35,
+            maxHealth: s.maxHealth * 0.8,
+            currentHealth: Math.min(s.currentHealth, s.maxHealth * 0.8)
+        })
+    },
+    {
+        id: 'nano_repair',
+        type: UpgradeType.STAT,
+        name: 'Nanite Weaver',
+        description: 'Triples Shield Regeneration rate.',
+        icon: 'fa-rotate',
+        rarity: 'RARE',
+        maxStacks: 1,
+        weight: 5,
+        effect: (s) => ({ ...s, shieldRegen: s.shieldRegen * 3.0 })
+    },
+
+    // --- STACKABLE UPGRADES (Small boosts, unlimited or high limit) ---
+    {
+        id: 'hull_plate',
+        type: UpgradeType.STAT,
+        name: 'Hull Plating',
+        description: '+10 Max Hull Integrity (Repairs 10 HP).',
+        icon: 'fa-heart',
+        rarity: 'COMMON',
+        maxStacks: 20,
+        weight: 15,
+        effect: (s) => ({ ...s, maxHealth: s.maxHealth + 10, currentHealth: s.currentHealth + 10 })
+    },
+    {
+        id: 'dmg_boost',
+        type: UpgradeType.STAT,
+        name: 'Core Reactor',
+        description: '+10% Damage Output.',
+        icon: 'fa-burst',
+        rarity: 'COMMON',
+        maxStacks: 99,
+        weight: 12,
+        effect: (s) => ({ ...s, damage: s.damage * 1.10 })
+    },
+    {
+        id: 'fire_rate',
+        type: UpgradeType.STAT,
+        name: 'Rapid Cycler',
+        description: '+5% Fire Rate.',
+        icon: 'fa-bolt',
+        rarity: 'COMMON',
+        maxStacks: 99,
+        weight: 12,
+        effect: (s) => ({ ...s, fireRate: s.fireRate * 1.05 })
+    },
+    {
+        id: 'speed_boost',
+        type: UpgradeType.STAT,
+        name: 'Ion Thrusters',
+        description: '+5% Movement Speed.',
+        icon: 'fa-forward',
+        rarity: 'COMMON',
+        maxStacks: 10,
+        weight: 12,
+        effect: (s) => ({ ...s, speed: s.speed * 1.05 })
+    },
+    {
+        id: 'crit_mod',
+        type: UpgradeType.STAT,
+        name: 'Lens Polish',
+        description: '+5% Critical Chance.',
+        icon: 'fa-crosshairs',
+        rarity: 'RARE',
+        maxStacks: 10,
+        weight: 8,
+        effect: (s) => ({ ...s, critChance: Math.min(1.0, s.critChance + 0.05) })
+    },
+    {
+        id: 'magnet_boost',
+        type: UpgradeType.STAT,
+        name: 'Gravity Field',
+        description: '+15% Pickup Range.',
+        icon: 'fa-magnet',
+        rarity: 'COMMON',
+        maxStacks: 5,
+        weight: 10,
+        effect: (s) => ({ ...s, magnetRange: s.magnetRange * 1.15 })
+    },
+
+    // --- CONSUMABLES (Infinite, Instant Effects, No Stats stored) ---
+    {
+        id: 'cons_heal',
+        type: UpgradeType.CONSUMABLE,
+        name: 'Emergency Repair',
+        description: 'Instant: Restore 100% Hull Integrity.',
+        icon: 'fa-heart-pulse',
+        rarity: 'COMMON',
+        maxStacks: 999,
+        weight: 8,
+        // Effect handled in Logic
+    },
+    {
+        id: 'cons_shield',
+        type: UpgradeType.CONSUMABLE,
+        name: 'Shield Reboot',
+        description: 'Instant: Fully Recharge Shields.',
+        icon: 'fa-shield-virus',
+        rarity: 'COMMON',
+        maxStacks: 999,
+        weight: 8,
+        // Effect handled in Logic
+    },
+    {
+        id: 'cons_emp',
+        type: UpgradeType.CONSUMABLE,
+        name: 'EMP Blast',
+        description: 'Tactical: Destroy all active enemies and bullets on screen.',
+        icon: 'fa-car-battery',
+        rarity: 'RARE',
+        maxStacks: 999,
+        weight: 4,
+        // Effect handled in Logic
+    },
+    {
+        id: 'cons_nuke',
+        type: UpgradeType.CONSUMABLE,
+        name: 'Tactical Nuke',
+        description: 'Tactical: Detonate a massive explosion around your ship.',
+        icon: 'fa-radiation',
+        rarity: 'RARE',
+        maxStacks: 999,
+        weight: 4,
+        // Effect handled in Logic
+    },
+    {
+        id: 'cons_score',
+        type: UpgradeType.CONSUMABLE,
+        name: 'Data Cache',
+        description: 'Bonus: Instantly gain 2,500 Score.',
+        icon: 'fa-database',
+        rarity: 'COMMON',
+        maxStacks: 999,
+        weight: 10,
+        // Effect handled in Logic
+    }
 ];
 
 // Meta Progression - Geometric Cost Scaling
