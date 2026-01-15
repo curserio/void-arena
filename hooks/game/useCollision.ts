@@ -182,15 +182,24 @@ export const useCollision = (
         for (const e of playerCandidates) {
             const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
             if (dist < 20 + e.radius) {
-                let collisionDmg = 15;
-                if (e.type === EntityType.ENEMY_KAMIKAZE) collisionDmg = 50;
-                
-                triggerPlayerHit(time, collisionDmg, e); 
-                
-                // If it's a Kamikaze, it explodes on contact
+                // KAMIKAZE: Explode on contact (Damage handled in Death Logic below)
                 if (e.type === EntityType.ENEMY_KAMIKAZE) {
-                    e.health = 0;
+                    e.health = 0; // Trigger death
+                    continue; 
                 }
+
+                let collisionDmg = 15; // Base collision damage
+                
+                // SCALING: Only Melee units scale body damage with level
+                if (e.isMelee) {
+                    collisionDmg += (e.level || 1) * 1.5;
+                }
+                
+                // Bosses have massive mass multiplier, but no level scaling on body hit
+                // (Unless you want Boss body slam to one-shot at high levels, but safer to keep it flat + multiplier)
+                if (e.isBoss) collisionDmg *= 1.5;
+
+                triggerPlayerHit(time, collisionDmg, e); 
             }
         }
 
@@ -204,7 +213,21 @@ export const useCollision = (
                 if (p.isElite) dmg = 20;
                 if (p.isMiniboss) dmg = 35;
                 
+                // Extra check for Heavy Plasma (Boss)
+                if (p.radius > 10 && p.isElite) dmg = 45;
+
+                // SCALING: Bullets scale with level (Scouts/Snipers/Bosses become deadlier)
+                if (p.level) {
+                    dmg += p.level * 0.5;
+                }
+
                 triggerPlayerHit(time, dmg, p);
+                
+                // Visual Effect for Homing Missile Impact
+                if (p.isHoming) {
+                     spawnExplosion(p.pos, 80, '#f97316'); // Medium explosion
+                }
+
                 p.health = 0;
             }
         }
@@ -217,9 +240,7 @@ export const useCollision = (
                 
                 // Beam Properties
                 const len = isBoss ? 1600 : 1200;
-                // Generous hitbox width to make dodging harder
                 const baseWidth = isBoss ? 90 : 40; 
-                // Beam shrinks slightly visually, let's keep hitbox reliable but scale slightly
                 const progress = e.chargeProgress || 0;
                 const width = Math.max(20, baseWidth * (1 - progress * 0.3));
 
@@ -232,12 +253,12 @@ export const useCollision = (
                 
                 // Player radius approx 20
                 if (distSq < (width / 2 + 20) ** 2) {
-                    let dmg = isBoss ? 20 : 12; // Per Tick (increased base damage)
+                    let dmg = isBoss ? 20 : 12; // Per Tick
                     
-                    // Level Scaling
+                    // Level Scaling for Beams (Continuous damage needs scaling too)
                     const lvl = e.level || 1;
                     if (isBoss) dmg += (lvl * 0.5); 
-                    else dmg += (lvl * 0.2); // Scout laser now scales with level too
+                    else dmg += (lvl * 0.2); 
 
                     triggerPlayerHit(time, dmg, isBoss ? "Dreadnought Beam" : "Sniper Beam");
                 }
@@ -272,8 +293,6 @@ export const useCollision = (
         }
 
         if (xpGained > 0) {
-            // State Update - Just update stats. The GameLogic effect will handle the Leveling state switch
-            // based on the updated pendingLevelUps value. This prevents the race condition.
             setStats(prev => {
                 let newXp = prev.xp + xpGained;
                 let newLevel = prev.level;
@@ -310,9 +329,10 @@ export const useCollision = (
                     const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
                     const blastRadius = 120;
                     if (dist < blastRadius) {
-                        triggerPlayerHit(time, 40, "Kamikaze Blast"); 
+                        // Blast damage scales with level
+                        const blastDmg = 40 * (1 + (e.level || 1) * 0.1);
+                        triggerPlayerHit(time, blastDmg, "Kamikaze Blast"); 
                     }
-                    // Add secondary visual blast for Kamikaze
                      spawnExplosion(e.pos, 100, '#f97316');
                 }
             }

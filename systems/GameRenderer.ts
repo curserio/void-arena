@@ -199,15 +199,6 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
 
         if (e.type === EntityType.ENEMY_BOSS_DESTROYER) {
             // IMPERIAL DESTROYER (Wedge Shape)
-            // Local Space: Y-axis points "down" (which is backward for ship), -Y is forward.
-            // But we rotated by +90deg, so X axis is forward. No wait.
-            // Standard: velocity vector angle. Rotation = angle + PI/2.
-            // So Up (-Y) is the direction of travel in canvas space before rotation?
-            // Actually: Math.atan2(y,x) is angle from X axis.
-            // + PI/2 means Y axis (down) aligns with velocity?
-            // If vel is (1,0) [Right], angle is 0. Rot = 90deg. Canvas Y axis points Right. 
-            // So (0, -radius) in local space points Right (Forward).
-            
             const w = e.radius * 0.8;
             const h = e.radius * 1.8;
             
@@ -334,6 +325,21 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
             ctx.fillRect(0, -e.radius/2, trailLen, e.radius);
             ctx.restore();
         }
+        
+        // Render Enemy Homing Trail (Boss Missile)
+        if (e.type === EntityType.ENEMY_BULLET && e.isHoming) {
+            ctx.save();
+            ctx.rotate(angle + Math.PI);
+            const trailLen = 50;
+            const tGrad = ctx.createLinearGradient(0, 0, trailLen, 0);
+            tGrad.addColorStop(0, '#a1a1aa'); // Smoky Grey
+            tGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = tGrad;
+            ctx.globalAlpha = 0.5;
+            // Draw slightly wider trail for smoke
+            ctx.fillRect(0, -e.radius/1.5, trailLen, e.radius*1.3);
+            ctx.restore();
+        }
 
         // Player Laser Rendering
         if (e.weaponType === WeaponType.LASER) {
@@ -414,8 +420,20 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 ctx.fillRect(-2, 8, 4, 4); // Thruster
             } else {
                 // Plasma blob
-                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = e.color || '#f97316'; ctx.lineWidth = 2; ctx.stroke();
+                if (e.radius > 10) {
+                     // Heavy Plasma (Boss)
+                     ctx.shadowBlur = 40;
+                     ctx.fillStyle = '#fff';
+                     ctx.beginPath(); ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 2); ctx.fill();
+                     ctx.fillStyle = e.color;
+                     ctx.globalAlpha = 0.6;
+                     ctx.beginPath(); ctx.arc(0, 0, e.radius * 1.2, 0, Math.PI * 2); ctx.fill();
+                     ctx.globalAlpha = 1.0;
+                } else {
+                     // Standard Plasma
+                     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+                     ctx.strokeStyle = e.color || '#f97316'; ctx.lineWidth = 2; ctx.stroke();
+                }
             }
         }
         ctx.restore();

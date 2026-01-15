@@ -1,7 +1,7 @@
 
 import { useRef, useCallback, useState, useEffect } from 'react';
 import {
-  GameState, PlayerStats, PersistentData, GameDifficulty, Upgrade, UpgradeType, EntityType
+  GameState, PlayerStats, PersistentData, GameDifficulty, Upgrade, UpgradeType, EntityType, GameMode, DebugConfig
 } from '../types';
 import { INITIAL_STATS, WORLD_SIZE, DIFFICULTY_CONFIGS, UPGRADES } from '../constants';
 import { usePlayer } from './game/usePlayer';
@@ -18,7 +18,9 @@ export const useGameLogic = (
   persistentData: PersistentData,
   setOfferedUpgrades: (u: any[]) => void,
   isPaused: boolean,
-  selectedDifficulty: GameDifficulty
+  selectedDifficulty: GameDifficulty,
+  gameMode: GameMode,
+  debugConfig: DebugConfig | null
 ) => {
   const [score, setScore] = useState(0);
   const gameTimeRef = useRef(0);
@@ -46,7 +48,13 @@ export const useGameLogic = (
 
   const { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles } = useParticles();
 
-  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(playerPosRef, difficultyConfig, spawnSpawnFlash);
+  const { enemiesRef, initEnemies, updateEnemies } = useEnemies(
+      playerPosRef, 
+      difficultyConfig, 
+      spawnSpawnFlash,
+      gameMode, 
+      debugConfig
+  );
   
   const handleShotFired = useCallback(() => {
       runMetricsRef.current.shotsFired++;

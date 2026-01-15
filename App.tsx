@@ -1,5 +1,5 @@
 
-import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty } from './types';
+import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty, DebugConfig, GameMode } from './types';
 import { DIFFICULTY_CONFIGS, DEFAULT_ZOOM } from './constants';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
@@ -10,7 +10,8 @@ import SettingsMenu from './components/SettingsMenu';
 import GuideMenu from './components/GuideMenu';
 import CheatsMenu from './components/CheatsMenu';
 import LeaderboardMenu from './components/LeaderboardMenu';
-import StatsMenu from './components/StatsMenu'; // Import the new component
+import StatsMenu from './components/StatsMenu';
+import DebugMenu from './components/DebugMenu'; // Import
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
@@ -48,8 +49,13 @@ const App: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [showCheats, setShowCheats] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showStats, setShowStats] = useState(false); // New State
+  const [showStats, setShowStats] = useState(false);
+  const [showDebugMenu, setShowDebugMenu] = useState(false); // Debug Menu State
   
+  // Game Mode State (Standard vs Debug)
+  const [gameMode, setGameMode] = useState<GameMode>(GameMode.STANDARD);
+  const [debugConfig, setDebugConfig] = useState<DebugConfig | null>(null);
+
   // Difficulty Selection State
   const [selectedDifficulty, setSelectedDifficulty] = useState<GameDifficulty>(GameDifficulty.NORMAL);
 
@@ -99,7 +105,7 @@ const App: React.FC = () => {
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
   // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
-  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats;
+  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats || showDebugMenu;
 
   const {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
@@ -108,7 +114,7 @@ const App: React.FC = () => {
     enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef,
     triggerManualLevelUp, onUpgradeSelected
   } = useGameLogic(
-    gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty
+    gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty, gameMode, debugConfig
   );
 
   const updateRef = useRef(update);
@@ -120,7 +126,7 @@ const App: React.FC = () => {
     localStorage.setItem('stellar_survivor_v11_rpg', JSON.stringify(persistentData));
   }, [persistentData]);
 
-  const { spawnExplosion } = useGameLogic(gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty).particlesRef.current.length > 0 ? { spawnExplosion: () => {} } : { spawnExplosion: (p, r, c) => {} };
+  const { spawnExplosion } = useGameLogic(gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty, gameMode, debugConfig).particlesRef.current.length > 0 ? { spawnExplosion: () => {} } : { spawnExplosion: (p, r, c) => {} };
   
   // Handle Death Transition
   useEffect(() => {
@@ -128,7 +134,6 @@ const App: React.FC = () => {
       setGameState(GameState.DYING);
       
       // Trigger visual effects manually here since we are outside the loop
-      // We can push to particlesRef directly since it's exposed
       particlesRef.current.push({
           id: 'PLAYER_DEATH_BOOM',
           type: 'EXPLOSION' as any,
@@ -173,45 +178,47 @@ const App: React.FC = () => {
                 ? Math.min(100, (metrics.shotsHit / metrics.shotsFired) * 100)
                 : 0;
 
-              // 1. Save RPG Progress
-              setPersistentData(p => ({ 
-                ...p, 
-                credits: p.credits + stats.credits,
-                currentLevel: stats.level,
-                currentXp: stats.xp,
-                xpToNextLevel: stats.xpToNextLevel,
-                acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
-              }));
+              // 1. Save RPG Progress (Only in Standard Mode)
+              if (gameMode === GameMode.STANDARD) {
+                  setPersistentData(p => ({ 
+                    ...p, 
+                    credits: p.credits + stats.credits,
+                    currentLevel: stats.level,
+                    currentXp: stats.xp,
+                    xpToNextLevel: stats.xpToNextLevel,
+                    acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
+                  }));
 
-              // 2. Leaderboard Logic
-              const currentScores = (persistentData.highScores || [])
-                  .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL));
-              
-              const newScore = score;
-              const sorted = [...currentScores].sort((a, b) => b.score - a.score);
-              
-              let rank = -1;
-              if (sorted.length < 10) {
-                  rank = sorted.filter(s => s.score > newScore).length + 1;
-              } else {
-                  if (newScore > sorted[9].score) {
-                       rank = sorted.filter(s => s.score > newScore).length + 1;
+                  // 2. Leaderboard Logic (Only in Standard Mode)
+                  const currentScores = (persistentData.highScores || [])
+                      .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL));
+                  
+                  const newScore = score;
+                  const sorted = [...currentScores].sort((a, b) => b.score - a.score);
+                  
+                  let rank = -1;
+                  if (sorted.length < 10) {
+                      rank = sorted.filter(s => s.score > newScore).length + 1;
+                  } else {
+                      if (newScore > sorted[9].score) {
+                          rank = sorted.filter(s => s.score > newScore).length + 1;
+                      }
                   }
-              }
 
-              if (rank !== -1 && newScore > 0) {
-                  setPendingHighScore({ 
-                      score: newScore, 
-                      rank,
-                      accuracy: accuracy,
-                      kills: metrics.enemiesKilled,
-                      credits: metrics.creditsEarned
-                  });
-                  setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
-                  setHasSubmittedScore(false);
-              } else {
-                  setPendingHighScore(null);
-                  setHasSubmittedScore(true);
+                  if (rank !== -1 && newScore > 0) {
+                      setPendingHighScore({ 
+                          score: newScore, 
+                          rank,
+                          accuracy: accuracy,
+                          kills: metrics.enemiesKilled,
+                          credits: metrics.creditsEarned
+                      });
+                      setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
+                      setHasSubmittedScore(false);
+                  } else {
+                      setPendingHighScore(null);
+                      setHasSubmittedScore(true);
+                  }
               }
 
               setGameState(GameState.GAMEOVER);
@@ -219,7 +226,7 @@ const App: React.FC = () => {
 
           return () => clearTimeout(timer);
       }
-  }, [gameState, score, selectedDifficulty, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades]);
+  }, [gameState, score, selectedDifficulty, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, gameMode]);
 
   const submitScore = () => {
       if (!pendingHighScore) return;
@@ -258,13 +265,13 @@ const App: React.FC = () => {
   const isPausedRef = useRef(isPaused);
   const gameStateRef = useRef(gameState);
   const autoAttackRef = useRef(autoAttack);
-  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats);
+  const showMenusRef = useRef(isGamePaused);
 
   useEffect(() => { persistentDataRef.current = persistentData; }, [persistentData]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { autoAttackRef.current = autoAttack; }, [autoAttack]);
-  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats, showLeaderboard, showStats]);
+  useEffect(() => { showMenusRef.current = isGamePaused; }, [isGamePaused]);
 
   const frame = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
@@ -400,14 +407,16 @@ const handleGarageUpdate = (newData: PersistentData, spentSession: number) => {
 };
 
 const handleManualAbort = () => {
-  setPersistentData(p => ({ 
-    ...p, 
-    credits: p.credits + stats.credits,
-    currentLevel: stats.level,
-    currentXp: stats.xp,
-    xpToNextLevel: stats.xpToNextLevel,
-    acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
-  }));
+  if (gameMode === GameMode.STANDARD) {
+      setPersistentData(p => ({ 
+        ...p, 
+        credits: p.credits + stats.credits,
+        currentLevel: stats.level,
+        currentXp: stats.xp,
+        xpToNextLevel: stats.xpToNextLevel,
+        acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
+      }));
+  }
   setGameState(GameState.START);
   setIsPaused(false);
 };
@@ -423,7 +432,20 @@ const handleResetProgress = () => {
     setShowSettings(false);
 };
 
-// ... Aim handlers (abbreviated for brevity, no changes) ...
+const handleStartStandard = () => {
+    setGameMode(GameMode.STANDARD);
+    setDebugConfig(null);
+    initGame();
+};
+
+const handleStartSimulation = (config: DebugConfig) => {
+    setGameMode(GameMode.DEBUG);
+    setDebugConfig(config);
+    setShowDebugMenu(false);
+    initGame();
+};
+
+// ... Aim handlers ...
 const aimTouchIdRef = useRef<number | null>(null);
 
 const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
@@ -545,19 +567,21 @@ return (
         </div>
 
         <div className="flex flex-col gap-4 w-full max-w-xs mt-2">
-          <button onClick={initGame} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
+          <button onClick={handleStartStandard} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
           
           <div className="grid grid-cols-2 gap-4">
             <button onClick={() => setShowGarage(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">GARAGE</button>
-            <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">MANUAL</button>
+            <button onClick={() => setShowDebugMenu(true)} className="py-4 bg-slate-900 text-emerald-400 font-black text-xl rounded-2xl border border-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-inner hover:bg-slate-800">
+               <i className="fa-solid fa-flask" /> SIM
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
              <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
                 <i className="fa-solid fa-gear" /> SETTINGS
               </button>
-              <button onClick={() => setShowCheats(true)} className="py-3 bg-slate-950 text-red-900 font-bold text-sm rounded-xl border border-red-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i className="fa-solid fa-code" /> CHEATS
+              <button onClick={() => setShowGuide(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i className="fa-solid fa-book" /> MANUAL
               </button>
           </div>
         </div>
@@ -606,7 +630,10 @@ return (
       </div>
     )}
 
-    {/* Leaderboard, Settings, Guide, Cheats, Garage, Upgrade Menu - No changes */}
+    {/* Leaderboard, Settings, Guide, Cheats, Garage, Upgrade Menu */}
+    {showDebugMenu && (
+        <DebugMenu onStart={handleStartSimulation} onClose={() => setShowDebugMenu(false)} />
+    )}
     {showLeaderboard && (
         <LeaderboardMenu scores={persistentData.highScores || []} onClose={() => setShowLeaderboard(false)} />
     )}
@@ -638,7 +665,7 @@ return (
             
             {/* Left Col: High Score / Score */}
             <div className="flex-1 flex flex-col items-center max-w-md">
-                {!hasSubmittedScore && pendingHighScore ? (
+                {!hasSubmittedScore && pendingHighScore && gameMode === GameMode.STANDARD ? (
                     <div className="w-full bg-slate-900 border border-amber-500 rounded-2xl p-6 mb-6 flex flex-col gap-4">
                         <div className="text-center">
                             <div className="text-amber-400 font-black text-xl uppercase tracking-widest mb-1">New High Score!</div>
@@ -663,6 +690,11 @@ return (
                     </div>
                 ) : (
                     <div className="flex flex-col items-center mb-8">
+                        {gameMode === GameMode.DEBUG && (
+                            <div className="mb-4 px-4 py-1 bg-emerald-900/50 border border-emerald-500/50 rounded text-emerald-400 font-bold uppercase tracking-widest text-xs">
+                                Simulation Mode
+                            </div>
+                        )}
                         <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Score</div>
                         <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
                             {score.toLocaleString()}
@@ -682,10 +714,12 @@ return (
                     </div>
                  </div>
 
-                 <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-xl mb-8 flex items-center gap-3 w-full justify-center">
-                    <i className="fa-solid fa-coins" />
-                    <span>Salvage: +{Math.floor(stats.credits)} C</span>
-                </div>
+                 {gameMode === GameMode.STANDARD && (
+                    <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-xl mb-8 flex items-center gap-3 w-full justify-center">
+                        <i className="fa-solid fa-coins" />
+                        <span>Salvage: +{Math.floor(stats.credits)} C</span>
+                    </div>
+                 )}
 
                  <button onClick={() => setGameState(GameState.START)} className="w-full py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
             </div>

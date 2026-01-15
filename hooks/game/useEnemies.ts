@@ -1,34 +1,42 @@
 
 import React, { useRef, useCallback } from 'react';
-import { Entity, EntityType, Vector2D, DifficultyConfig } from '../../types';
+import { Entity, EntityType, Vector2D, DifficultyConfig, GameMode, DebugConfig } from '../../types';
 import { WORLD_SIZE } from '../../constants';
 
 export const useEnemies = (
     playerPosRef: React.MutableRefObject<Vector2D>,
     difficulty: DifficultyConfig,
-    spawnSpawnFlash: (pos: Vector2D) => void
+    spawnSpawnFlash: (pos: Vector2D) => void,
+    gameMode: GameMode = GameMode.STANDARD,
+    debugConfig: DebugConfig | null = null
 ) => {
     const enemiesRef = useRef<Entity[]>([]);
     const spawnTimerRef = useRef(0);
     const lastBossWaveRef = useRef(0); // Track which boss wave we are on
+    const debugRespawnTimerRef = useRef(0); // Cooldown for respawning in debug mode
 
     const initEnemies = useCallback(() => {
         enemiesRef.current = [];
         spawnTimerRef.current = 0;
         lastBossWaveRef.current = 0;
-        // Initial asteroid belt
-        for (let i = 0; i < 25; i++) {
-            const r = 35 + Math.random() * 45;
-            enemiesRef.current.push({
-                id: Math.random().toString(36), type: EntityType.ASTEROID,
-                pos: { x: Math.random() * WORLD_SIZE, y: Math.random() * WORLD_SIZE },
-                vel: { x: (Math.random() - 0.5) * 40, y: (Math.random() - 0.5) * 40 },
-                radius: r, health: r * 5 * difficulty.statMultiplier, maxHealth: r * 5 * difficulty.statMultiplier, 
-                color: '#475569', seed: Math.random(),
-                lastHitTime: 0
-            });
+        debugRespawnTimerRef.current = 0;
+
+        // In DEBUG mode, do not spawn initial asteroid belt. Keep field clean.
+        if (gameMode === GameMode.STANDARD) {
+            // Initial asteroid belt
+            for (let i = 0; i < 25; i++) {
+                const r = 35 + Math.random() * 45;
+                enemiesRef.current.push({
+                    id: Math.random().toString(36), type: EntityType.ASTEROID,
+                    pos: { x: Math.random() * WORLD_SIZE, y: Math.random() * WORLD_SIZE },
+                    vel: { x: (Math.random() - 0.5) * 40, y: (Math.random() - 0.5) * 40 },
+                    radius: r, health: r * 5 * difficulty.statMultiplier, maxHealth: r * 5 * difficulty.statMultiplier, 
+                    color: '#475569', seed: Math.random(),
+                    lastHitTime: 0
+                });
+            }
         }
-    }, [difficulty]);
+    }, [difficulty, gameMode]);
 
     const createEnemy = useCallback((type: EntityType, x: number, y: number, gameMinutes: number, difficultyMultiplier: number, levelBonus: number, isEliteOverride?: boolean, isMinibossOverride?: boolean) => {
         let isMiniboss = isMinibossOverride !== undefined ? isMinibossOverride : false;
@@ -105,6 +113,55 @@ export const useEnemies = (
         };
     }, [difficulty, playerPosRef, spawnSpawnFlash]);
 
+    // Manual Boss Spawner for Debug Mode reuse
+    const spawnBoss = useCallback((type: EntityType, difficultyMultiplier: number, levelBonus: number, currentTime: number) => {
+        const a = Math.random() * Math.PI * 2;
+        const d = 1100;
+        const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
+        const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
+        
+        if (type === EntityType.ENEMY_BOSS_DESTROYER) {
+            const bossHp = 4000 * difficultyMultiplier;
+            enemiesRef.current.push({
+                id: `BOSS-DEST-${Math.random()}`,
+                type: EntityType.ENEMY_BOSS_DESTROYER,
+                pos: { x, y },
+                vel: { x: 0, y: 0 },
+                radius: 75,
+                health: bossHp, maxHealth: bossHp,
+                shield: bossHp * 0.4, maxShield: bossHp * 0.4,
+                color: '#334155',
+                level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
+                isBoss: true,
+                aiPhase: 0,
+                lastHitTime: 0, lastShieldHitTime: 0,
+                isCharging: false, isFiring: false, chargeProgress: 0,
+                lastShotTime: currentTime + 2000,
+                lastMissileTime: currentTime + 5000,
+                lastSpawnTime: currentTime + 8000
+            });
+        } else {
+            const bossHp = 5000 * difficultyMultiplier;
+            enemiesRef.current.push({
+                id: `BOSS-${Math.random()}`,
+                type: EntityType.ENEMY_BOSS,
+                pos: { x, y },
+                vel: { x: 0, y: 0 },
+                radius: 70,
+                health: bossHp, maxHealth: bossHp,
+                shield: bossHp * 0.25, maxShield: bossHp * 0.25,
+                color: '#4ade80',
+                level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
+                isBoss: true,
+                aiPhase: 0,
+                lastHitTime: 0, lastShieldHitTime: 0,
+                isCharging: false, isFiring: false, chargeProgress: 0,
+                lastShotTime: currentTime + 2000
+            });
+        }
+        spawnSpawnFlash({ x, y });
+    }, [playerPosRef, spawnSpawnFlash]);
+
     const spawnEnemy = useCallback((gameTime: number, currentTime: number) => {
         const gameMinutes = gameTime / 60;
         
@@ -119,78 +176,29 @@ export const useEnemies = (
         
         if (currentBossWave > lastBossWaveRef.current) {
             lastBossWaveRef.current = currentBossWave;
-            
-            // Spawn Boss
-            const a = Math.random() * Math.PI * 2;
-            const d = 1100; // Force boss distance
-            const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
-            const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
-            
             // 35% Chance for Destroyer Boss
             const isDestroyer = Math.random() < 0.35;
-            
-            if (isDestroyer) {
-                // IMPERIAL DESTROYER BOSS
-                const bossHp = 4000 * difficultyMultiplier * (1 + (currentBossWave * 0.5));
-                enemiesRef.current.push({
-                    id: `BOSS-DEST-${Math.random()}`,
-                    type: EntityType.ENEMY_BOSS_DESTROYER,
-                    pos: { x, y },
-                    vel: { x: 0, y: 0 },
-                    radius: 75, // Large Wedge
-                    health: bossHp,
-                    maxHealth: bossHp,
-                    shield: bossHp * 0.4, // Higher shield ratio than standard boss
-                    maxShield: bossHp * 0.4,
-                    color: '#334155', // Slate Dark
-                    level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
-                    isBoss: true,
-                    aiPhase: 0,
-                    lastHitTime: 0, lastShieldHitTime: 0,
-                    isCharging: false, isFiring: false, chargeProgress: 0,
-                    lastShotTime: currentTime + 2000,
-                    lastMissileTime: currentTime + 5000, // Offset missile start
-                    lastSpawnTime: currentTime + 8000
-                });
-            } else {
-                // STANDARD DREADNOUGHT BOSS
-                const bossHp = 5000 * difficultyMultiplier * (1 + (currentBossWave * 0.5));
-                enemiesRef.current.push({
-                    id: `BOSS-${Math.random()}`,
-                    type: EntityType.ENEMY_BOSS,
-                    pos: { x, y },
-                    vel: { x: 0, y: 0 },
-                    radius: 70, // Huge Sphere
-                    health: bossHp,
-                    maxHealth: bossHp,
-                    shield: bossHp * 0.25,
-                    maxShield: bossHp * 0.25,
-                    color: '#4ade80', // Green Theme
-                    level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
-                    isBoss: true,
-                    aiPhase: 0,
-                    lastHitTime: 0, lastShieldHitTime: 0,
-                    isCharging: false, isFiring: false, chargeProgress: 0,
-                    lastShotTime: currentTime + 2000 // Initial delay
-                });
-            }
-            
-            // Trigger Spawn Flash for Boss
-            spawnSpawnFlash({ x, y });
-            
-            // Don't spawn other enemies this frame
+            spawnBoss(
+                isDestroyer ? EntityType.ENEMY_BOSS_DESTROYER : EntityType.ENEMY_BOSS,
+                difficultyMultiplier * (1 + (currentBossWave * 0.5)),
+                levelBonus,
+                currentTime
+            );
             return;
         }
 
         // 2. Normal Enemy Type Roll
         const roll = Math.random();
         
-        // 10% Chance for Kamikaze Wave (starts a bit later)
-        if (gameTime > 30 && roll > 0.90) {
+        // 7% Chance for Kamikaze Wave (starts at 45s) - Reduced from 10% / 30s
+        if (gameTime > 45 && roll > 0.93) {
             // KAMIKAZE SPAWN
             const spawnCount = 3 + Math.floor(Math.random() * 3); // 3-5 drones
             const angle = Math.random() * Math.PI * 2;
-            const dist = 900 + Math.random() * 300;
+            
+            // Increased Spawn Distance: 1200 - 1600 (was 900 - 1200)
+            const dist = 1200 + Math.random() * 400;
+            
             const baseX = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(angle) * dist));
             const baseY = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(angle) * dist));
 
@@ -223,27 +231,63 @@ export const useEnemies = (
 
         enemiesRef.current.push(createEnemy(type, x, y, gameMinutes, difficultyMultiplier, levelBonus));
 
-    }, [playerPosRef, difficulty, spawnSpawnFlash, createEnemy]);
+    }, [playerPosRef, difficulty, spawnSpawnFlash, createEnemy, spawnBoss]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
-        // --- SPAWNING LOGIC ---
-        const cycleTime = 120;
-        const rushDuration = 20;
-        const timeInCycle = gameTime % cycleTime;
-        const isRushHour = timeInCycle > (cycleTime - rushDuration);
         
-        let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
-        if (isRushHour) spawnDelay /= 3;
+        // --- GAME MODE BRANCHING ---
+        
+        if (gameMode === GameMode.STANDARD) {
+            // STANDARD MODE: Time-based waves
+            const cycleTime = 120;
+            const rushDuration = 20;
+            const timeInCycle = gameTime % cycleTime;
+            const isRushHour = timeInCycle > (cycleTime - rushDuration);
+            
+            let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
+            if (isRushHour) spawnDelay /= 3;
 
-        spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
+            spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
 
-        spawnTimerRef.current += dt;
-        if (spawnTimerRef.current > spawnDelay) {
-            spawnEnemy(gameTime, time);
-            spawnTimerRef.current = 0;
+            spawnTimerRef.current += dt;
+            if (spawnTimerRef.current > spawnDelay) {
+                spawnEnemy(gameTime, time);
+                spawnTimerRef.current = 0;
+            }
+        } 
+        else if (gameMode === GameMode.DEBUG && debugConfig) {
+            // DEBUG MODE: Maintain population count
+            const currentCount = enemiesRef.current.filter(e => e.type !== EntityType.ASTEROID).length;
+            
+            // Cooldown between respawns (1 second)
+            if (debugRespawnTimerRef.current > 0) {
+                debugRespawnTimerRef.current -= dt;
+            }
+
+            if (currentCount < debugConfig.count && debugRespawnTimerRef.current <= 0) {
+                // Spawn 1 unit
+                if (debugConfig.enemyType === EntityType.ENEMY_BOSS || debugConfig.enemyType === EntityType.ENEMY_BOSS_DESTROYER) {
+                    spawnBoss(debugConfig.enemyType, debugConfig.level * 0.2, debugConfig.level, time); // Adjust boss scaling to roughly match level number input
+                } else {
+                    const a = Math.random() * Math.PI * 2;
+                    const d = 900;
+                    const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
+                    const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
+                    
+                    // Manually construct based on debug config
+                    // We assume level input 1-100 scales difficulty multiplier directly
+                    const diffMult = debugConfig.level * 0.2; // Rough scaling
+                    
+                    const e = createEnemy(debugConfig.enemyType, x, y, 0, diffMult, debugConfig.level, false, false);
+                    enemiesRef.current.push(e);
+                }
+                
+                // Set small cooldown to stagger spawns if many are missing
+                debugRespawnTimerRef.current = 0.2;
+            }
         }
 
-        // --- UPDATE LOOP ---
+        // --- UPDATE LOOP (Common for both modes) ---
         const nextEnemies: Entity[] = [];
         const enemyBulletsToSpawn: Entity[] = []; 
         const playerPos = playerPosRef.current;
@@ -294,21 +338,28 @@ export const useEnemies = (
                     e.lastShotTime = time;
                     const aim = e.angle || 0;
                     const offset = 25;
+                    // Improved Visuals for Boss Plasma (Bigger, Different Color)
+                    const plasmaColor = '#f43f5e'; // Rose-500 (Hot Pink/Red)
+                    const plasmaRadius = 12; // Bigger than normal (8)
+                    const plasmaSpeed = 480; 
+
                     // Left Barrel
                     enemyBulletsToSpawn.push({
                         id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
                         pos: { x: e.pos.x + Math.cos(aim + Math.PI/2) * offset, y: e.pos.y + Math.sin(aim + Math.PI/2) * offset },
-                        vel: { x: Math.cos(aim) * 450, y: Math.sin(aim) * 450 },
-                        radius: 8, health: 1, maxHealth: 1, color: '#ef4444',
-                        isElite: true // Extra damage
+                        vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
+                        radius: plasmaRadius, health: 1, maxHealth: 1, color: plasmaColor,
+                        isElite: true, // Extra damage
+                        level: e.level // INHERIT BOSS LEVEL
                     });
                     // Right Barrel
                     enemyBulletsToSpawn.push({
                         id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
                         pos: { x: e.pos.x + Math.cos(aim - Math.PI/2) * offset, y: e.pos.y + Math.sin(aim - Math.PI/2) * offset },
-                        vel: { x: Math.cos(aim) * 450, y: Math.sin(aim) * 450 },
-                        radius: 8, health: 1, maxHealth: 1, color: '#ef4444',
-                        isElite: true
+                        vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
+                        radius: plasmaRadius, health: 1, maxHealth: 1, color: plasmaColor,
+                        isElite: true,
+                        level: e.level // INHERIT BOSS LEVEL
                     });
                 }
 
@@ -325,8 +376,11 @@ export const useEnemies = (
                             vel: { x: Math.cos(launchAngle) * 200, y: Math.sin(launchAngle) * 200 }, // Start slow
                             radius: 10, health: 1, maxHealth: 1, color: '#f97316',
                             isHoming: true, // Special Flag
-                            turnRate: 1.8,
-                            isElite: true
+                            turnRate: 0.6, // NERFED: Reduced agility (was 1.8), now draggable
+                            duration: 0, // Track life
+                            maxDuration: 4.0, // Limit lifespan to 4s
+                            isElite: true,
+                            level: e.level // INHERIT BOSS LEVEL
                         });
                     }
                 }
@@ -336,14 +390,25 @@ export const useEnemies = (
                     e.lastSpawnTime = time;
                     spawnSpawnFlash(e.pos);
                     const droneCount = 2 + Math.floor(Math.random() * 3);
+                    
+                    // NEW: Calculate multiplier to force drones to match boss level
+                    // createEnemy level logic: Math.floor(difficultyMultiplier) + levelBonus
+                    // We want result to be e.level. So mult = e.level - levelBonus
+                    const bossLvl = e.level || 1;
+                    const targetMult = Math.max(0.5, bossLvl - difficulty.enemyLevelBonus);
+
                     for(let i=0; i<droneCount; i++) {
-                        const gameMinutes = gameTime / 60;
-                        const diffMult = (1 + (gameMinutes * 0.4)) * difficulty.statMultiplier;
+                        // We use gameTime/60 just for non-stats logic (like shield rolls), 
+                        // but pass strict targetMult for stats
                         const drone = createEnemy(
                             EntityType.ENEMY_KAMIKAZE, 
                             e.pos.x + (Math.random()-0.5)*50, 
                             e.pos.y + (Math.random()-0.5)*50, 
-                            gameMinutes, diffMult, difficulty.enemyLevelBonus, false, false
+                            gameTime / 60, 
+                            targetMult, 
+                            difficulty.enemyLevelBonus, 
+                            false, 
+                            false
                         );
                         // Eject them outwards
                         const ejectAngle = (e.angle || 0) + Math.PI + (Math.random()-0.5);
@@ -547,7 +612,7 @@ export const useEnemies = (
 
         enemiesRef.current = nextEnemies;
         return { enemyBulletsToSpawn };
-    }, [spawnEnemy, playerPosRef, difficulty, createEnemy]);
+    }, [spawnEnemy, playerPosRef, difficulty, createEnemy, spawnBoss, gameMode, debugConfig]);
 
     return { enemiesRef, initEnemies, updateEnemies };
 };

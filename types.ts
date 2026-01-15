@@ -7,7 +7,19 @@ export enum GameState {
   LEVELING = 'LEVELING',
   DYING = 'DYING',
   GAMEOVER = 'GAMEOVER',
-  GARAGE = 'GARAGE'
+  GARAGE = 'GARAGE',
+  DEBUG_MENU = 'DEBUG_MENU' // New State
+}
+
+export enum GameMode {
+  STANDARD = 'STANDARD',
+  DEBUG = 'DEBUG'
+}
+
+export interface DebugConfig {
+  enemyType: EntityType;
+  level: number;
+  count: number;
 }
 
 export enum GameDifficulty {
