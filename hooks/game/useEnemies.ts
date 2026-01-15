@@ -59,18 +59,22 @@ export const useEnemies = (
         let hasDeathDefiance = false;
 
         if (type === EntityType.ENEMY_SCOUT) {
-            baseHp = 80 * difficultyMultiplier;
+            // Was 80, reduced to 45
+            baseHp = 45 * difficultyMultiplier;
             color = `hsl(${260 + Math.random() * 30}, 80%, 60%)`;
         } else if (type === EntityType.ENEMY_STRIKER) {
-            baseHp = 220 * difficultyMultiplier;
+            // Was 220, reduced to 130
+            baseHp = 130 * difficultyMultiplier;
             baseRadius = 26;
             color = `hsl(${340 + Math.random() * 20}, 80%, 60%)`;
         } else if (type === EntityType.ENEMY_LASER_SCOUT) {
-            baseHp = 150 * difficultyMultiplier;
+            // Was 150, reduced to 90
+            baseHp = 90 * difficultyMultiplier;
             baseRadius = 24;
             color = '#a855f7';
         } else if (type === EntityType.ENEMY_KAMIKAZE) {
-            baseHp = 40 * difficultyMultiplier; // Low HP
+            // Was 40, reduced to 25
+            baseHp = 25 * difficultyMultiplier; // Low HP
             baseRadius = 18;
             color = '#f97316'; // Orange
         }
@@ -128,10 +132,12 @@ export const useEnemies = (
         
         // Boss Scaling: Quadratic scaling based on wave number to keep up with player power
         // Applied to ALL boss types
-        const waveScaling = 1 + (waveIndex * 0.5) + (Math.pow(waveIndex, 2) * 0.3);
+        // Increased scaling (0.8 linear, 0.5 quad) to compensate for lower base HP in late game
+        const waveScaling = 1 + (waveIndex * 0.8) + (Math.pow(waveIndex, 2) * 0.5);
 
         if (type === EntityType.ENEMY_BOSS_DESTROYER) {
-            const bossHp = 4000 * difficultyMultiplier * waveScaling;
+            // Reduced Base HP from 4000 to 2500 (~37% less)
+            const bossHp = 2500 * difficultyMultiplier * waveScaling;
             enemiesRef.current.push({
                 id: `BOSS-DEST-${Math.random()}`,
                 type: EntityType.ENEMY_BOSS_DESTROYER,
@@ -151,7 +157,8 @@ export const useEnemies = (
                 lastSpawnTime: currentTime + 8000
             });
         } else {
-            const bossHp = 5000 * difficultyMultiplier * waveScaling;
+            // Reduced Base HP from 5000 to 3000 (40% less)
+            const bossHp = 3000 * difficultyMultiplier * waveScaling;
             enemiesRef.current.push({
                 id: `BOSS-${Math.random()}`,
                 type: EntityType.ENEMY_BOSS,
@@ -176,8 +183,10 @@ export const useEnemies = (
         const gameMinutes = gameTime / 60;
         
         // 1. Difficulty Scaling (Time + Selected Mode)
-        // Gentler early game curve (0.25 linear), harsh late game (pow 1.5)
-        const difficultyMultiplier = (1 + (gameMinutes * 0.25) + (Math.pow(gameMinutes, 1.5) * 0.08)) * difficulty.statMultiplier;
+        // Increased growth rate to compensate for lower base stats
+        // Old: 1 + 0.25*t + 0.08*t^1.5
+        // New: 1 + 0.40*t + 0.10*t^1.5
+        const difficultyMultiplier = (1 + (gameMinutes * 0.4) + (Math.pow(gameMinutes, 1.5) * 0.10)) * difficulty.statMultiplier;
         const levelBonus = difficulty.enemyLevelBonus;
 
         // --- BOSS SPAWNING LOGIC ---

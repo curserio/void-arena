@@ -624,7 +624,7 @@ return (
         </div>
 
         <div className="absolute bottom-10 left-0 w-full text-center text-slate-600 font-bold text-xs tracking-widest opacity-50 z-[210] pointer-events-none">
-          v0.3.0
+          v0.3.3
         </div>
       </div>
     )}
