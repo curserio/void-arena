@@ -252,6 +252,13 @@ export interface HighScoreEntry {
   survivalTime?: number; // In Seconds
 }
 
+export interface RunMetrics {
+  shotsFired: number;
+  shotsHit: number;
+  enemiesKilled: number;
+  creditsEarned: number;
+}
+
 export interface PersistentData {
   credits: number;
   metaLevels: Record<string, number>;

@@ -21,6 +21,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseRadius: 22,
         baseSpeed: 80,
 
+        name: 'Void Scout',
+        role: 'Swarm / Fodder',
+        guideIcon: 'fa-shuttle-space',
+        description: 'Basic fast unit. Colors vary by speed.',
+
         color: {
             hueMin: 260,
             hueMax: 290,
@@ -46,6 +51,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseHealth: 130,
         baseRadius: 26,
         baseSpeed: 110,
+
+        name: 'Crimson Striker',
+        role: 'Melee Rusher',
+        guideIcon: 'fa-jet-fighter',
+        description: 'Tries to ram the player. High damage collision.',
 
         color: {
             hueMin: 340,
@@ -73,6 +83,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseRadius: 24,
         baseSpeed: 80,
 
+        name: 'Sniper Drone',
+        role: 'Ranged Support',
+        guideIcon: 'fa-satellite',
+        description: 'Orbits at distance. Charges a laser beam.',
+
         color: '#a855f7', // Purple
 
         movementBehavior: MovementBehavior.KITE,
@@ -90,6 +105,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseRadius: 18,
         baseSpeed: 350,
 
+        name: 'Kamikaze Drone',
+        role: 'Suicide Bomber',
+        guideIcon: 'fa-bomb',
+        description: 'Drifts fast and explodes on contact. Elite has shield gate.',
+
         color: '#f97316', // Orange
 
         movementBehavior: MovementBehavior.CHARGE,
@@ -106,6 +126,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseHealth: 120, // Base HP, scaled by radius
         baseRadius: 40, // Will vary 40-80
         baseSpeed: 40,
+
+        name: 'Asteroid Field',
+        role: 'Environmental Hazard',
+        guideIcon: 'fa-meteor',
+        description: 'Drifting space debris. Rich in minerals (Credits).',
 
         color: '#475569', // Slate
 
@@ -127,6 +152,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseHealth: 3000,
         baseRadius: 70,
         baseSpeed: 40,
+
+        name: 'Dreadnought Boss',
+        role: 'Capital Ship',
+        guideIcon: 'fa-skull',
+        description: 'Common Boss. Massive laser cannon.',
 
         color: '#4ade80', // Green
 
@@ -151,6 +181,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         baseHealth: 2500,
         baseRadius: 75,
         baseSpeed: 35,
+
+        name: 'Imperial Destroyer',
+        role: 'Heavy Carrier',
+        guideIcon: 'fa-shapes',
+        description: 'Rare Boss. Deploys Drones, Homing Missiles, and Twin Plasma.',
 
         color: '#334155', // Dark slate
 

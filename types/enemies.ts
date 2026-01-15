@@ -99,6 +99,12 @@ export interface EnemyDefinition {
     projectileRadius?: number;
     projectileColor?: string;
 
+    // Guide / Lore
+    name: string;
+    description: string;
+    role: string;
+    guideIcon: string;
+
     // Boss-specific
     isBoss?: boolean;
     phases?: BossPhase[];

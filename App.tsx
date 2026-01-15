@@ -11,7 +11,10 @@ import GuideMenu from './components/GuideMenu';
 import CheatsMenu from './components/CheatsMenu';
 import LeaderboardMenu from './components/LeaderboardMenu';
 import StatsMenu from './components/StatsMenu';
-import DebugMenu from './components/DebugMenu'; // Import
+import DebugMenu from './components/DebugMenu';
+import MainMenuScreen from './screens/MainMenuScreen'; // New
+import PauseScreen from './screens/PauseScreen'; // New
+import GameOverScreen from './screens/GameOverScreen'; // New
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
@@ -42,12 +45,9 @@ const DEFAULT_DATA: PersistentData = {
   }
 };
 
-// Helper for formatting time (Seconds -> MM:SS)
-const formatSurvivalTime = (seconds: number) => {
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
-};
+
+// Helper for formatting time (Seconds -> MM:SS) - Moved to utils/formatting.ts
+
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.START);
@@ -543,120 +543,32 @@ const App: React.FC = () => {
       <canvas ref={canvasRef} className="absolute inset-0" />
 
       {gameState === GameState.START && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-lg z-[200]">
-          <h1 className="text-cyan-400 text-5xl font-black italic uppercase mb-2 drop-shadow-[0_0_40px_rgba(6,182,212,0.9)] text-center">Void Arena</h1>
-
-          {bestScore > 0 && (
-            <div className="mb-8 px-4 py-1 rounded bg-slate-900/50 border border-slate-700 text-amber-400 font-bold uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-              Best Score: {bestScore.toLocaleString()}
-            </div>
-          )}
-
-          <button
-            onClick={() => setShowLeaderboard(true)}
-            className="absolute top-6 right-6 w-14 h-14 bg-slate-800 rounded-full border border-slate-700 text-amber-400 shadow-xl flex items-center justify-center hover:bg-slate-700 transition-all active:scale-95 z-[210]"
-          >
-            <i className="fa-solid fa-trophy text-2xl" />
-          </button>
-
-          {/* Difficulty Selection */}
-          <div className="flex gap-2 mb-6 p-2 bg-slate-900/60 rounded-xl border border-slate-800 overflow-x-auto max-w-full">
-            {Object.values(DIFFICULTY_CONFIGS).map(diff => {
-              const isUnlocked = currentRank >= diff.minRank;
-              const isSelected = selectedDifficulty === diff.id;
-
-              return (
-                <button
-                  key={diff.id}
-                  disabled={!isUnlocked}
-                  onClick={() => setSelectedDifficulty(diff.id)}
-                  className={`px-4 py-3 rounded-lg flex flex-col items-center min-w-[100px] transition-all relative
-                            ${isSelected ? 'bg-slate-800 border-2 shadow-lg scale-105 z-10' : 'bg-transparent border border-transparent opacity-60 hover:opacity-100'}
-                            ${!isUnlocked ? 'cursor-not-allowed opacity-30 grayscale' : ''}
-                        `}
-                  style={{ borderColor: isSelected ? diff.color : 'transparent' }}
-                >
-                  <div className="font-black text-sm uppercase tracking-widest" style={{ color: diff.color }}>{diff.name}</div>
-                  {!isUnlocked && (
-                    <div className="text-[9px] font-bold text-slate-400 mt-1 flex items-center gap-1">
-                      <i className="fa-solid fa-lock" /> Rank {diff.minRank}
-                    </div>
-                  )}
-                  {isSelected && (
-                    <div className="text-[9px] font-bold text-white mt-1">{diff.description}</div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="flex flex-col gap-4 w-full max-w-xs mt-2">
-            <button onClick={handleStartStandard} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 transition-all shadow-lg shadow-cyan-500/20">START MISSION</button>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setShowGarage(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95 transition-all">GARAGE</button>
-              <button onClick={() => setShowDebugMenu(true)} className="py-4 bg-slate-900 text-emerald-400 font-black text-xl rounded-2xl border border-emerald-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-inner hover:bg-slate-800">
-                <i className="fa-solid fa-flask" /> SIM
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i className="fa-solid fa-gear" /> SETTINGS
-              </button>
-              <button onClick={() => setShowGuide(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i className="fa-solid fa-book" /> MANUAL
-              </button>
-            </div>
-
-            <button onClick={() => setShowCheats(true)} className="py-2 bg-transparent text-red-900/50 font-bold text-xs uppercase tracking-widest hover:text-red-500 hover:bg-slate-900 rounded-lg transition-all">
-              <i className="fa-solid fa-code mr-2" />
-              Access Cheats
-            </button>
-          </div>
-
-          <div className="mt-12 text-amber-400 font-black text-xl flex items-center gap-2">
-            <i className="fas fa-coins" />
-            <span>{persistentData.credits.toLocaleString()} CREDITS</span>
-          </div>
-          <div className="mt-2 text-cyan-400/60 font-bold text-sm uppercase tracking-widest">
-            RANK: LV {persistentData.currentLevel || 1}
-          </div>
-
-          <div className="absolute bottom-10 left-0 w-full text-center text-slate-600 font-bold text-xs tracking-widest opacity-50 z-[210] pointer-events-none">
-            v0.3.3
-          </div>
-        </div>
+        <MainMenuScreen
+          bestScore={bestScore}
+          persistentData={persistentData}
+          selectedDifficulty={selectedDifficulty}
+          onSelectDifficulty={setSelectedDifficulty}
+          onStartStandard={handleStartStandard}
+          onOpenGarage={() => setShowGarage(true)}
+          onOpenDebug={() => setShowDebugMenu(true)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenGuide={() => setShowGuide(true)}
+          onOpenCheats={() => setShowCheats(true)}
+          onOpenLeaderboard={() => setShowLeaderboard(true)}
+        />
       )}
 
       {isPaused && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-2xl z-[250]">
-          <h2 className="text-white text-5xl font-black italic uppercase mb-12">Paused</h2>
-          <div className="flex flex-col gap-4 w-full max-w-xs px-6">
-            <button onClick={() => setIsPaused(false)} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 shadow-xl">RESUME</button>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">GARAGE</button>
-              <button onClick={() => setShowStats(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">STATUS</button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setShowUpgradesList(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANIFEST</button>
-              <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANUAL</button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i className="fa-solid fa-gear" /> SETTINGS
-              </button>
-              <button onClick={() => setShowCheats(true)} className="py-3 bg-slate-950 text-red-900 font-bold text-sm rounded-xl border border-red-900/20 active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i className="fa-solid fa-code" /> CHEATS
-              </button>
-            </div>
-
-            <button onClick={handleManualAbort} className="py-4 bg-red-900/50 text-white font-black text-xl rounded-2xl border border-red-500/30 active:scale-95 mt-4">SAVE & EXIT</button>
-          </div>
-        </div>
+        <PauseScreen
+          onResume={() => setIsPaused(false)}
+          onOpenGarage={() => { setShowGarage(true); setIsPaused(false); }}
+          onOpenStatus={() => setShowStats(true)}
+          onOpenManifest={() => setShowUpgradesList(true)}
+          onOpenManual={() => setShowGuide(true)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenCheats={() => setShowCheats(true)}
+          onExit={handleManualAbort}
+        />
       )}
 
       {/* Leaderboard, Settings, Guide, Cheats, Garage, Upgrade Menu */}
@@ -686,102 +598,21 @@ const App: React.FC = () => {
       )}
 
       {/* GAMEOVER SCREEN with Combat Log */}
+      {/* GAMEOVER SCREEN with Combat Log */}
       {gameState === GameState.GAMEOVER && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-2xl z-[200] p-6 animate-in fade-in duration-500">
-          <h2 className="text-white text-5xl font-black uppercase mb-6 italic tracking-tighter text-center">Mission Failed</h2>
-
-          <div className="flex gap-8 w-full max-w-4xl justify-center items-start">
-
-            {/* Left Col: High Score / Score */}
-            <div className="flex-1 flex flex-col items-center max-w-md">
-              {!hasSubmittedScore && pendingHighScore && gameMode === GameMode.STANDARD ? (
-                <div className="w-full bg-slate-900 border border-amber-500 rounded-2xl p-6 mb-6 flex flex-col gap-4">
-                  <div className="text-center">
-                    <div className="text-amber-400 font-black text-xl uppercase tracking-widest mb-1">New High Score!</div>
-                    <div className="text-white text-4xl font-black tabular-nums">{pendingHighScore.score.toLocaleString()}</div>
-                    <div className="text-slate-400 text-xs font-bold uppercase mt-1">Rank #{pendingHighScore.rank}</div>
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enter Pilot Name</label>
-                    <input
-                      type="text"
-                      value={newHighScoreName}
-                      onChange={(e) => setNewHighScoreName(e.target.value)}
-                      maxLength={12}
-                      className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold text-center uppercase focus:border-cyan-500 outline-none"
-                    />
-                  </div>
-
-                  <button onClick={submitScore} className="w-full py-4 bg-amber-500 text-slate-950 font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 active:scale-95 transition-all">
-                    Register Score
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center mb-8">
-                  {gameMode === GameMode.DEBUG && (
-                    <div className="mb-4 px-4 py-1 bg-emerald-900/50 border border-emerald-500/50 rounded text-emerald-400 font-bold uppercase tracking-widest text-xs">
-                      Simulation Mode
-                    </div>
-                  )}
-                  <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Score</div>
-                  <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
-                    {score.toLocaleString()}
-                  </div>
-                </div>
-              )}
-
-              {/* Run Stats */}
-              <div className="w-full grid grid-cols-2 gap-2 mb-6">
-                <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
-                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Accuracy</div>
-                  <div className="text-cyan-400 font-black text-lg">{(runMetricsRef.current.shotsFired > 0 ? (runMetricsRef.current.shotsHit / runMetricsRef.current.shotsFired * 100) : 0).toFixed(1)}%</div>
-                </div>
-                <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
-                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Enemies Killed</div>
-                  <div className="text-red-500 font-black text-lg">{runMetricsRef.current.enemiesKilled.toLocaleString()}</div>
-                </div>
-                {/* Survival Time Stat */}
-                <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center col-span-2">
-                  <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Survival Time</div>
-                  <div className="text-white font-black text-lg">{formatSurvivalTime(gameTime)}</div>
-                </div>
-              </div>
-
-              {gameMode === GameMode.STANDARD && (
-                <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-xl mb-8 flex items-center gap-3 w-full justify-center">
-                  <i className="fa-solid fa-coins" />
-                  <span>Salvage: +{Math.floor(stats.credits)} C</span>
-                </div>
-              )}
-
-              <button onClick={() => setGameState(GameState.START)} className="w-full py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
-            </div>
-
-            {/* Right Col: Combat Log */}
-            <div className="w-full max-w-xs bg-slate-900/50 border border-red-900/30 rounded-2xl p-4 flex flex-col gap-2 overflow-hidden">
-              <div className="flex items-center gap-2 mb-2 text-red-500 border-b border-red-900/30 pb-2">
-                <i className="fa-solid fa-triangle-exclamation" />
-                <span className="font-black uppercase text-sm tracking-widest">System Failure Log</span>
-              </div>
-
-              {stats.combatLog.length === 0 ? (
-                <div className="text-slate-500 text-xs italic text-center py-4">No damage recorded.</div>
-              ) : (
-                stats.combatLog.slice().reverse().map((entry, idx) => (
-                  <div key={idx} className={`p-2 rounded flex justify-between items-center text-xs ${entry.isFatal ? 'bg-red-500/20 border border-red-500' : 'bg-slate-950/50 border border-slate-800'}`}>
-                    <div>
-                      <div className="font-bold text-slate-300">{entry.source} {entry.enemyLevel ? `(LV ${entry.enemyLevel})` : ''}</div>
-                      {entry.isFatal && <div className="text-[9px] text-red-400 font-black uppercase tracking-wider">CRITICAL FAILURE</div>}
-                    </div>
-                    <div className="font-black text-red-400">-{entry.damage} HP</div>
-                  </div>
-                ))
-              )}
-            </div>
-
-          </div>
-        </div>
+        <GameOverScreen
+          score={score}
+          gameMode={gameMode}
+          pendingHighScore={pendingHighScore}
+          hasSubmittedScore={hasSubmittedScore}
+          newHighScoreName={newHighScoreName}
+          onNameChange={setNewHighScoreName}
+          onSubmitScore={submitScore}
+          runMetrics={runMetricsRef.current}
+          gameTime={gameTime}
+          stats={stats}
+          onReturnToBase={() => setGameState(GameState.START)}
+        />
       )}
 
       {(gameState === GameState.PLAYING || gameState === GameState.LEVELING || gameState === GameState.DYING) && !isGamePaused && (
