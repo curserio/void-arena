@@ -158,6 +158,14 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
   }, [stats.moduleType, stats.moduleReadyTime, stats.moduleActiveUntil, stats.moduleDuration, stats.moduleCooldownMax]);
 
 
+  // Helper to handle touch/mouse presses without ghosting issues
+  const handlePress = (e: React.PointerEvent | React.MouseEvent, action: () => void) => {
+    e.stopPropagation();
+    // e.preventDefault(); // Prevent default can cause issues, stopping prop is key
+    action();
+  };
+
+
   return (
     <>
     <style>
@@ -176,7 +184,7 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
           
           {/* Ship Info & XP Bar */}
           <button 
-            onClick={hasPendingLevels ? onLevelClick : undefined}
+            onPointerDown={(e) => hasPendingLevels && onLevelClick ? handlePress(e, onLevelClick) : undefined}
             className={`bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2 flex flex-col shadow-2xl min-w-[110px] transition-all 
                 ${hasPendingLevels ? 'animate-pulse ring-2 ring-cyan-400 cursor-pointer active:scale-95' : ''}`}
           >
@@ -225,12 +233,15 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
         <div className="flex flex-col items-end gap-3 pointer-events-auto">
           <div className="flex gap-2">
             <button 
-              onClick={(e) => { e.stopPropagation(); setAutoAttack(!autoAttack); }}
+              onPointerDown={(e) => handlePress(e, () => setAutoAttack(!autoAttack))}
               className={`w-12 h-12 bg-slate-900/90 border-2 rounded-xl flex items-center justify-center transition-all shadow-2xl active:scale-90 ${autoAttack ? 'border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-slate-700 text-slate-500 opacity-60'}`}
             >
               <i className={`fa-solid ${autoAttack ? 'fa-crosshairs' : 'fa-slash'} text-lg`} />
             </button>
-            <button onClick={(e) => { e.stopPropagation(); onPause(); }} className="w-12 h-12 bg-slate-900/90 border-2 border-slate-700 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl">
+            <button 
+              onPointerDown={(e) => handlePress(e, onPause)}
+              className="w-12 h-12 bg-slate-900/90 border-2 border-slate-700 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all shadow-2xl"
+            >
               <i className="fa-solid fa-pause text-lg" />
             </button>
           </div>
@@ -245,9 +256,13 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
       {stats.moduleType !== ModuleType.NONE && (
           <div className="fixed bottom-32 left-6 pointer-events-auto z-[60]">
               <button 
-                  onClick={onActivateModule}
-                  disabled={!moduleState.ready && !moduleState.active}
-                  className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95 overflow-hidden
+                  onPointerDown={(e) => {
+                      if (moduleState.ready || moduleState.active) {
+                          handlePress(e, () => onActivateModule && onActivateModule());
+                      }
+                  }}
+                  className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all overflow-hidden
+                      ${moduleState.ready || moduleState.active ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'}
                       ${moduleState.active 
                           ? 'bg-fuchsia-600 animate-pulse ring-2 ring-white' 
                           : moduleState.ready 

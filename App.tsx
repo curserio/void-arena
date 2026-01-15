@@ -304,8 +304,8 @@ const App: React.FC = () => {
         if (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft')) dx -= 1;
         if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
         
-        // Also map Spacebar to Module Activation
-        if (keysPressed.current.has('Space')) {
+        // Also map Spacebar and '1' to Module Activation
+        if (keysPressed.current.has('Space') || keysPressed.current.has('Digit1')) {
             activateModule();
         }
         
