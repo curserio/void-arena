@@ -17,6 +17,33 @@ export const usePickups = (
 
     const spawnDrops = useCallback((enemy: Entity) => {
         const drops: Entity[] = [];
+        
+        // --- SPECIAL: ASTEROID DROPS (Money Rocks) ---
+        if (enemy.type === EntityType.ASTEROID) {
+             const finalScore = 50;
+             // Guaranteed Credits: 300 - 600
+             // High value to help with initial progression
+             const creditVal = 300 + Math.floor(Math.random() * 300);
+             
+             drops.push({
+                id: Math.random().toString(36), type: EntityType.CREDIT,
+                pos: { ...enemy.pos }, vel: { x: 0, y: 0 }, 
+                radius: 22, // Bigger visual for high value
+                health: 1, maxHealth: 1, color: '#fbbf24',
+                value: creditVal
+            });
+            // Small XP (Mining Experience)
+            drops.push({
+                id: Math.random().toString(36), type: EntityType.XP_GEM,
+                pos: { x: enemy.pos.x + (Math.random()-0.5)*30, y: enemy.pos.y + (Math.random()-0.5)*30 }, 
+                vel: { x: 0, y: 0 }, radius: 12, health: 1, maxHealth: 1, color: '#06b6d4',
+                value: 10
+            });
+            
+            pickupsRef.current.push(...drops);
+            return finalScore;
+        }
+
         const lootMult = difficulty.lootMultiplier;
         
         // Scaling Factors

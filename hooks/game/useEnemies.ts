@@ -23,14 +23,16 @@ export const useEnemies = (
 
         // In DEBUG mode, do not spawn initial asteroid belt. Keep field clean.
         if (gameMode === GameMode.STANDARD) {
-            // Initial asteroid belt
-            for (let i = 0; i < 25; i++) {
-                const r = 35 + Math.random() * 45;
+            // Initial asteroid belt - "Money Rocks"
+            // Increased count to 35, adjusted HP to be mineable loot crates
+            for (let i = 0; i < 35; i++) {
+                const r = 40 + Math.random() * 40;
                 enemiesRef.current.push({
                     id: Math.random().toString(36), type: EntityType.ASTEROID,
                     pos: { x: Math.random() * WORLD_SIZE, y: Math.random() * WORLD_SIZE },
                     vel: { x: (Math.random() - 0.5) * 40, y: (Math.random() - 0.5) * 40 },
-                    radius: r, health: r * 5 * difficulty.statMultiplier, maxHealth: r * 5 * difficulty.statMultiplier, 
+                    // Health reduced from *5 to *3 so they are breakable early game
+                    radius: r, health: r * 3 * difficulty.statMultiplier, maxHealth: r * 3 * difficulty.statMultiplier, 
                     color: '#475569', seed: Math.random(),
                     lastHitTime: 0
                 });
