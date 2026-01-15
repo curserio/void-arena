@@ -8,3 +8,10 @@ export * from './data/weapons/stats';
 export * from './data/items/upgrades';
 export * from './data/items/prices';
 export * from './data/items/ships';
+
+export const DEBUG_CONFIG = {
+    enableManualLevelUp: true,
+    infiniteHealth: false,
+    showHitboxes: false
+};
+
