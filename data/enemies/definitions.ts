@@ -44,6 +44,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 15,
         creditValue: 5,
         powerUpChance: 0.02,
+
+        attacks: {
+            projectile: 10,
+        },
     },
 
     [EnemyType.STRIKER]: {
@@ -75,6 +79,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 25,
         creditValue: 10,
         powerUpChance: 0.03,
+
+        attacks: {
+            collision: 15,
+        },
     },
 
     [EnemyType.LASER_SCOUT]: {
@@ -97,6 +105,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 35,
         creditValue: 15,
         powerUpChance: 0.04,
+
+        attacks: {
+            beam: 12,
+        },
     },
 
     [EnemyType.KAMIKAZE]: {
@@ -119,6 +131,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 20,
         creditValue: 8,
         powerUpChance: 0.02,
+
+        attacks: {
+            explosion: 40,
+        },
     },
 
     [EnemyType.ASTEROID]: {
@@ -141,6 +157,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 10,
         creditValue: 20, // "Money Rocks"
         powerUpChance: 0.05,
+
+        attacks: {
+            collision: 10,
+        },
     },
 
     // =========================================================================
@@ -174,6 +194,10 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 500,
         creditValue: 1000,
         powerUpChance: 1.0, // Guaranteed drop
+
+        attacks: {
+            beam: 20,
+        },
     },
 
     [EnemyType.BOSS_DESTROYER]: {
@@ -207,6 +231,11 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         xpValue: 600,
         creditValue: 1200,
         powerUpChance: 1.0,
+
+        attacks: {
+            projectile: 15,
+            missile: 25,
+        },
     },
 };
 

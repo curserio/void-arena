@@ -6,6 +6,7 @@ import { IProjectile } from '../../types/projectiles';
 import { UPGRADES, LASER_LENGTH } from '../../constants';
 import { POWER_UPS } from '../../core/systems/PowerUpSystem';
 import { SpatialHashGrid } from '../../core/utils/SpatialHashGrid';
+import { getEnemyDefinition } from '../../data/enemies/definitions';
 
 // Helper: Check collision between two circular entities
 const checkCircleCollision = (a: { pos: Vector2D, radius: number }, b: { pos: Vector2D, radius: number }) => {
@@ -226,22 +227,17 @@ export const useCollision = (
 
                 let collisionDmg = 15; // Base collision damage
 
-                // SCALING: Only Melee units scale body damage with level
-                // Checking isMelee property on IEnemy?
-                // Or check type.
-                const isMelee = e.enemyType === EnemyType.KAMIKAZE || e.enemyType === EnemyType.STRIKER || e.enemyType === EnemyType.ASTEROID;
-                if (isMelee) {
-                    collisionDmg += (e.level || 1) * 1.5;
+                // Only Strikers scale melee collision damage with tier
+                if (e.enemyType === EnemyType.STRIKER) {
+                    const baseDmg = getEnemyDefinition(e.enemyType).attacks?.collision ?? 15;
+                    // Multiplicative level scaling to preserve tier differences at high levels
+                    collisionDmg = baseDmg * e.damageMult * (1 + (e.level || 1) * 0.05);
                 }
 
                 // Bosses have massive mass multiplier
                 const isBoss = e.enemyType === EnemyType.BOSS_DREADNOUGHT || e.enemyType === EnemyType.BOSS_DESTROYER;
                 if (isBoss) collisionDmg *= 1.5;
 
-                // We trigger hit with 'e' as source. triggerPlayerHit expects Entity or string.
-                // IEnemy is compatible with Entity structure mostly, but we should cast or ensure compatibility.
-                // triggerPlayerHit should ideally accept IEnemy too.
-                // For now, casting to any or Entity is safe as they share shape.
                 triggerPlayerHit(time, collisionDmg, e as unknown as Entity);
             }
         }
@@ -253,27 +249,15 @@ export const useCollision = (
 
             const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
             if (dist < 20 + p.radius) {
-                // Enemy Bullet Hit
-                let dmg = 10;
-                // isElite/isMiniboss props check
-                if (p.isElite) dmg = 20;
-                if (p.isLegendary) dmg = 30; // New Legendary Scaling
-                if (p.isMiniboss) dmg = 35;
-
-                // Heavy Plasma (Boss) check
-                if (p.radius > 10 && p.isElite) dmg = 45;
-
-                // SCALING
-                if (p.level) {
-                    dmg += p.level * 0.5;
-                }
+                // Pre-calculated damage from enemy, with multiplicative level scaling
+                const baseDmg = p.damage ?? 10;
+                const dmg = baseDmg * (1 + (p.level || 1) * 0.05);
 
                 triggerPlayerHit(time, dmg, p as unknown as Entity);
 
                 // Visual Effect for Homing Missile Impact
-                // Check weaponType or custom prop
                 if (p.weaponType === WeaponType.MISSILE) {
-                    spawnExplosion(p.pos, 80, '#f97316'); // Medium explosion
+                    spawnExplosion(p.pos, 80, '#f97316');
                 }
 
                 p.isAlive = false;
@@ -303,12 +287,10 @@ export const useCollision = (
 
                 // Player radius approx 20
                 if (distSq < (width / 2 + 20) ** 2) {
-                    let dmg = isBoss ? 20 : 12; // Per Tick
-
-                    // Level Scaling for Beams
+                    // Get beam damage from definition and apply damageMult + multiplicative level scaling
+                    const baseDmg = getEnemyDefinition(e.enemyType).attacks?.beam ?? (isBoss ? 20 : 12);
                     const lvl = e.level || 1;
-                    if (isBoss) dmg += (lvl * 0.5);
-                    else dmg += (lvl * 0.2);
+                    const dmg = baseDmg * e.damageMult * (1 + lvl * (isBoss ? 0.03 : 0.02));
 
                     triggerPlayerHit(time, dmg, isBoss ? "Dreadnought Beam" : "Sniper Beam");
                 }
@@ -381,8 +363,9 @@ export const useCollision = (
                     const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
                     const blastRadius = 120;
                     if (dist < blastRadius) {
-                        // Blast damage scales with level
-                        const blastDmg = 40 * (1 + (e.level || 1) * 0.1);
+                        // Get explosion damage from definition and apply damageMult
+                        const baseDmg = getEnemyDefinition(e.enemyType).attacks?.explosion ?? 40;
+                        const blastDmg = baseDmg * e.damageMult * (1 + (e.level || 1) * 0.1);
                         triggerPlayerHit(time, blastDmg, "Kamikaze Blast");
                     }
                     spawnExplosion(e.pos, 100, '#f97316');

@@ -108,6 +108,9 @@ export interface EnemyDefinition {
     // Boss-specific
     isBoss?: boolean;
     phases?: BossPhase[];
+
+    // Attack damage values
+    attacks?: AttackStats;
 }
 
 /**
@@ -118,6 +121,18 @@ export interface EnemyColorConfig {
     hueMax: number;
     saturation: number;
     lightness: number;
+}
+
+/**
+ * Attack damage values for enemy types
+ * Each enemy can have multiple attack types with different base damages
+ */
+export interface AttackStats {
+    projectile?: number;  // Bullet damage
+    explosion?: number;   // Kamikaze blast, splash effects
+    beam?: number;        // Laser DPS per tick
+    collision?: number;   // Melee collision (Striker only)
+    missile?: number;     // Homing missile damage
 }
 
 /**
@@ -227,6 +242,9 @@ export interface IEnemy {
     lastHitTime: number;
     lastShieldHitTime: number;
     lastShotTime: number;
+
+    // Damage scaling
+    damageMult: number;
 
     // Slow effect
     slowUntil: number;

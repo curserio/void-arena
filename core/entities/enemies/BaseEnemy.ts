@@ -54,6 +54,9 @@ export abstract class BaseEnemy implements IEnemy {
     lastShieldHitTime: number = 0;
     lastShotTime: number = 0;
 
+    // Damage scaling
+    readonly damageMult: number;
+
     // Slow effect
     slowUntil: number = 0;
     slowFactor: number = 0;
@@ -77,7 +80,8 @@ export abstract class BaseEnemy implements IEnemy {
         finalRadius: number,
         shield: number,
         color: string,
-        level: number
+        level: number,
+        damageMult: number
     ) {
         this.id = id;
         this.pos = { ...pos };
@@ -100,6 +104,7 @@ export abstract class BaseEnemy implements IEnemy {
 
         this.aiPhase = Math.random() * Math.PI * 2;
         this.aiSeed = Math.random();
+        this.damageMult = damageMult;
     }
 
     /**
@@ -205,6 +210,7 @@ export abstract class BaseEnemy implements IEnemy {
         speed: number,
         radius: number,
         color: string,
+        baseDamage: number,
         offsetX: number = 0,
         offsetY: number = 0
     ): IProjectileSpawn {
@@ -219,6 +225,7 @@ export abstract class BaseEnemy implements IEnemy {
             },
             radius,
             color,
+            damage: baseDamage * this.damageMult,
             level: this.level,
             isElite: this.isElite,
             isLegendary: this.isLegendary

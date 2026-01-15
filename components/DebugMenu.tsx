@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { DebugConfig } from '../types';
-import { EnemyType } from '../types/enemies';
+import { EnemyType, EnemyTier, BossTier } from '../types/enemies';
 
 interface DebugMenuProps {
   onStart: (config: DebugConfig) => void;
@@ -12,6 +12,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
   const [selectedType, setSelectedType] = useState<EnemyType>(EnemyType.SCOUT);
   const [level, setLevel] = useState(1);
   const [count, setCount] = useState(5);
+  const [selectedTier, setSelectedTier] = useState<'NORMAL' | 'ELITE' | 'LEGENDARY' | 'MINIBOSS'>('NORMAL');
 
   const ENEMY_TYPES = [
     { type: EnemyType.SCOUT, label: 'Void Scout', icon: 'fa-shuttle-space' },
@@ -22,11 +23,27 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
     { type: EnemyType.BOSS_DESTROYER, label: 'Imperial Destroyer', icon: 'fa-shapes' },
   ];
 
+  const isBoss = selectedType === EnemyType.BOSS_DREADNOUGHT || selectedType === EnemyType.BOSS_DESTROYER;
+
+  // Regular enemies can be NORMAL/ELITE/LEGENDARY/MINIBOSS
+  // Bosses can be NORMAL/ELITE/LEGENDARY (no MINIBOSS)
+  const ENEMY_TIERS = [
+    { tier: 'NORMAL' as const, label: 'Normal', color: 'slate' },
+    { tier: 'ELITE' as const, label: 'Elite', color: 'fuchsia' },
+    { tier: 'LEGENDARY' as const, label: 'Legendary', color: 'amber' },
+    { tier: 'MINIBOSS' as const, label: 'Miniboss', color: 'red', enemyOnly: true },
+  ];
+
+  const availableTiers = isBoss
+    ? ENEMY_TIERS.filter(t => !t.enemyOnly)
+    : ENEMY_TIERS;
+
   const handleStart = () => {
     onStart({
       enemyType: selectedType,
       level,
-      count
+      count,
+      tier: selectedTier
     });
   };
 
@@ -60,6 +77,34 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
                 <span className="text-xs font-bold uppercase">{e.label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Tier Selection */}
+        <div className="flex flex-col gap-2">
+          <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Tier (Rarity)</label>
+          <div className="grid grid-cols-4 gap-2">
+            {availableTiers.map((t) => {
+              const isSelected = selectedTier === t.tier;
+              const colorMap: Record<string, string> = {
+                slate: 'border-slate-500 bg-slate-800/40 text-slate-300',
+                fuchsia: 'border-fuchsia-500 bg-fuchsia-900/40 text-fuchsia-400',
+                amber: 'border-amber-500 bg-amber-900/40 text-amber-400',
+                red: 'border-red-500 bg-red-900/40 text-red-400',
+              };
+              return (
+                <button
+                  key={t.tier}
+                  onClick={() => setSelectedTier(t.tier)}
+                  className={`p-2 rounded-xl border text-center transition-all text-[10px] font-bold uppercase
+                    ${isSelected
+                      ? colorMap[t.color]
+                      : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 

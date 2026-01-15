@@ -27,10 +27,11 @@ export class Striker extends BaseEnemy {
         shield: number,
         color: string,
         level: number,
-        baseSpeed: number
+        baseSpeed: number,
+        damageMult: number
     ) {
         const definition = getEnemyDefinition(EnemyType.STRIKER);
-        super(id, pos, definition, tier, finalHealth, finalRadius, shield, color, level);
+        super(id, pos, definition, tier, finalHealth, finalRadius, shield, color, level, damageMult);
         this.definition = definition;
         this.baseSpeed = baseSpeed;
     }

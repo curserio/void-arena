@@ -23,10 +23,11 @@ export class Destroyer extends BaseBoss {
         shield: number,
         color: string,
         level: number,
-        initialTime: number
+        initialTime: number,
+        damageMult: number
     ) {
         const definition = getEnemyDefinition(EnemyType.BOSS_DESTROYER);
-        super(id, pos, definition, finalHealth, finalRadius, shield, color, level);
+        super(id, pos, definition, finalHealth, finalRadius, shield, color, level, damageMult);
 
         this.definition = definition;
         this.baseSpeed = definition.baseSpeed;
@@ -90,6 +91,7 @@ export class Destroyer extends BaseBoss {
             const plasmaColor = this.definition.projectileColor ?? '#f43f5e';
             const plasmaRadius = this.definition.projectileRadius ?? 12;
             const plasmaSpeed = this.definition.projectileSpeed ?? 480;
+            const plasmaDamage = (this.definition.attacks?.projectile ?? 15) * this.damageMult;
 
             // Left cannon
             result.bulletsToSpawn.push({
@@ -100,6 +102,7 @@ export class Destroyer extends BaseBoss {
                 vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
                 radius: plasmaRadius,
                 color: plasmaColor,
+                damage: plasmaDamage,
                 isElite: true,
                 level: this.level,
             });
@@ -113,6 +116,7 @@ export class Destroyer extends BaseBoss {
                 vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
                 radius: plasmaRadius,
                 color: plasmaColor,
+                damage: plasmaDamage,
                 isElite: true,
                 level: this.level,
             });
@@ -123,6 +127,7 @@ export class Destroyer extends BaseBoss {
             this.lastMissileTime = time;
 
             const salvoCount = 4 + Math.floor(Math.random() * 3);
+            const missileDamage = (this.definition.attacks?.missile ?? 25) * this.damageMult;
 
             for (let i = 0; i < salvoCount; i++) {
                 const spread = (Math.random() - 0.5) * 1.5;
@@ -133,6 +138,7 @@ export class Destroyer extends BaseBoss {
                     vel: { x: Math.cos(launchAngle) * 200, y: Math.sin(launchAngle) * 200 },
                     radius: 10,
                     color: '#f97316',
+                    damage: missileDamage,
                     isHoming: true,
                     turnRate: 0.6,
                     maxDuration: 4.0,

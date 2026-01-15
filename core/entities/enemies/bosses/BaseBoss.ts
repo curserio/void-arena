@@ -23,18 +23,20 @@ export abstract class BaseBoss extends BaseEnemy {
         finalRadius: number,
         shield: number,
         color: string,
-        level: number
+        level: number,
+        damageMult: number
     ) {
         super(
             id,
             pos,
             definition,
-            EnemyTier.NORMAL, // Bosses don't use tier system
+            EnemyTier.NORMAL, // Bosses don't use enemy tier system
             finalHealth,
             finalRadius,
             shield,
             color,
-            level
+            level,
+            damageMult
         );
 
         // Override boss flag

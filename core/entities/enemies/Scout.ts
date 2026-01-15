@@ -23,10 +23,11 @@ export class Scout extends BaseEnemy {
         shield: number,
         color: string,
         level: number,
-        baseSpeed: number
+        baseSpeed: number,
+        damageMult: number
     ) {
         const definition = getEnemyDefinition(EnemyType.SCOUT);
-        super(id, pos, definition, tier, finalHealth, finalRadius, shield, color, level);
+        super(id, pos, definition, tier, finalHealth, finalRadius, shield, color, level, damageMult);
         this.definition = definition;
         this.baseSpeed = baseSpeed;
     }
@@ -87,12 +88,14 @@ export class Scout extends BaseEnemy {
                 }
 
                 const aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
+                const baseDamage = this.definition.attacks?.projectile ?? 10;
 
                 result.bulletsToSpawn.push(this.createProjectile(
                     aimAngle,
                     bulletSpeed,
                     bulletRadius,
-                    bulletColor
+                    bulletColor,
+                    baseDamage
                 ));
             }
         }

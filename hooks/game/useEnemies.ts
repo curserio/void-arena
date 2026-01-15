@@ -122,7 +122,8 @@ export const useEnemies = (
         difficultyMultiplier: number,
         levelBonus: number,
         currentTime: number,
-        waveIndex: number = 0
+        waveIndex: number = 0,
+        bossTierOverride?: 'NORMAL' | 'ELITE' | 'LEGENDARY'
     ) => {
         const a = Math.random() * Math.PI * 2;
         const d = 1100;
@@ -137,7 +138,8 @@ export const useEnemies = (
             difficultyMultiplier,
             levelBonus,
             currentTime,
-            waveIndex
+            waveIndex,
+            bossTierOverride
         );
 
         enemiesRef.current.push(boss);
@@ -267,16 +269,25 @@ export const useEnemies = (
             }
 
             if (currentCount < debugConfig.count && debugRespawnTimerRef.current <= 0) {
+                // Determine tier overrides from debug config
+                const isEliteOverride = debugConfig.tier === 'ELITE';
+                const isLegendaryOverride = debugConfig.tier === 'LEGENDARY';
+                const isMinibossOverride = debugConfig.tier === 'MINIBOSS';
+
                 if (debugConfig.enemyType === EnemyType.BOSS_DREADNOUGHT || debugConfig.enemyType === EnemyType.BOSS_DESTROYER) {
                     const bossType = debugConfig.enemyType;
-                    spawnBoss(bossType, debugConfig.level * 0.2, debugConfig.level, time);
+                    // TODO: Boss tier support (normal/elite/legendary) could be added to spawnBoss
+                    spawnBoss(bossType, debugConfig.level * 0.2, debugConfig.level, time, 0, debugConfig.tier !== 'MINIBOSS' ? debugConfig.tier : 'NORMAL');
                 } else {
                     const a = Math.random() * Math.PI * 2;
                     const d = 900;
                     const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
                     const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
                     const diffMult = debugConfig.level * 0.2;
-                    const e = createEnemy(debugConfig.enemyType, x, y, 0, diffMult, debugConfig.level);
+                    const e = createEnemy(
+                        debugConfig.enemyType, x, y, 0, diffMult, debugConfig.level,
+                        isEliteOverride, isLegendaryOverride, isMinibossOverride
+                    );
                     if (e) enemiesRef.current.push(e);
                 }
                 debugRespawnTimerRef.current = 0.2;
@@ -310,8 +321,10 @@ export const useEnemies = (
                     health: 1,
                     maxHealth: 1,
                     color: bullet.color,
+                    damage: bullet.damage,  // Pass through calculated damage
                     level: bullet.level,
                     isElite: bullet.isElite,
+                    isLegendary: bullet.isLegendary,
                     isHoming: bullet.isHoming,
                     turnRate: bullet.turnRate,
                     duration: 0,

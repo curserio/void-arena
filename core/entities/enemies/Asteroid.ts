@@ -34,7 +34,8 @@ export class Asteroid extends BaseEnemy {
             radius,
             0, // No shield 
             color,
-            1  // Level 1
+            1,  // Level 1
+            1.0 // Asteroids don't scale damage
         );
 
         this.definition = definition;

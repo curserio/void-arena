@@ -109,37 +109,37 @@ export class EnemyFactory {
             case EnemyType.SCOUT:
                 return new Scout(
                     id, pos, tier, finalHealth, finalRadius,
-                    shield, color, level, finalSpeed
+                    shield, color, level, finalSpeed, modifier.damageMult
                 );
 
             case EnemyType.STRIKER:
                 return new Striker(
                     id, pos, tier, finalHealth, finalRadius,
-                    shield, color, level, finalSpeed
+                    shield, color, level, finalSpeed, modifier.damageMult
                 );
 
             case EnemyType.LASER_SCOUT:
                 return new LaserScout(
                     id, pos, tier, finalHealth, finalRadius,
-                    shield, color, level, finalSpeed
+                    shield, color, level, finalSpeed, modifier.damageMult
                 );
 
             case EnemyType.KAMIKAZE:
                 return new Kamikaze(
                     id, pos, tier, finalHealth, finalRadius,
-                    shield, color, level, finalSpeed
+                    shield, color, level, finalSpeed, modifier.damageMult
                 );
 
             case EnemyType.BOSS_DREADNOUGHT:
                 return new Dreadnought(
                     id, pos, finalHealth, finalRadius,
-                    shield, color, level, currentTime
+                    shield, color, level, currentTime, modifier.damageMult
                 );
 
             case EnemyType.BOSS_DESTROYER:
                 return new Destroyer(
                     id, pos, finalHealth, finalRadius,
-                    shield, color, level, currentTime
+                    shield, color, level, currentTime, modifier.damageMult
                 );
 
             default:
@@ -181,12 +181,16 @@ export class EnemyFactory {
         difficultyMult: number,
         levelBonus: number,
         currentTime: number,
-        waveIndex: number = 0
+        waveIndex: number = 0,
+        bossTierOverride?: 'NORMAL' | 'ELITE' | 'LEGENDARY'
     ): IEnemy {
         const definition = getEnemyDefinition(type);
 
-        // Determine boss tier based on wave
-        const bossTier = determineBossTier(waveIndex);
+        // Determine boss tier based on wave or override
+        let bossTier = determineBossTier(waveIndex);
+        if (bossTierOverride) {
+            bossTier = BossTier[bossTierOverride];
+        }
         const tierMod = getBossTierModifier(bossTier);
 
         // Boss scaling: quadratic based on wave + tier modifier
@@ -212,12 +216,12 @@ export class EnemyFactory {
         if (type === EnemyType.BOSS_DESTROYER) {
             return new Destroyer(
                 id, { x, y }, finalHealth, finalRadius,
-                shield, color, level, currentTime
+                shield, color, level, currentTime, tierMod.damageMult
             );
         } else {
             return new Dreadnought(
                 id, { x, y }, finalHealth, finalRadius,
-                shield, color, level, currentTime
+                shield, color, level, currentTime, tierMod.damageMult
             );
         }
     }

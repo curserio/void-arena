@@ -379,7 +379,7 @@ export const useProjectiles = (
                     y: spawn.vel.y / (Math.hypot(spawn.vel.x, spawn.vel.y) || 1)
                 } : { x: 0, y: 0 },
                 {
-                    damage: 10, // Base damage, scaled by level in useCollision
+                    damage: spawn.damage ?? 10, // Use pre-calculated damage from enemy
                     speed: Math.hypot(spawn.vel?.x || 0, spawn.vel?.y || 0) || 150,
                     color: spawn.color,
                     radius: spawn.radius,

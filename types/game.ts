@@ -26,6 +26,7 @@ export interface DebugConfig {
     enemyType: EnemyType;
     level: number;
     count: number;
+    tier?: 'NORMAL' | 'ELITE' | 'LEGENDARY' | 'MINIBOSS';
 }
 
 export interface DifficultyConfig {

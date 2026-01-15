@@ -49,6 +49,7 @@ export interface IEntity {
     // Legacy Fields (Consider moving to specific interfaces later)
     health?: number;
     maxHealth?: number;
+    damage?: number;  // Enemy projectile damage
     isCharging?: boolean;
     isFiring?: boolean;
     chargeProgress?: number;
@@ -124,6 +125,7 @@ export interface IProjectileSpawn {
     vel: Vector2D;
     radius: number;
     color: string;
+    damage?: number;      // Pre-calculated damage (base * damageMult)
     isHoming?: boolean;
     turnRate?: number;
     maxDuration?: number;
