@@ -24,10 +24,11 @@ export class Destroyer extends BaseBoss {
         color: string,
         level: number,
         initialTime: number,
-        damageMult: number
+        damageMult: number,
+        tierEquiv: EnemyTier = EnemyTier.NORMAL
     ) {
         const definition = getEnemyDefinition(EnemyType.BOSS_DESTROYER);
-        super(id, pos, definition, finalHealth, finalRadius, shield, color, level, damageMult);
+        super(id, pos, definition, finalHealth, finalRadius, shield, color, level, damageMult, tierEquiv);
 
         this.definition = definition;
         this.baseSpeed = definition.baseSpeed;
@@ -88,7 +89,8 @@ export class Destroyer extends BaseBoss {
 
             const aim = this.angle;
             const offset = 25;
-            const plasmaColor = this.definition.projectileColor ?? '#f43f5e';
+            // Tier-based plasma color: normal = reddish, higher tiers = body color
+            const plasmaColor = this.tier === EnemyTier.NORMAL ? '#f43f5e' : this.color;
             const plasmaRadius = this.definition.projectileRadius ?? 12;
             const plasmaSpeed = this.definition.projectileSpeed ?? 480;
             const plasmaDamage = (this.definition.attacks?.projectile ?? 15) * this.damageMult;

@@ -98,7 +98,7 @@ export function renderEnemies(
         // Laser Beam (LaserScout & Dreadnought)
         if ((enemyType === EnemyType.LASER_SCOUT || enemyType === EnemyType.BOSS_DREADNOUGHT) &&
             (e.isFiring || e.isCharging)) {
-            renderLaserBeam(ctx, e, isBoss);
+            renderLaserBeam(ctx, e, isBoss, tier);
         }
 
         // Body Rotation
@@ -197,16 +197,21 @@ function renderEnemyHUD(
     // Labels based on type/tier
     if (enemyType === EnemyType.BOSS_DESTROYER) {
         ctx.shadowBlur = 25;
-        ctx.shadowColor = '#f97316';
-        ctx.fillStyle = '#f97316';
+        // Boss tier color overrides
+        const tierColor = tier === EnemyTier.LEGENDARY ? '#fbbf24' : (tier === EnemyTier.ELITE ? '#d946ef' : '#f97316');
+        ctx.shadowColor = tierColor;
+        ctx.fillStyle = tierColor;
         ctx.font = '900 16px Arial';
-        ctx.fillText("IMPERIAL DESTROYER", 0, hudY - 25);
+        const tierLabel = tier === EnemyTier.LEGENDARY ? '★ LEGENDARY ' : (tier === EnemyTier.ELITE ? '◆ ELITE ' : '');
+        ctx.fillText(tierLabel + "IMPERIAL DESTROYER", 0, hudY - 25);
     } else if (enemyType === EnemyType.BOSS_DREADNOUGHT) {
         ctx.shadowBlur = 25;
-        ctx.shadowColor = '#4ade80';
-        ctx.fillStyle = '#4ade80';
+        const tierColor = tier === EnemyTier.LEGENDARY ? '#fbbf24' : (tier === EnemyTier.ELITE ? '#d946ef' : '#4ade80');
+        ctx.shadowColor = tierColor;
+        ctx.fillStyle = tierColor;
         ctx.font = '900 16px Arial';
-        ctx.fillText("GALACTIC DREADNOUGHT", 0, hudY - 25);
+        const tierLabel = tier === EnemyTier.LEGENDARY ? '★ LEGENDARY ' : (tier === EnemyTier.ELITE ? '◆ ELITE ' : '');
+        ctx.fillText(tierLabel + "GALACTIC DREADNOUGHT", 0, hudY - 25);
     } else if (tier === EnemyTier.MINIBOSS) {
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#ef4444';
@@ -254,14 +259,27 @@ function renderEnemyHUD(
     ctx.restore();
 }
 
-function renderLaserBeam(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, isBoss: boolean): void {
+function renderLaserBeam(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, isBoss: boolean, tier: EnemyTier = EnemyTier.NORMAL): void {
     ctx.save();
     ctx.rotate(e.angle || 0);
 
-    const beamColor = isBoss ? '74, 222, 128' : '255, 0, 0';
-    const beamHex = isBoss ? '#4ade80' : '#ff0000';
+    // Tier-based beam colors
+    let beamColor = isBoss ? '74, 222, 128' : '255, 0, 0';
+    let beamHex = isBoss ? '#4ade80' : '#ff0000';
+
+    if (tier === EnemyTier.LEGENDARY) {
+        beamColor = '251, 191, 36'; // Gold
+        beamHex = '#fbbf24';
+    } else if (tier === EnemyTier.ELITE) {
+        beamColor = '217, 70, 239'; // Magenta
+        beamHex = '#d946ef';
+    } else if (tier === EnemyTier.MINIBOSS) {
+        beamColor = '239, 68, 68'; // Red
+        beamHex = '#ef4444';
+    }
+
     const beamLen = isBoss ? 1600 : 1200;
-    const beamScale = isBoss ? 2.5 : 1.0;
+    const beamScale = isBoss ? 2.5 : (tier === EnemyTier.MINIBOSS ? 1.8 : (tier === EnemyTier.LEGENDARY ? 1.5 : (tier === EnemyTier.ELITE ? 1.3 : 1.0)));
 
     if (e.isCharging) {
         const prog = e.chargeProgress || 0;

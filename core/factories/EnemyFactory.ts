@@ -213,15 +213,18 @@ export class EnemyFactory {
             ? `BOSS-DEST-${bossTier}-${this.idCounter++}`
             : `BOSS-${bossTier}-${this.idCounter++}`;
 
+        // Convert BossTier to EnemyTier equivalent for rendering
+        const tierEquiv = EnemyTier[bossTier as keyof typeof EnemyTier] ?? EnemyTier.NORMAL;
+
         if (type === EnemyType.BOSS_DESTROYER) {
             return new Destroyer(
                 id, { x, y }, finalHealth, finalRadius,
-                shield, color, level, currentTime, tierMod.damageMult
+                shield, color, level, currentTime, tierMod.damageMult, tierEquiv
             );
         } else {
             return new Dreadnought(
                 id, { x, y }, finalHealth, finalRadius,
-                shield, color, level, currentTime, tierMod.damageMult
+                shield, color, level, currentTime, tierMod.damageMult, tierEquiv
             );
         }
     }

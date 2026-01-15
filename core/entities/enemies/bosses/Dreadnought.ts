@@ -23,10 +23,11 @@ export class Dreadnought extends BaseBoss {
         color: string,
         level: number,
         initialTime: number,
-        damageMult: number
+        damageMult: number,
+        tierEquiv: EnemyTier = EnemyTier.NORMAL
     ) {
         const definition = getEnemyDefinition(EnemyType.BOSS_DREADNOUGHT);
-        super(id, pos, definition, finalHealth, finalRadius, shield, color, level, damageMult);
+        super(id, pos, definition, finalHealth, finalRadius, shield, color, level, damageMult, tierEquiv);
 
         this.definition = definition;
         this.baseSpeed = definition.baseSpeed;

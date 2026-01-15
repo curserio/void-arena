@@ -24,13 +24,14 @@ export abstract class BaseBoss extends BaseEnemy {
         shield: number,
         color: string,
         level: number,
-        damageMult: number
+        damageMult: number,
+        tierEquiv: EnemyTier = EnemyTier.NORMAL
     ) {
         super(
             id,
             pos,
             definition,
-            EnemyTier.NORMAL, // Bosses don't use enemy tier system
+            tierEquiv, // Use tier equivalent for rendering
             finalHealth,
             finalRadius,
             shield,

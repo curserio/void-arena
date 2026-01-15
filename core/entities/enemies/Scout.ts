@@ -81,6 +81,10 @@ export class Scout extends BaseEnemy {
                     bulletRadius = 14;
                     bulletColor = '#ef4444';
                     bulletSpeed = 400;
+                } else if (this.isLegendary) {
+                    bulletRadius = 12;
+                    bulletColor = '#fbbf24'; // Gold
+                    bulletSpeed = 380;
                 } else if (this.isElite) {
                     bulletRadius = 9;
                     bulletColor = '#d946ef';
