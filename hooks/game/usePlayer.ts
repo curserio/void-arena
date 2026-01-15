@@ -18,6 +18,8 @@ export const usePlayer = (
 
     useEffect(() => { statsRef.current = stats; }, [stats]);
 
+    // Calculates ONLY Base Stats + Meta Upgrades (Permanent progression)
+    // Does NOT handle in-game upgrades.
     const calculateStats = useCallback((data: PersistentData) => {
         const shipConfig = SHIPS.find(s => s.type === data.equippedShip) || SHIPS[0];
         const weapon = data.equippedWeapon || WeaponType.PLASMA;
@@ -119,7 +121,7 @@ export const usePlayer = (
             critMultiplier: 1.5 + (critDmgL * 0.05),
             creditMultiplier: 1.0 + (salvageL * 0.05),
 
-            // RPG Persistence Loading
+            // RPG Persistence Loading (Just basics, upgrade reconstruction happens in sync)
             level: data.currentLevel || 1,
             xp: data.currentXp || 0,
             xpToNextLevel: data.xpToNextLevel || 250,
@@ -133,32 +135,37 @@ export const usePlayer = (
             combatLog: []
         };
 
-        // Re-apply saved in-game upgrades (RPG Style)
-        if (data.acquiredUpgradeIds && data.acquiredUpgradeIds.length > 0) {
-            const rehydratedUpgrades: Upgrade[] = [];
-            data.acquiredUpgradeIds.forEach(id => {
-                const upgrade = UPGRADES.find(u => u.id === id);
-                // Only re-apply STAT upgrades. Consumables are instant and not saved.
-                if (upgrade && upgrade.type === UpgradeType.STAT && upgrade.effect) {
-                    metaStats = upgrade.effect(metaStats);
-                    rehydratedUpgrades.push(upgrade);
-                }
-            });
-            metaStats.acquiredUpgrades = rehydratedUpgrades;
-            
-            // IMPORTANT: Restore health/shield to MAX after reapplying stats
-            // We give the player a fresh heal on spawn even if they were damaged before
-            metaStats.currentHealth = metaStats.maxHealth;
-            metaStats.currentShield = metaStats.maxShield;
-        }
-
         return metaStats;
     }, []);
 
     const initPlayer = useCallback(() => {
-        const newStats = calculateStats(persistentData);
+        // 1. Calculate Base Stats (Ship + Meta)
+        let newStats = calculateStats(persistentData);
+        
+        // 2. Hydrate saved "Level Up" rewards to make them permanent RPG style
+        const savedIds = persistentData.acquiredUpgradeIds || [];
+        const hydratedUpgrades: Upgrade[] = [];
+
+        savedIds.forEach(id => {
+            const upg = UPGRADES.find(u => u.id === id);
+            // Only apply STAT upgrades (Consumables are instant and shouldn't persist in stats via this list)
+            if (upg && upg.type === UpgradeType.STAT && upg.effect) {
+                newStats = upg.effect(newStats);
+                hydratedUpgrades.push(upg);
+            }
+        });
+
+        // Store the full objects so the UI and logic can see what we have
+        newStats.acquiredUpgrades = hydratedUpgrades;
+
+        // 3. Reset Position
         playerPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
         cameraPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
+        
+        // 4. Full Heal on Mission Start
+        newStats.currentHealth = newStats.maxHealth;
+        newStats.currentShield = newStats.maxShield;
+
         setStats(newStats);
         lastPlayerHitTimeRef.current = 0;
     }, [persistentData, calculateStats]);
@@ -242,6 +249,7 @@ export const usePlayer = (
                 else if (source.type === EntityType.ENEMY_LASER_SCOUT) sourceName = "Sniper Drone";
                 else if (source.type === EntityType.ENEMY_KAMIKAZE) sourceName = "Kamikaze Drone";
                 else if (source.type === EntityType.ENEMY_BOSS) sourceName = "Dreadnought";
+                else if (source.type === EntityType.ENEMY_BOSS_DESTROYER) sourceName = "Imperial Destroyer";
                 else if (source.type === EntityType.ENEMY_BULLET) sourceName = "Enemy Fire";
                 
                 if (source.isElite) sourceName = `Elite ${sourceName}`;
@@ -272,21 +280,42 @@ export const usePlayer = (
     }, []);
 
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
-        const baseStats = calculateStats(newData);
+        // 1. Calculate base stats from NEW persistent data (Meta Upgrades)
+        const freshBaseStats = calculateStats(newData);
+        
         setStats(current => {
-            let finalStats = { ...baseStats };
-            
+            // 2. Determine current health/shield ratios relative to the OLD max
+            // This ensures we preserve damage state when max values change
             const hpRatio = current.maxHealth > 0 ? current.currentHealth / current.maxHealth : 1;
             const shieldRatio = current.maxShield > 0 ? current.currentShield / current.maxShield : 1;
 
-            finalStats.currentHealth = Math.min(finalStats.maxHealth, finalStats.maxHealth * hpRatio);
-            finalStats.currentShield = Math.min(finalStats.maxShield, finalStats.maxShield * shieldRatio);
+            // 3. Re-apply ALL current session upgrades to the FRESH base stats
+            // This stacks Meta upgrades (in freshBase) with Session upgrades (in current.acquiredUpgrades)
+            let rehydratedStats = { ...freshBaseStats };
             
-            finalStats.credits = current.credits; // Session credits
-            finalStats.activeBuffs = current.activeBuffs;
-            finalStats.combatLog = current.combatLog; // Preserve Log 
+            if (current.acquiredUpgrades && current.acquiredUpgrades.length > 0) {
+                current.acquiredUpgrades.forEach(u => {
+                    if (u.effect) {
+                        rehydratedStats = u.effect(rehydratedStats);
+                    }
+                });
+                rehydratedStats.acquiredUpgrades = current.acquiredUpgrades;
+            }
 
-            return finalStats;
+            // 4. Restore preserved state fields (Level, XP, Credits, Buffs, etc.)
+            rehydratedStats.level = current.level;
+            rehydratedStats.xp = current.xp;
+            rehydratedStats.xpToNextLevel = current.xpToNextLevel;
+            rehydratedStats.pendingLevelUps = current.pendingLevelUps;
+            rehydratedStats.credits = current.credits;
+            rehydratedStats.activeBuffs = current.activeBuffs;
+            rehydratedStats.combatLog = current.combatLog;
+
+            // 5. Apply the Health/Shield ratios to the NEW fully calculated Max values
+            rehydratedStats.currentHealth = Math.min(rehydratedStats.maxHealth, rehydratedStats.maxHealth * hpRatio);
+            rehydratedStats.currentShield = Math.min(rehydratedStats.maxShield, rehydratedStats.maxShield * shieldRatio);
+
+            return rehydratedStats;
         });
     }, [calculateStats]);
 

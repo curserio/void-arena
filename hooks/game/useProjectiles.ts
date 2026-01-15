@@ -34,6 +34,8 @@ export const useProjectiles = (
             e.pierceCount = 1;
             e.duration = 0;
             e.targetId = undefined; // Reset Target
+            e.isHoming = false; // Reset Homing
+            e.turnRate = 0;
         })
     );
 
@@ -352,11 +354,45 @@ export const useProjectiles = (
                     }
 
                 } else if (e.type === EntityType.ENEMY_BULLET) {
+                    // Check for Homing Capability
+                    if (e.isHoming) {
+                        const targetX = playerPosRef.current.x;
+                        const targetY = playerPosRef.current.y;
+                        const dx = targetX - e.pos.x;
+                        const dy = targetY - e.pos.y;
+                        const targetAngle = Math.atan2(dy, dx);
+                        
+                        let currentAngle = Math.atan2(e.vel.y, e.vel.x);
+                        let diff = targetAngle - currentAngle;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        
+                        const turnRate = e.turnRate || 1.0;
+                        const turnStep = turnRate * dt;
+                        
+                        if (Math.abs(diff) < turnStep) {
+                            currentAngle = targetAngle;
+                        } else {
+                            currentAngle += Math.sign(diff) * turnStep;
+                        }
+                        
+                        // Missile acceleration or constant speed?
+                        const speed = Math.hypot(e.vel.x, e.vel.y) * 1.01; // Slight acceleration
+                        const maxSpeed = 350;
+                        const finalSpeed = Math.min(speed, maxSpeed);
+                        
+                        e.vel.x = Math.cos(currentAngle) * finalSpeed;
+                        e.vel.y = Math.sin(currentAngle) * finalSpeed;
+                    }
+
                     e.pos.x += e.vel.x * dt;
                     e.pos.y += e.vel.y * dt;
+                    
                     const dx = e.pos.x - playerPosRef.current.x;
                     const dy = e.pos.y - playerPosRef.current.y;
-                    if (dx*dx + dy*dy > BULLET_MAX_DIST*BULLET_MAX_DIST) {
+                    // Extended range for boss missiles
+                    const range = e.isHoming ? 2000 : BULLET_MAX_DIST; 
+                    if (dx*dx + dy*dy > range*range) {
                         alive = false;
                     }
                 }

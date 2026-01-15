@@ -10,6 +10,7 @@ import SettingsMenu from './components/SettingsMenu';
 import GuideMenu from './components/GuideMenu';
 import CheatsMenu from './components/CheatsMenu';
 import LeaderboardMenu from './components/LeaderboardMenu';
+import StatsMenu from './components/StatsMenu'; // Import the new component
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './systems/BackgroundManager';
 import { renderGame } from './systems/GameRenderer';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [showCheats, setShowCheats] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showStats, setShowStats] = useState(false); // New State
   
   // Difficulty Selection State
   const [selectedDifficulty, setSelectedDifficulty] = useState<GameDifficulty>(GameDifficulty.NORMAL);
@@ -97,7 +99,7 @@ const App: React.FC = () => {
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
 
   // PAUSE LOGIC: Game pauses if manually paused OR if any overlay menu is open
-  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard;
+  const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats;
 
   const {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
@@ -256,13 +258,13 @@ const App: React.FC = () => {
   const isPausedRef = useRef(isPaused);
   const gameStateRef = useRef(gameState);
   const autoAttackRef = useRef(autoAttack);
-  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard);
+  const showMenusRef = useRef(showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats);
 
   useEffect(() => { persistentDataRef.current = persistentData; }, [persistentData]);
   useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { autoAttackRef.current = autoAttack; }, [autoAttack]);
-  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats, showLeaderboard]);
+  useEffect(() => { showMenusRef.current = showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats; }, [showGarage, showUpgradesList, showSettings, showGuide, showCheats, showLeaderboard, showStats]);
 
   const frame = (time: number) => {
     if (!lastTimeRef.current) lastTimeRef.current = time;
@@ -582,10 +584,13 @@ return (
           
           <div className="grid grid-cols-2 gap-4">
             <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">GARAGE</button>
-            <button onClick={() => setShowUpgradesList(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANIFEST</button>
+            <button onClick={() => setShowStats(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">SHIP STATUS</button>
           </div>
 
-           <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANUAL</button>
+           <div className="grid grid-cols-2 gap-4">
+                <button onClick={() => setShowUpgradesList(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANIFEST</button>
+                <button onClick={() => setShowGuide(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">MANUAL</button>
+           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <button onClick={() => setShowSettings(true)} className="py-3 bg-slate-900 text-slate-400 font-bold text-sm rounded-xl border border-slate-800 active:scale-95 transition-all flex items-center justify-center gap-2">
@@ -619,6 +624,9 @@ return (
     )}
     {showUpgradesList && (
       <UpgradesList acquired={stats.acquiredUpgrades} onClose={() => setShowUpgradesList(false)} />
+    )}
+    {showStats && (
+        <StatsMenu stats={stats} onClose={() => setShowStats(false)} />
     )}
 
     {/* GAMEOVER SCREEN with Combat Log */}

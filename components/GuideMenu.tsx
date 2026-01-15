@@ -210,15 +210,26 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
                         icon="fa-play"
                         color="#f97316"
                       />
-                      {/* Boss */}
+                      {/* Boss 1 */}
                       <EnemyCard 
                         name="Dreadnought Boss" 
                         role="Capital Ship" 
                         baseHp={5000 * viewLevel} 
                         speed="Slow" 
-                        desc="Spawns every 3 minutes. Massive laser cannon."
+                        desc="Common Boss. Massive laser cannon."
                         icon="fa-skull"
                         color="#4ade80"
+                        isBoss
+                      />
+                      {/* Boss 2 */}
+                      <EnemyCard 
+                        name="Imperial Destroyer" 
+                        role="Heavy Carrier" 
+                        baseHp={4000 * viewLevel} 
+                        speed="Very Slow" 
+                        desc="Rare Boss. Deploys Drones, Homing Missiles, and Twin Plasma."
+                        icon="fa-shapes"
+                        color="#f97316"
                         isBoss
                       />
                   </div>
@@ -277,11 +288,11 @@ const EnemyCard: React.FC<{ name: string; role: string; baseHp: number; speed: s
                         <i className={`fa-solid ${icon} text-lg`} />
                     </div>
                     <div>
-                        <h4 className="text-white font-black uppercase text-sm" style={{ color: isBoss ? '#4ade80' : undefined }}>{name}</h4>
+                        <h4 className="text-white font-black uppercase text-sm" style={{ color: isBoss ? color : undefined }}>{name}</h4>
                         <div className="text-[10px] font-bold text-slate-500 uppercase">{role}</div>
                     </div>
                 </div>
-                {isBoss && <div className="px-2 py-1 bg-emerald-500 text-slate-950 text-[10px] font-black uppercase rounded">Boss Class</div>}
+                {isBoss && <div className="px-2 py-1 bg-slate-950 text-[10px] font-black uppercase rounded" style={{ color: color, border: `1px solid ${color}` }}>Boss Class</div>}
             </div>
 
             <div className="grid grid-cols-3 gap-2 bg-slate-900/50 p-2 rounded-lg border border-slate-800/50">
@@ -295,7 +306,7 @@ const EnemyCard: React.FC<{ name: string; role: string; baseHp: number; speed: s
                  </div>
                  <div className="text-center">
                      <div className="text-[9px] text-red-500 uppercase font-bold">{isBoss ? 'Shield' : 'MiniBoss'}</div>
-                     <div className="text-red-300 font-bold text-xs">{isBoss ? (baseHp * 0.25).toLocaleString() : (baseHp * 12).toLocaleString()}</div>
+                     <div className="text-red-300 font-bold text-xs">{isBoss ? (baseHp * (name.includes('Destroyer') ? 0.4 : 0.25)).toLocaleString() : (baseHp * 12).toLocaleString()}</div>
                  </div>
             </div>
 

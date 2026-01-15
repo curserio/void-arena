@@ -35,6 +35,7 @@ export enum EntityType {
   ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT',
   ENEMY_KAMIKAZE = 'ENEMY_KAMIKAZE',
   ENEMY_BOSS = 'ENEMY_BOSS',
+  ENEMY_BOSS_DESTROYER = 'ENEMY_BOSS_DESTROYER', // New Boss Type
   ASTEROID = 'ASTEROID',
   BULLET = 'BULLET',
   ENEMY_BULLET = 'ENEMY_BULLET',
@@ -96,6 +97,8 @@ export interface Entity {
   powerUpId?: PowerUpId; // Changed from enum to string ID
   pierceCount?: number;
   lastShotTime?: number;
+  lastMissileTime?: number; // For Destroyer Boss
+  lastSpawnTime?: number;   // For Destroyer Boss
   lastMeleeHitTime?: number;
   lastHitTime?: number; 
   lastShieldHitTime?: number;
@@ -119,6 +122,8 @@ export interface Entity {
   isBoss?: boolean;
   targetId?: string; // For Homing Missiles
   hasDeathDefiance?: boolean; // For Elite Kamikaze (Shield Gate)
+  isHoming?: boolean; // New: For Enemy Missiles
+  turnRate?: number; // New: Turn speed for homing entities
 }
 
 export enum UpgradeType {

@@ -106,7 +106,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         const isShieldHit = (time - (e.lastShieldHitTime || 0)) < 120;
         const isElite = !!e.isElite;
         const isMiniboss = !!e.isMiniboss;
-        const isBoss = e.type === EntityType.ENEMY_BOSS;
+        const isBoss = e.type === EntityType.ENEMY_BOSS || e.type === EntityType.ENEMY_BOSS_DESTROYER;
 
         // Health Bars & Stats
         ctx.save();
@@ -115,7 +115,12 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
 
-        if (isBoss) {
+        if (e.type === EntityType.ENEMY_BOSS_DESTROYER) {
+            ctx.shadowBlur = 25; ctx.shadowColor = '#f97316';
+            ctx.fillStyle = '#f97316';
+            ctx.font = '900 16px Arial';
+            ctx.fillText("IMPERIAL DESTROYER", 0, hudY - 25);
+        } else if (e.type === EntityType.ENEMY_BOSS) {
             ctx.shadowBlur = 25; ctx.shadowColor = '#4ade80';
             ctx.fillStyle = '#4ade80';
             ctx.font = '900 16px Arial';
@@ -150,7 +155,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         ctx.restore();
 
         // Laser Scout & Boss Beam Rendering
-        if ((e.type === EntityType.ENEMY_LASER_SCOUT || isBoss) && (e.isFiring || e.isCharging)) {
+        if ((e.type === EntityType.ENEMY_LASER_SCOUT || e.type === EntityType.ENEMY_BOSS) && (e.isFiring || e.isCharging)) {
             ctx.save();
             ctx.rotate(e.angle || 0);
             
@@ -179,7 +184,7 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         }
 
         // Body Rotation and Draw
-        if ((e.type === EntityType.ENEMY_LASER_SCOUT || isBoss) && (e.isCharging || e.isFiring)) {
+        if ((e.type === EntityType.ENEMY_LASER_SCOUT || e.type === EntityType.ENEMY_BOSS) && (e.isCharging || e.isFiring)) {
             ctx.rotate((e.angle || 0) + Math.PI / 2);
         } else {
             ctx.rotate(Math.atan2(e.vel.y, e.vel.x) + Math.PI / 2);
@@ -192,7 +197,47 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         else if (isRecentlyHit) ctx.fillStyle = '#ff0000';
         else ctx.fillStyle = e.color;
 
-        if (e.type === EntityType.ENEMY_BOSS) {
+        if (e.type === EntityType.ENEMY_BOSS_DESTROYER) {
+            // IMPERIAL DESTROYER (Wedge Shape)
+            // Local Space: Y-axis points "down" (which is backward for ship), -Y is forward.
+            // But we rotated by +90deg, so X axis is forward. No wait.
+            // Standard: velocity vector angle. Rotation = angle + PI/2.
+            // So Up (-Y) is the direction of travel in canvas space before rotation?
+            // Actually: Math.atan2(y,x) is angle from X axis.
+            // + PI/2 means Y axis (down) aligns with velocity?
+            // If vel is (1,0) [Right], angle is 0. Rot = 90deg. Canvas Y axis points Right. 
+            // So (0, -radius) in local space points Right (Forward).
+            
+            const w = e.radius * 0.8;
+            const h = e.radius * 1.8;
+            
+            // Hull
+            ctx.beginPath();
+            ctx.moveTo(0, -h); // Nose
+            ctx.lineTo(w, h * 0.6); // Bottom Right
+            ctx.lineTo(0, h * 0.4); // Rear Notch center
+            ctx.lineTo(-w, h * 0.6); // Bottom Left
+            ctx.closePath();
+            ctx.fill();
+            
+            // Bridge Tower
+            ctx.fillStyle = isRecentlyHit ? '#ffaaaa' : '#475569';
+            ctx.beginPath();
+            ctx.rect(-w*0.3, 0, w*0.6, h*0.3);
+            ctx.fill();
+            
+            // Engine Glows
+            ctx.fillStyle = '#f97316';
+            ctx.shadowColor = '#f97316'; ctx.shadowBlur = 20;
+            ctx.beginPath(); ctx.arc(-w*0.5, h*0.6, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(w*0.5, h*0.6, 5, 0, Math.PI*2); ctx.fill();
+            
+            // Weapon Hardpoints
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-w-2, 0, 4, 15); // Left
+            ctx.fillRect(w-2, 0, 4, 15); // Right
+
+        } else if (e.type === EntityType.ENEMY_BOSS) {
             // DEATH STAR / BOSS RENDER
             // Main Body
             const grad = ctx.createRadialGradient(-15, -15, 5, 0, 0, e.radius);
@@ -207,10 +252,6 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             ctx.beginPath(); ctx.moveTo(-e.radius, 0); ctx.lineTo(e.radius, 0); ctx.stroke();
 
             // Superlaser Dish (Offset to top)
-            // Since we rotated +PI/2, "Up" is negative Y in local space if facing right, 
-            // but we want the dish to face the firing direction (which is -Y in local space after rotation)
-            // Local space: 0,0 is center. Facing (0, -radius).
-            
             const dishY = -e.radius * 0.5;
             ctx.fillStyle = '#27272a';
             ctx.beginPath(); ctx.arc(0, dishY, e.radius * 0.25, 0, Math.PI*2); ctx.fill();
@@ -275,7 +316,6 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
         ctx.translate(e.pos.x, e.pos.y);
 
         // Angle Calculation
-        // For Lasers, angle is explicit. For moving bullets, derive from velocity.
         let angle = Math.atan2(e.vel.y, e.vel.x);
         if (e.weaponType === WeaponType.LASER) {
             angle = e.angle || 0;
@@ -297,22 +337,18 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
 
         // Player Laser Rendering
         if (e.weaponType === WeaponType.LASER) {
-            ctx.rotate(angle); // Rotate to aim direction
+            ctx.rotate(angle); 
             
             if (e.isCharging) {
-                // Charging Line (Telegraph)
                 const prog = e.chargeProgress || 0;
-                
-                // Guide Line
                 ctx.strokeStyle = `rgba(168, 85, 247, ${0.2 + prog * 0.4})`; // Purple
                 ctx.lineWidth = 1 + prog * 2;
                 ctx.setLineDash([20, 15]);
                 ctx.beginPath(); 
-                ctx.moveTo(30, 0); // Start slightly ahead of ship
+                ctx.moveTo(30, 0); 
                 ctx.lineTo(LASER_LENGTH, 0); 
                 ctx.stroke();
 
-                // Gathering Energy Orb at base
                 ctx.shadowBlur = 10 + prog * 20; 
                 ctx.shadowColor = '#d8b4fe';
                 ctx.fillStyle = '#a855f7';
@@ -321,25 +357,18 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 ctx.fill();
 
             } else if (e.isFiring) {
-                // Firing Beam
-                const duration = e.duration || 0; // 0 to maxDur
+                const duration = e.duration || 0;
                 const maxDur = stats.laserDuration || 0.3;
-                const life = duration / maxDur; // 0 to 1
-                
-                // Width pulses and shrinks.
-                // Clamp width to be non-negative to avoid IndexSizeError
+                const life = duration / maxDur; 
                 const width = Math.max(0, 40 * (1 - life)); 
                 
-                // Core
                 ctx.shadowBlur = 60; ctx.shadowColor = '#a855f7';
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(0, -width / 4, LASER_LENGTH, width / 2);
                 
-                // Outer Glow
                 ctx.fillStyle = 'rgba(168, 85, 247, 0.6)';
                 ctx.fillRect(0, -width, LASER_LENGTH, width * 2);
 
-                // Flash at base
                 ctx.beginPath();
                 ctx.fillStyle = '#fff';
                 ctx.arc(20, 0, width * 1.5, 0, Math.PI*2);
@@ -347,7 +376,7 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
             }
 
             ctx.restore();
-            return; // Done rendering Laser
+            return; 
         }
 
         ctx.rotate(angle + Math.PI / 2);
@@ -359,17 +388,14 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 // Engine fire
                 ctx.fillStyle = '#fff'; ctx.fillRect(-4, 20, 8, 10);
             } else if (e.weaponType === WeaponType.SWARM_LAUNCHER) {
-                // Swarm Rocket - Smaller, agile
                 ctx.shadowBlur = 10; ctx.shadowColor = e.color;
                 ctx.fillStyle = e.color; 
-                // Rocket Body
                 ctx.beginPath();
                 ctx.moveTo(0, -8);
                 ctx.lineTo(5, 5);
                 ctx.lineTo(-5, 5);
                 ctx.closePath();
                 ctx.fill();
-                // Thruster
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(-2, 5, 4, 6);
             } else {
@@ -378,10 +404,19 @@ const renderProjectiles = (ctx: CanvasRenderingContext2D, projectiles: Entity[],
                 ctx.strokeStyle = e.color; ctx.lineWidth = 3; ctx.stroke();
             }
         } else if (e.type === EntityType.ENEMY_BULLET) {
-            // Use e.color for dynamic bullet colors (Miniboss = Red, Elite = Purple)
             ctx.shadowBlur = 20; ctx.shadowColor = e.color || '#f97316';
-            ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = e.color || '#f97316'; ctx.lineWidth = 2; ctx.stroke();
+            
+            if (e.isHoming) {
+                // Rocket shape for enemy missiles
+                ctx.fillStyle = e.color || '#f97316';
+                ctx.fillRect(-3, -8, 6, 16);
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(-2, 8, 4, 4); // Thruster
+            } else {
+                // Plasma blob
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0, e.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = e.color || '#f97316'; ctx.lineWidth = 2; ctx.stroke();
+            }
         }
         ctx.restore();
     });

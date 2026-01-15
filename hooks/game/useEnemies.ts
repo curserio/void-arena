@@ -30,7 +30,7 @@ export const useEnemies = (
         }
     }, [difficulty]);
 
-    const createEnemy = (type: EntityType, x: number, y: number, gameMinutes: number, difficultyMultiplier: number, levelBonus: number, isEliteOverride?: boolean, isMinibossOverride?: boolean) => {
+    const createEnemy = useCallback((type: EntityType, x: number, y: number, gameMinutes: number, difficultyMultiplier: number, levelBonus: number, isEliteOverride?: boolean, isMinibossOverride?: boolean) => {
         let isMiniboss = isMinibossOverride !== undefined ? isMinibossOverride : false;
         let isElite = isEliteOverride !== undefined ? isEliteOverride : Math.random() < Math.min(0.2, 0.01 + gameMinutes * 0.02);
 
@@ -103,7 +103,7 @@ export const useEnemies = (
             isCharging: false, isFiring: false, chargeProgress: 0, 
             lastShotTime: 0
         };
-    };
+    }, [difficulty, playerPosRef, spawnSpawnFlash]);
 
     const spawnEnemy = useCallback((gameTime: number, currentTime: number) => {
         const gameMinutes = gameTime / 60;
@@ -126,26 +126,54 @@ export const useEnemies = (
             const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
             const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
             
-            const bossHp = 5000 * difficultyMultiplier * (1 + (currentBossWave * 0.5));
+            // 35% Chance for Destroyer Boss
+            const isDestroyer = Math.random() < 0.35;
             
-            enemiesRef.current.push({
-                id: `BOSS-${Math.random()}`,
-                type: EntityType.ENEMY_BOSS,
-                pos: { x, y },
-                vel: { x: 0, y: 0 },
-                radius: 70, // Huge
-                health: bossHp,
-                maxHealth: bossHp,
-                shield: bossHp * 0.25,
-                maxShield: bossHp * 0.25,
-                color: '#4ade80', // Green Theme
-                level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
-                isBoss: true,
-                aiPhase: 0,
-                lastHitTime: 0, lastShieldHitTime: 0,
-                isCharging: false, isFiring: false, chargeProgress: 0,
-                lastShotTime: currentTime + 2000 // Initial delay
-            });
+            if (isDestroyer) {
+                // IMPERIAL DESTROYER BOSS
+                const bossHp = 4000 * difficultyMultiplier * (1 + (currentBossWave * 0.5));
+                enemiesRef.current.push({
+                    id: `BOSS-DEST-${Math.random()}`,
+                    type: EntityType.ENEMY_BOSS_DESTROYER,
+                    pos: { x, y },
+                    vel: { x: 0, y: 0 },
+                    radius: 75, // Large Wedge
+                    health: bossHp,
+                    maxHealth: bossHp,
+                    shield: bossHp * 0.4, // Higher shield ratio than standard boss
+                    maxShield: bossHp * 0.4,
+                    color: '#334155', // Slate Dark
+                    level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
+                    isBoss: true,
+                    aiPhase: 0,
+                    lastHitTime: 0, lastShieldHitTime: 0,
+                    isCharging: false, isFiring: false, chargeProgress: 0,
+                    lastShotTime: currentTime + 2000,
+                    lastMissileTime: currentTime + 5000, // Offset missile start
+                    lastSpawnTime: currentTime + 8000
+                });
+            } else {
+                // STANDARD DREADNOUGHT BOSS
+                const bossHp = 5000 * difficultyMultiplier * (1 + (currentBossWave * 0.5));
+                enemiesRef.current.push({
+                    id: `BOSS-${Math.random()}`,
+                    type: EntityType.ENEMY_BOSS,
+                    pos: { x, y },
+                    vel: { x: 0, y: 0 },
+                    radius: 70, // Huge Sphere
+                    health: bossHp,
+                    maxHealth: bossHp,
+                    shield: bossHp * 0.25,
+                    maxShield: bossHp * 0.25,
+                    color: '#4ade80', // Green Theme
+                    level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
+                    isBoss: true,
+                    aiPhase: 0,
+                    lastHitTime: 0, lastShieldHitTime: 0,
+                    isCharging: false, isFiring: false, chargeProgress: 0,
+                    lastShotTime: currentTime + 2000 // Initial delay
+                });
+            }
             
             // Trigger Spawn Flash for Boss
             spawnSpawnFlash({ x, y });
@@ -195,7 +223,7 @@ export const useEnemies = (
 
         enemiesRef.current.push(createEnemy(type, x, y, gameMinutes, difficultyMultiplier, levelBonus));
 
-    }, [playerPosRef, difficulty, spawnSpawnFlash]);
+    }, [playerPosRef, difficulty, spawnSpawnFlash, createEnemy]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
         // --- SPAWNING LOGIC ---
@@ -231,7 +259,101 @@ export const useEnemies = (
             
             const dx = playerPos.x - e.pos.x, dy = playerPos.y - e.pos.y, d = Math.hypot(dx, dy);
 
-            if (e.type === EntityType.ENEMY_BOSS) {
+            if (e.type === EntityType.ENEMY_BOSS_DESTROYER) {
+                // --- DESTROYER BOSS LOGIC ---
+                // Movement: Attempts to maintain range ~600
+                const desiredDist = 600;
+                const bossSpeed = 35 * speedMult; // Very heavy/slow
+                
+                let moveX = 0; let moveY = 0;
+                if (d > desiredDist + 100) {
+                    moveX = (dx / d) * bossSpeed;
+                    moveY = (dy / d) * bossSpeed;
+                } else if (d < desiredDist - 100) {
+                    moveX = -(dx / d) * bossSpeed * 0.5;
+                    moveY = -(dy / d) * bossSpeed * 0.5;
+                } else {
+                    // Orbit slowly if in sweet spot
+                    moveX = -(dy / d) * bossSpeed * 0.5;
+                    moveY = (dx / d) * bossSpeed * 0.5;
+                }
+                e.vel.x = moveX; e.vel.y = moveY;
+                e.pos.x += e.vel.x * dt;
+                e.pos.y += e.vel.y * dt;
+
+                // Rotate to face player always
+                const targetAngle = Math.atan2(dy, dx);
+                let currentAngle = e.angle || 0;
+                let angleDiff = targetAngle - currentAngle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                e.angle = currentAngle + angleDiff * 1.5 * dt; // Slow rotation
+
+                // Weapon 1: Twin Plasma (Rapid)
+                if (time - (e.lastShotTime || 0) > 1200) {
+                    e.lastShotTime = time;
+                    const aim = e.angle || 0;
+                    const offset = 25;
+                    // Left Barrel
+                    enemyBulletsToSpawn.push({
+                        id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
+                        pos: { x: e.pos.x + Math.cos(aim + Math.PI/2) * offset, y: e.pos.y + Math.sin(aim + Math.PI/2) * offset },
+                        vel: { x: Math.cos(aim) * 450, y: Math.sin(aim) * 450 },
+                        radius: 8, health: 1, maxHealth: 1, color: '#ef4444',
+                        isElite: true // Extra damage
+                    });
+                    // Right Barrel
+                    enemyBulletsToSpawn.push({
+                        id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
+                        pos: { x: e.pos.x + Math.cos(aim - Math.PI/2) * offset, y: e.pos.y + Math.sin(aim - Math.PI/2) * offset },
+                        vel: { x: Math.cos(aim) * 450, y: Math.sin(aim) * 450 },
+                        radius: 8, health: 1, maxHealth: 1, color: '#ef4444',
+                        isElite: true
+                    });
+                }
+
+                // Weapon 2: Homing Missile Salvo (Slow CD)
+                if (time - (e.lastMissileTime || 0) > 4000) {
+                    e.lastMissileTime = time;
+                    const salvoCount = 4 + Math.floor(Math.random() * 3);
+                    for(let i=0; i<salvoCount; i++) {
+                        const spread = (Math.random() - 0.5) * 1.5;
+                        const launchAngle = (e.angle || 0) + spread;
+                        enemyBulletsToSpawn.push({
+                            id: `MISSILE-${Math.random()}`, type: EntityType.ENEMY_BULLET,
+                            pos: { x: e.pos.x, y: e.pos.y },
+                            vel: { x: Math.cos(launchAngle) * 200, y: Math.sin(launchAngle) * 200 }, // Start slow
+                            radius: 10, health: 1, maxHealth: 1, color: '#f97316',
+                            isHoming: true, // Special Flag
+                            turnRate: 1.8,
+                            isElite: true
+                        });
+                    }
+                }
+
+                // Ability: Spawn Kamikaze Drones
+                if (time - (e.lastSpawnTime || 0) > 8000) {
+                    e.lastSpawnTime = time;
+                    spawnSpawnFlash(e.pos);
+                    const droneCount = 2 + Math.floor(Math.random() * 3);
+                    for(let i=0; i<droneCount; i++) {
+                        const gameMinutes = gameTime / 60;
+                        const diffMult = (1 + (gameMinutes * 0.4)) * difficulty.statMultiplier;
+                        const drone = createEnemy(
+                            EntityType.ENEMY_KAMIKAZE, 
+                            e.pos.x + (Math.random()-0.5)*50, 
+                            e.pos.y + (Math.random()-0.5)*50, 
+                            gameMinutes, diffMult, difficulty.enemyLevelBonus, false, false
+                        );
+                        // Eject them outwards
+                        const ejectAngle = (e.angle || 0) + Math.PI + (Math.random()-0.5);
+                        drone.vel.x = Math.cos(ejectAngle) * 300;
+                        drone.vel.y = Math.sin(ejectAngle) * 300;
+                        nextEnemies.push(drone);
+                    }
+                }
+
+            } else if (e.type === EntityType.ENEMY_BOSS) {
                 const bossSpeed = 40 * speedMult; 
                 if (d > 400 && !e.isFiring) {
                     e.vel.x = (dx / d) * bossSpeed;
@@ -425,7 +547,7 @@ export const useEnemies = (
 
         enemiesRef.current = nextEnemies;
         return { enemyBulletsToSpawn };
-    }, [spawnEnemy, playerPosRef, difficulty]);
+    }, [spawnEnemy, playerPosRef, difficulty, createEnemy]);
 
     return { enemiesRef, initEnemies, updateEnemies };
 };
