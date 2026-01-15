@@ -120,14 +120,18 @@ export const useEnemies = (
     }, [difficulty, playerPosRef, spawnSpawnFlash]);
 
     // Manual Boss Spawner for Debug Mode reuse
-    const spawnBoss = useCallback((type: EntityType, difficultyMultiplier: number, levelBonus: number, currentTime: number) => {
+    const spawnBoss = useCallback((type: EntityType, difficultyMultiplier: number, levelBonus: number, currentTime: number, waveIndex: number = 0) => {
         const a = Math.random() * Math.PI * 2;
         const d = 1100;
         const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
         const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
         
+        // Boss Scaling: Quadratic scaling based on wave number to keep up with player power
+        // Applied to ALL boss types
+        const waveScaling = 1 + (waveIndex * 0.5) + (Math.pow(waveIndex, 2) * 0.3);
+
         if (type === EntityType.ENEMY_BOSS_DESTROYER) {
-            const bossHp = 4000 * difficultyMultiplier;
+            const bossHp = 4000 * difficultyMultiplier * waveScaling;
             enemiesRef.current.push({
                 id: `BOSS-DEST-${Math.random()}`,
                 type: EntityType.ENEMY_BOSS_DESTROYER,
@@ -135,7 +139,7 @@ export const useEnemies = (
                 vel: { x: 0, y: 0 },
                 radius: 75,
                 health: bossHp, maxHealth: bossHp,
-                shield: bossHp * 0.4, maxShield: bossHp * 0.4,
+                shield: bossHp * 0.6, maxShield: bossHp * 0.6, // Buffed shield to 60% (was 40%)
                 color: '#334155',
                 level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
                 isBoss: true,
@@ -147,7 +151,7 @@ export const useEnemies = (
                 lastSpawnTime: currentTime + 8000
             });
         } else {
-            const bossHp = 5000 * difficultyMultiplier;
+            const bossHp = 5000 * difficultyMultiplier * waveScaling;
             enemiesRef.current.push({
                 id: `BOSS-${Math.random()}`,
                 type: EntityType.ENEMY_BOSS,
@@ -155,7 +159,7 @@ export const useEnemies = (
                 vel: { x: 0, y: 0 },
                 radius: 70,
                 health: bossHp, maxHealth: bossHp,
-                shield: bossHp * 0.25, maxShield: bossHp * 0.25,
+                shield: bossHp * 0.4, maxShield: bossHp * 0.4, 
                 color: '#4ade80',
                 level: Math.floor(difficultyMultiplier) + 5 + levelBonus,
                 isBoss: true,
@@ -172,7 +176,8 @@ export const useEnemies = (
         const gameMinutes = gameTime / 60;
         
         // 1. Difficulty Scaling (Time + Selected Mode)
-        const difficultyMultiplier = (1 + (gameMinutes * 0.4) + (Math.pow(gameMinutes, 1.5) * 0.1)) * difficulty.statMultiplier;
+        // Gentler early game curve (0.25 linear), harsh late game (pow 1.5)
+        const difficultyMultiplier = (1 + (gameMinutes * 0.25) + (Math.pow(gameMinutes, 1.5) * 0.08)) * difficulty.statMultiplier;
         const levelBonus = difficulty.enemyLevelBonus;
 
         // --- BOSS SPAWNING LOGIC ---
@@ -186,9 +191,10 @@ export const useEnemies = (
             const isDestroyer = Math.random() < 0.35;
             spawnBoss(
                 isDestroyer ? EntityType.ENEMY_BOSS_DESTROYER : EntityType.ENEMY_BOSS,
-                difficultyMultiplier * (1 + (currentBossWave * 0.5)),
+                difficultyMultiplier,
                 levelBonus,
-                currentTime
+                currentTime,
+                currentBossWave // Pass wave index for extra scaling
             );
             return;
         }
@@ -197,29 +203,21 @@ export const useEnemies = (
         const roll = Math.random();
         
         // KAMIKAZE WAVE LOGIC (Throttled)
-        // Only potential after 45s
-        // Must be at least 20s since last kamikaze wave
         if (gameTime > 45 && roll > 0.93 && (gameTime - lastKamikazeTimeRef.current > 20)) {
             lastKamikazeTimeRef.current = gameTime;
             
-            // Reduced spawn count: 2-4 drones (was 3-5)
             const spawnCount = 2 + Math.floor(Math.random() * 3); 
             const angle = Math.random() * Math.PI * 2;
-            
-            // Increased Spawn Distance: 1200 - 1600
             const dist = 1200 + Math.random() * 400;
-            
             const baseX = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(angle) * dist));
             const baseY = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(angle) * dist));
 
             const isEliteWave = Math.random() < 0.2; 
 
             if (isEliteWave) {
-                 // Single Elite
                  const e = createEnemy(EntityType.ENEMY_KAMIKAZE, baseX, baseY, gameMinutes, difficultyMultiplier, levelBonus, true, false);
                  enemiesRef.current.push(e);
             } else {
-                // Swarm
                 for (let i = 0; i < spawnCount; i++) {
                     const offsetX = (Math.random() - 0.5) * 100;
                     const offsetY = (Math.random() - 0.5) * 100;
@@ -231,8 +229,16 @@ export const useEnemies = (
         }
 
         let type = EntityType.ENEMY_SCOUT;
-        if (roll > 0.75 && gameTime > 60) type = EntityType.ENEMY_LASER_SCOUT;
-        else if (roll > 0.60) type = EntityType.ENEMY_STRIKER;
+        
+        // LASER SCOUT LOGIC (Uncapped)
+        // Starts after 90s. 
+        // 15% chance to spawn a Sniper instead of a Scout/Striker.
+        if (roll > 0.85 && gameTime > 90) {
+            type = EntityType.ENEMY_LASER_SCOUT;
+        }
+        else if (roll > 0.65) {
+            type = EntityType.ENEMY_STRIKER;
+        }
 
         const a = Math.random() * Math.PI * 2;
         const d = 1000 + Math.random() * 400; 
@@ -260,7 +266,10 @@ export const useEnemies = (
                 // SPAWN PHASE
                 const isRushHour = timeInCycle > (waveDuration - 15); // Last 15s is hectic
                 
-                let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
+                // Gentler Spawn Ramp-up
+                // Starts at 1.5s delay, decreases slower
+                let spawnDelay = Math.max(0.2, 1.5 - (gameTime / 400));
+                
                 if (isRushHour) spawnDelay /= 2.5;
 
                 spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
