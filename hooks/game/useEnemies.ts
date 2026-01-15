@@ -14,12 +14,16 @@ export const useEnemies = (
     const spawnTimerRef = useRef(0);
     const lastBossWaveRef = useRef(0); // Track which boss wave we are on
     const debugRespawnTimerRef = useRef(0); // Cooldown for respawning in debug mode
+    
+    // Wave Management
+    const lastKamikazeTimeRef = useRef(0); // Cooldown for Kamikaze waves
 
     const initEnemies = useCallback(() => {
         enemiesRef.current = [];
         spawnTimerRef.current = 0;
         lastBossWaveRef.current = 0;
         debugRespawnTimerRef.current = 0;
+        lastKamikazeTimeRef.current = 0;
 
         // In DEBUG mode, do not spawn initial asteroid belt. Keep field clean.
         if (gameMode === GameMode.STANDARD) {
@@ -192,13 +196,17 @@ export const useEnemies = (
         // 2. Normal Enemy Type Roll
         const roll = Math.random();
         
-        // 7% Chance for Kamikaze Wave (starts at 45s) - Reduced from 10% / 30s
-        if (gameTime > 45 && roll > 0.93) {
-            // KAMIKAZE SPAWN
-            const spawnCount = 3 + Math.floor(Math.random() * 3); // 3-5 drones
+        // KAMIKAZE WAVE LOGIC (Throttled)
+        // Only potential after 45s
+        // Must be at least 20s since last kamikaze wave
+        if (gameTime > 45 && roll > 0.93 && (gameTime - lastKamikazeTimeRef.current > 20)) {
+            lastKamikazeTimeRef.current = gameTime;
+            
+            // Reduced spawn count: 2-4 drones (was 3-5)
+            const spawnCount = 2 + Math.floor(Math.random() * 3); 
             const angle = Math.random() * Math.PI * 2;
             
-            // Increased Spawn Distance: 1200 - 1600 (was 900 - 1200)
+            // Increased Spawn Distance: 1200 - 1600
             const dist = 1200 + Math.random() * 400;
             
             const baseX = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(angle) * dist));
@@ -219,7 +227,7 @@ export const useEnemies = (
                     enemiesRef.current.push(e);
                 }
             }
-            return;
+            return; // Skip normal spawn this tick
         }
 
         let type = EntityType.ENEMY_SCOUT;
@@ -240,21 +248,44 @@ export const useEnemies = (
         // --- GAME MODE BRANCHING ---
         
         if (gameMode === GameMode.STANDARD) {
-            // STANDARD MODE: Time-based waves
-            const cycleTime = 120;
-            const rushDuration = 20;
+            // STANDARD MODE: Wave Cycle with Lulls
+            const waveDuration = 45; // 45s Fighting
+            const lullDuration = 10; // 10s Resting
+            const cycleTime = waveDuration + lullDuration;
             const timeInCycle = gameTime % cycleTime;
-            const isRushHour = timeInCycle > (cycleTime - rushDuration);
             
-            let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
-            if (isRushHour) spawnDelay /= 3;
+            const isLull = timeInCycle > waveDuration;
+            
+            if (!isLull) {
+                // SPAWN PHASE
+                const isRushHour = timeInCycle > (waveDuration - 15); // Last 15s is hectic
+                
+                let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
+                if (isRushHour) spawnDelay /= 2.5;
 
-            spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
+                spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
 
-            spawnTimerRef.current += dt;
-            if (spawnTimerRef.current > spawnDelay) {
-                spawnEnemy(gameTime, time);
-                spawnTimerRef.current = 0;
+                spawnTimerRef.current += dt;
+                if (spawnTimerRef.current > spawnDelay) {
+                    spawnEnemy(gameTime, time);
+                    spawnTimerRef.current = 0;
+                }
+            } else {
+                // LULL PHASE
+                // Very rare spawn check (maybe just asteroid or scout occasionally)
+                spawnTimerRef.current += dt;
+                if (spawnTimerRef.current > 3.0) { // Very slow spawn
+                    // Small chance to spawn something minor
+                    if (Math.random() < 0.5) {
+                         const difficultyMultiplier = (1 + (gameTime/60 * 0.4)) * difficulty.statMultiplier;
+                         const a = Math.random() * Math.PI * 2;
+                         const d = 1200;
+                         const x = playerPosRef.current.x + Math.cos(a) * d;
+                         const y = playerPosRef.current.y + Math.sin(a) * d;
+                         enemiesRef.current.push(createEnemy(EntityType.ENEMY_SCOUT, x, y, gameTime/60, difficultyMultiplier, difficulty.enemyLevelBonus));
+                    }
+                    spawnTimerRef.current = 0;
+                }
             }
         } 
         else if (gameMode === GameMode.DEBUG && debugConfig) {
@@ -306,7 +337,7 @@ export const useEnemies = (
             const dx = playerPos.x - e.pos.x, dy = playerPos.y - e.pos.y, d = Math.hypot(dx, dy);
 
             if (e.type === EntityType.ENEMY_BOSS_DESTROYER) {
-                // --- DESTROYER BOSS LOGIC ---
+                // ... (Boss logic unchanged) ...
                 // Movement: Attempts to maintain range ~600
                 const desiredDist = 600;
                 const bossSpeed = 35 * speedMult; // Very heavy/slow
@@ -340,28 +371,25 @@ export const useEnemies = (
                     e.lastShotTime = time;
                     const aim = e.angle || 0;
                     const offset = 25;
-                    // Improved Visuals for Boss Plasma (Bigger, Different Color)
-                    const plasmaColor = '#f43f5e'; // Rose-500 (Hot Pink/Red)
-                    const plasmaRadius = 12; // Bigger than normal (8)
+                    const plasmaColor = '#f43f5e'; 
+                    const plasmaRadius = 12; 
                     const plasmaSpeed = 480; 
 
-                    // Left Barrel
                     enemyBulletsToSpawn.push({
                         id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
                         pos: { x: e.pos.x + Math.cos(aim + Math.PI/2) * offset, y: e.pos.y + Math.sin(aim + Math.PI/2) * offset },
                         vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
                         radius: plasmaRadius, health: 1, maxHealth: 1, color: plasmaColor,
-                        isElite: true, // Extra damage
-                        level: e.level // INHERIT BOSS LEVEL
+                        isElite: true, 
+                        level: e.level 
                     });
-                    // Right Barrel
                     enemyBulletsToSpawn.push({
                         id: Math.random().toString(), type: EntityType.ENEMY_BULLET,
                         pos: { x: e.pos.x + Math.cos(aim - Math.PI/2) * offset, y: e.pos.y + Math.sin(aim - Math.PI/2) * offset },
                         vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
                         radius: plasmaRadius, health: 1, maxHealth: 1, color: plasmaColor,
                         isElite: true,
-                        level: e.level // INHERIT BOSS LEVEL
+                        level: e.level 
                     });
                 }
 
@@ -382,7 +410,7 @@ export const useEnemies = (
                             duration: 0, // Track life
                             maxDuration: 4.0, // Limit lifespan to 4s
                             isElite: true,
-                            level: e.level // INHERIT BOSS LEVEL
+                            level: e.level 
                         });
                     }
                 }
@@ -392,16 +420,10 @@ export const useEnemies = (
                     e.lastSpawnTime = time;
                     spawnSpawnFlash(e.pos);
                     const droneCount = 2 + Math.floor(Math.random() * 3);
-                    
-                    // NEW: Calculate multiplier to force drones to match boss level
-                    // createEnemy level logic: Math.floor(difficultyMultiplier) + levelBonus
-                    // We want result to be e.level. So mult = e.level - levelBonus
                     const bossLvl = e.level || 1;
                     const targetMult = Math.max(0.5, bossLvl - difficulty.enemyLevelBonus);
 
                     for(let i=0; i<droneCount; i++) {
-                        // We use gameTime/60 just for non-stats logic (like shield rolls), 
-                        // but pass strict targetMult for stats
                         const drone = createEnemy(
                             EntityType.ENEMY_KAMIKAZE, 
                             e.pos.x + (Math.random()-0.5)*50, 
@@ -412,7 +434,6 @@ export const useEnemies = (
                             false, 
                             false
                         );
-                        // Eject them outwards
                         const ejectAngle = (e.angle || 0) + Math.PI + (Math.random()-0.5);
                         drone.vel.x = Math.cos(ejectAngle) * 300;
                         drone.vel.y = Math.sin(ejectAngle) * 300;
@@ -421,6 +442,7 @@ export const useEnemies = (
                 }
 
             } else if (e.type === EntityType.ENEMY_BOSS) {
+                // ... (Standard Boss logic unchanged) ...
                 const bossSpeed = 40 * speedMult; 
                 if (d > 400 && !e.isFiring) {
                     e.vel.x = (dx / d) * bossSpeed;
@@ -449,7 +471,7 @@ export const useEnemies = (
                     }
                 }
                 if (e.isFiring) {
-                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.25; // Adjusted to ~4s fire duration (was 0.15)
+                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.25; 
                     if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                 }
 
@@ -477,58 +499,47 @@ export const useEnemies = (
                 });
 
                 if (e.type === EntityType.ENEMY_KAMIKAZE) {
-                     // NEW LOGIC: Inertia-based Drift
+                     // ... (Kamikaze Movement unchanged) ...
                      const currentSpeed = Math.hypot(e.vel.x, e.vel.y);
                      const targetDirX = dx / d;
                      const targetDirY = dy / d;
 
-                     // Determine new direction (Steering)
-                     // If speed is 0 (just spawned), align instantly to create explosive start
                      let newDirX = targetDirX;
                      let newDirY = targetDirY;
 
                      if (currentSpeed > 50) {
-                         // Turning Inertia: How fast can they change vector?
-                         const turnRate = 2.5 * dt; // Adjusts how "drifty" they are
+                         const turnRate = 2.5 * dt; 
                          const normVelX = e.vel.x / currentSpeed;
                          const normVelY = e.vel.y / currentSpeed;
                          
                          newDirX = normVelX + (targetDirX - normVelX) * turnRate;
                          newDirY = normVelY + (targetDirY - normVelY) * turnRate;
                          
-                         // Re-normalize
                          const len = Math.hypot(newDirX, newDirY);
                          newDirX /= len;
                          newDirY /= len;
                      }
 
-                     // Speed Logic
-                     // Check alignment with target to determine acceleration
                      const alignment = (newDirX * targetDirX) + (newDirY * targetDirY);
                      let newSpeed = currentSpeed;
 
                      if (currentSpeed < 50) {
-                         // Explosive Launch
                          newSpeed = baseSpd;
                      } else if (alignment > 0.9) {
-                         // Aligned: Accelerate SLOWLY
-                         // WAS 120, increased to 250 for snappier recovery
                          const acceleration = 250 * dt; 
                          newSpeed = Math.min(baseSpd, currentSpeed + acceleration);
                      } else {
-                         // Turning / Drifting: Decelerate (Scrub speed)
                          newSpeed = Math.max(100, currentSpeed * 0.97); 
                      }
                      
-                     // Apply Velocity
                      e.vel.x = newDirX * newSpeed;
                      e.vel.y = newDirY * newSpeed;
 
-                     // Add separation forces (external influence)
                      e.vel.x += sepX * dt * 5;
                      e.vel.y += sepY * dt * 5;
 
                 } else if (e.type === EntityType.ENEMY_LASER_SCOUT) {
+                    // ... (Laser Scout Movement unchanged) ...
                     const optimalRange = 600; 
                     const orbitDir = (e.aiSeed || 0) > 0.5 ? 1 : -1;
                     let moveX = 0; let moveY = 0;
@@ -560,7 +571,7 @@ export const useEnemies = (
                         if (e.chargeProgress >= 1.0) { e.isCharging = false; e.isFiring = true; e.chargeProgress = 0; e.lastShotTime = time; }
                     }
                     if (e.isFiring) {
-                        e.chargeProgress = (e.chargeProgress || 0) + dt * 0.8; // Slowed down: ~1.25s fire duration
+                        e.chargeProgress = (e.chargeProgress || 0) + dt * 0.8; 
                         if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                     }
 

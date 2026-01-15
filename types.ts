@@ -66,6 +66,11 @@ export enum WeaponType {
   SWARM_LAUNCHER = 'SWARM_LAUNCHER'
 }
 
+export enum ModuleType {
+  NONE = 'NONE',
+  AFTERBURNER = 'AFTERBURNER'
+}
+
 export enum ShipType {
   INTERCEPTOR = 'INTERCEPTOR',
   CRUISER = 'CRUISER',
@@ -165,6 +170,7 @@ export interface MetaUpgrade {
   costBase: number;
   costFactor: number; 
   weaponType?: WeaponType;
+  moduleType?: ModuleType;
 }
 
 export interface ShipConfig {
@@ -221,6 +227,14 @@ export interface PlayerStats {
   swarmCount: number;
   swarmAgility: number; // Turn speed in radians per sec
   
+  // Module Stats
+  moduleType: ModuleType;
+  moduleCooldownMax: number;
+  moduleDuration: number;
+  modulePower: number; // e.g. Speed multiplier
+  moduleReadyTime: number; // Timestamp when active available
+  moduleActiveUntil: number; // Timestamp when effect ends
+
   // Generic Active Buffs System
   // Key: PowerUpId, Value: Expiration Timestamp (ms)
   activeBuffs: Record<string, number>;
@@ -249,6 +263,10 @@ export interface PersistentData {
   equippedWeapon: WeaponType;
   unlockedWeapons: WeaponType[];
   
+  // Modules
+  equippedModule: ModuleType;
+  unlockedModules: ModuleType[];
+
   // RPG Progression Fields
   currentLevel: number;
   currentXp: number;

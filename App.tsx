@@ -1,5 +1,5 @@
 
-import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty, DebugConfig, GameMode } from './types';
+import { GameState, PersistentData, ShipType, WeaponType, ControlScheme, HighScoreEntry, GameDifficulty, DebugConfig, GameMode, ModuleType } from './types';
 import { DIFFICULTY_CONFIGS, DEFAULT_ZOOM } from './constants';
 import Joystick from './components/Joystick';
 import HUD from './components/HUD';
@@ -28,6 +28,8 @@ const DEFAULT_DATA: PersistentData = {
   equippedShip: ShipType.INTERCEPTOR,
   equippedWeapon: WeaponType.PLASMA,
   unlockedWeapons: [WeaponType.PLASMA],
+  equippedModule: ModuleType.NONE,
+  unlockedModules: [],
   currentLevel: 1,
   currentXp: 0,
   xpToNextLevel: 250,
@@ -85,6 +87,12 @@ const App: React.FC = () => {
       }
     }
     
+    // Migration for Modules
+    if (data.equippedModule === undefined) {
+        data.equippedModule = ModuleType.NONE;
+        data.unlockedModules = [];
+    }
+
     // Migration: Convert old number[] scores to HighScoreEntry[] objects
     if (!data.highScores) {
         data.highScores = [];
@@ -112,7 +120,7 @@ const App: React.FC = () => {
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
     enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef,
-    triggerManualLevelUp, onUpgradeSelected
+    triggerManualLevelUp, onUpgradeSelected, activateModule
   } = useGameLogic(
     gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty, gameMode, debugConfig
   );
@@ -126,8 +134,6 @@ const App: React.FC = () => {
     localStorage.setItem('stellar_survivor_v11_rpg', JSON.stringify(persistentData));
   }, [persistentData]);
 
-  const { spawnExplosion } = useGameLogic(gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty, gameMode, debugConfig).particlesRef.current.length > 0 ? { spawnExplosion: () => {} } : { spawnExplosion: (p, r, c) => {} };
-  
   // Handle Death Transition
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
@@ -297,6 +303,11 @@ const App: React.FC = () => {
         if (keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown')) dy += 1;
         if (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft')) dx -= 1;
         if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
+        
+        // Also map Spacebar to Module Activation
+        if (keysPressed.current.has('Space')) {
+            activateModule();
+        }
         
         const len = Math.sqrt(dx*dx + dy*dy);
         if (len > 0) {
@@ -520,7 +531,7 @@ return (
 
     {gameState === GameState.START && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-lg z-[200]">
-        <h1 className="text-cyan-400 text-7xl font-black italic uppercase mb-2 drop-shadow-[0_0_40px_rgba(6,182,212,0.9)] text-center">Void Arena</h1>
+        <h1 className="text-cyan-400 text-5xl font-black italic uppercase mb-2 drop-shadow-[0_0_40px_rgba(6,182,212,0.9)] text-center">Void Arena</h1>
         
         {bestScore > 0 && (
             <div className="mb-8 px-4 py-1 rounded bg-slate-900/50 border border-slate-700 text-amber-400 font-bold uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(251,191,36,0.3)]">
@@ -584,6 +595,11 @@ return (
                 <i className="fa-solid fa-book" /> MANUAL
               </button>
           </div>
+          
+          <button onClick={() => setShowCheats(true)} className="py-2 bg-transparent text-red-900/50 font-bold text-xs uppercase tracking-widest hover:text-red-500 hover:bg-slate-900 rounded-lg transition-all">
+             <i className="fa-solid fa-code mr-2" />
+             Access Cheats
+          </button>
         </div>
 
         <div className="mt-12 text-amber-400 font-black text-xl flex items-center gap-2">
@@ -595,20 +611,20 @@ return (
         </div>
 
         <div className="absolute bottom-6 text-slate-600 font-bold text-xs tracking-widest opacity-50">
-          v0.1.0
+          v0.2.0
         </div>
       </div>
     )}
 
     {isPaused && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-2xl z-[250]">
-        <h2 className="text-white text-6xl font-black italic uppercase mb-12">Paused</h2>
+        <h2 className="text-white text-5xl font-black italic uppercase mb-12">Paused</h2>
         <div className="flex flex-col gap-4 w-full max-w-xs px-6">
           <button onClick={() => setIsPaused(false)} className="py-6 bg-cyan-500 text-slate-950 font-black text-2xl rounded-2xl active:scale-95 shadow-xl">RESUME</button>
           
           <div className="grid grid-cols-2 gap-4">
             <button onClick={() => { setShowGarage(true); setIsPaused(false); }} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">GARAGE</button>
-            <button onClick={() => setShowStats(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">SHIP STATUS</button>
+            <button onClick={() => setShowStats(true)} className="py-4 bg-slate-800 text-white font-black text-xl rounded-2xl border border-slate-700 active:scale-95">STATUS</button>
           </div>
 
            <div className="grid grid-cols-2 gap-4">
@@ -659,7 +675,7 @@ return (
     {/* GAMEOVER SCREEN with Combat Log */}
     {gameState === GameState.GAMEOVER && (
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-2xl z-[200] p-6 animate-in fade-in duration-500">
-        <h2 className="text-white text-6xl font-black uppercase mb-6 italic tracking-tighter text-center">Mission Failed</h2>
+        <h2 className="text-white text-5xl font-black uppercase mb-6 italic tracking-tighter text-center">Mission Failed</h2>
         
         <div className="flex gap-8 w-full max-w-4xl justify-center items-start">
             
@@ -790,6 +806,7 @@ return (
             onShowUpgrades={() => setShowUpgradesList(true)}
             onOpenGarage={() => setShowGarage(true)}
             onLevelClick={triggerManualLevelUp}
+            onActivateModule={activateModule}
             />
         )}
         

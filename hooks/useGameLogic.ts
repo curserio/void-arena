@@ -43,7 +43,7 @@ export const useGameLogic = (
   const {
     stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef,
     lastPlayerHitTimeRef, initPlayer, updatePlayer, handleShieldRegen,
-    addUpgrade, triggerPlayerHit, syncWithPersistentData
+    addUpgrade, triggerPlayerHit, syncWithPersistentData, activateModule
   } = usePlayer(gameState, persistentData, isPaused);
 
   const { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles } = useParticles();
@@ -278,6 +278,7 @@ export const useGameLogic = (
     enemiesRef, projectilesRef, pickupsRef, particlesRef,
     runMetricsRef,
     triggerManualLevelUp,
-    onUpgradeSelected
+    onUpgradeSelected,
+    activateModule
   };
 };

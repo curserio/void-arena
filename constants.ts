@@ -1,5 +1,5 @@
 
-import { PlayerStats, Upgrade, WeaponType, ShipType, MetaUpgrade, ShipConfig, GameDifficulty, DifficultyConfig, UpgradeType } from './types';
+import { PlayerStats, Upgrade, WeaponType, ShipType, MetaUpgrade, ShipConfig, GameDifficulty, DifficultyConfig, UpgradeType, ModuleType } from './types';
 
 export const WORLD_SIZE = 4000;
 export const CAMERA_LERP = 0.08;
@@ -74,6 +74,11 @@ export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: n
   [WeaponType.SWARM_LAUNCHER]: { fireRate: 0.5, damage: 75, bulletSpeed: 550 } // Damage buffed 65 -> 75
 };
 
+export const MODULE_PRICES: Record<ModuleType, number> = {
+    [ModuleType.NONE]: 0,
+    [ModuleType.AFTERBURNER]: 10000,
+};
+
 export const INITIAL_STATS: PlayerStats = {
   maxHealth: 100,
   currentHealth: 100,
@@ -107,6 +112,14 @@ export const INITIAL_STATS: PlayerStats = {
   swarmCount: 3, // Base burst is 3
   swarmAgility: 1.5, // Reduced base agility (was 3.0)
   
+  // Module
+  moduleType: ModuleType.NONE,
+  moduleCooldownMax: 0,
+  moduleDuration: 0,
+  modulePower: 0,
+  moduleReadyTime: 0,
+  moduleActiveUntil: 0,
+
   // Refactored Buffer System
   activeBuffs: {},
 
@@ -407,6 +420,11 @@ export const META_UPGRADES: MetaUpgrade[] = [
   { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 100, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER },
   // Speed Upgrade Removed
   { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: 'Reduces cooldown between salvos.', icon: 'fa-clock', maxLevel: 50, costBase: 3000, costFactor: 1.25, weaponType: WeaponType.SWARM_LAUNCHER },
+
+  // --- MODULE: AFTERBURNER ---
+  { id: 'meta_ab_dur', name: 'Fuel Injectors', description: '+1s Duration.', icon: 'fa-stopwatch', maxLevel: 10, costBase: 2000, costFactor: 1.3, moduleType: ModuleType.AFTERBURNER },
+  { id: 'meta_ab_cd', name: 'Coolant Flush', description: '-2s Cooldown.', icon: 'fa-snowflake', maxLevel: 15, costBase: 3000, costFactor: 1.35, moduleType: ModuleType.AFTERBURNER },
+  { id: 'meta_ab_spd', name: 'Turbine Overclock', description: '+10% Speed Boost.', icon: 'fa-forward', maxLevel: 10, costBase: 2500, costFactor: 1.4, moduleType: ModuleType.AFTERBURNER },
 ];
 
 export const SHIPS: ShipConfig[] = [

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PlayerStats, ShipType } from '../types';
+import { PlayerStats, ShipType, ModuleType } from '../types';
 import { SHIPS } from '../constants';
 import { POWER_UPS, isBuffActive } from '../systems/PowerUpSystem';
 
@@ -13,7 +13,8 @@ interface HUDProps {
   onPause: () => void;
   onShowUpgrades: () => void;
   onOpenGarage: () => void;
-  onLevelClick?: () => void; // New callback
+  onLevelClick?: () => void;
+  onActivateModule?: () => void;
 }
 
 interface DamagePopup {
@@ -84,7 +85,7 @@ const PowerUpIndicator: React.FC<{
   );
 };
 
-const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage, onLevelClick }) => {
+const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage, onLevelClick, onActivateModule }) => {
   const healthPercent = Math.max(0, (stats.currentHealth / stats.maxHealth) * 100);
   const shieldPercent = Math.max(0, (stats.currentShield / stats.maxShield) * 100);
   const xpPercent = Math.max(0, Math.min(100, (stats.xp / stats.xpToNextLevel) * 100));
@@ -121,6 +122,41 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
           setPopups(prev => prev.filter(p => p.id !== id));
       }, 800);
   };
+
+  // Module Cooldown Logic
+  const [moduleState, setModuleState] = useState({ ready: false, progress: 0, active: false, timeLeft: 0 });
+  useEffect(() => {
+      const update = () => {
+          const now = performance.now();
+          if (stats.moduleType === ModuleType.NONE) {
+              setModuleState({ ready: false, progress: 0, active: false, timeLeft: 0 });
+              return;
+          }
+          
+          const isActive = now < stats.moduleActiveUntil;
+          const isReady = now >= stats.moduleReadyTime;
+          
+          let progress = 0;
+          let timeLeft = 0;
+
+          if (isActive) {
+              const remaining = stats.moduleActiveUntil - now;
+              progress = remaining / stats.moduleDuration;
+              timeLeft = remaining;
+          } else if (!isReady) {
+              const remaining = stats.moduleReadyTime - now;
+              progress = 1 - (remaining / stats.moduleCooldownMax);
+          } else {
+              progress = 1;
+          }
+          
+          setModuleState({ ready: isReady, progress, active: isActive, timeLeft });
+      };
+      const interval = setInterval(update, 50);
+      update();
+      return () => clearInterval(interval);
+  }, [stats.moduleType, stats.moduleReadyTime, stats.moduleActiveUntil, stats.moduleDuration, stats.moduleCooldownMax]);
+
 
   return (
     <>
@@ -204,6 +240,62 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
           </div>
         </div>
       </div>
+
+      {/* MODULE BUTTON (Left Side, above Joystick area) */}
+      {stats.moduleType !== ModuleType.NONE && (
+          <div className="fixed bottom-32 left-6 pointer-events-auto z-[60]">
+              <button 
+                  onClick={onActivateModule}
+                  disabled={!moduleState.ready && !moduleState.active}
+                  className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95 overflow-hidden
+                      ${moduleState.active 
+                          ? 'bg-fuchsia-600 animate-pulse ring-2 ring-white' 
+                          : moduleState.ready 
+                              ? 'bg-slate-900 border-2 border-fuchsia-500 text-fuchsia-400' 
+                              : 'bg-slate-900 border-2 border-slate-700 text-slate-600'}`}
+              >
+                  <i className={`fa-solid fa-forward-fast text-2xl z-10 ${moduleState.ready || moduleState.active ? 'text-white' : 'text-slate-600'}`} />
+                  
+                  {/* Charging Progress Ring */}
+                  {!moduleState.ready && !moduleState.active && (
+                      <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
+                          {/* Track */}
+                          <circle cx="32" cy="32" r="29" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+                          
+                          {/* Fill */}
+                          <circle 
+                              cx="32" cy="32" r="29" 
+                              fill="none" stroke="#d946ef" strokeWidth="3" 
+                              strokeOpacity="0.5"
+                              strokeDasharray={182.2} 
+                              strokeDashoffset={182.2 * (1 - moduleState.progress)}
+                              strokeLinecap="round"
+                          />
+                      </svg>
+                  )}
+
+                  {/* Active Duration Ring */}
+                  {moduleState.active && (
+                      <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
+                          <circle 
+                              cx="32" cy="32" r="29" 
+                              fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3"
+                              strokeDasharray={182.2} // 2 * PI * 29
+                              strokeDashoffset={182.2 * (1 - moduleState.progress)}
+                              strokeLinecap="round"
+                          />
+                      </svg>
+                  )}
+              </button>
+              <div className="mt-1 text-center">
+                  <span className="bg-slate-900/80 text-[9px] font-black uppercase text-fuchsia-400 px-2 py-0.5 rounded border border-fuchsia-500/30 shadow-lg">
+                      {moduleState.active 
+                        ? `${(moduleState.timeLeft / 1000).toFixed(1)}s` 
+                        : (moduleState.ready ? 'READY' : 'CHARGING')}
+                  </span>
+              </div>
+          </div>
+      )}
 
       {/* BOTTOM HUD BARS (XP removed, only Health/Shield) */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-lg flex flex-col gap-3 pointer-events-none">

@@ -1,6 +1,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType } from '../../types';
+import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType, ModuleType } from '../../types';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { isBuffActive } from '../../systems/PowerUpSystem';
 
@@ -23,6 +23,7 @@ export const usePlayer = (
     const calculateStats = useCallback((data: PersistentData) => {
         const shipConfig = SHIPS.find(s => s.type === data.equippedShip) || SHIPS[0];
         const weapon = data.equippedWeapon || WeaponType.PLASMA;
+        const module = data.equippedModule || ModuleType.NONE;
         const baseWStats = WEAPON_BASE_STATS[weapon];
 
         // Meta Levels
@@ -54,6 +55,10 @@ export const usePlayer = (
         const swarmDmgL = data.metaLevels['meta_swarm_dmg'] || 0;
         const swarmCdL = data.metaLevels['meta_swarm_cd'] || 0;
 
+        // Module Specific Metas (Afterburner)
+        const abDurL = data.metaLevels['meta_ab_dur'] || 0;
+        const abCdL = data.metaLevels['meta_ab_cd'] || 0;
+        const abSpdL = data.metaLevels['meta_ab_spd'] || 0;
 
         // Weapon Specific Metas
         let bCount = (shipConfig.baseStats.bulletCount || 1);
@@ -89,6 +94,17 @@ export const usePlayer = (
              fRate *= (1 + swarmCdL * 0.05); // CD reduction
         }
 
+        // Module Stats Calculation
+        let mDur = 0;
+        let mCd = 0;
+        let mPwr = 0;
+
+        if (module === ModuleType.AFTERBURNER) {
+            mDur = 10000 + (abDurL * 1000); // 10s base + 1s per level
+            mCd = Math.max(5000, 60000 - (abCdL * 2000)); // 60s base - 2s per level (min 5s)
+            mPwr = 2.0 * (1 + abSpdL * 0.10); // 2x base speed * upgrades
+        }
+
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
         const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.15);
         const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * (1 + regenL * 0.10);
@@ -116,6 +132,13 @@ export const usePlayer = (
             laserDuration: lDuration,
             swarmCount: sCount,
             swarmAgility: sAgility,
+            
+            moduleType: module,
+            moduleCooldownMax: mCd,
+            moduleDuration: mDur,
+            modulePower: mPwr,
+            moduleReadyTime: 0,
+            moduleActiveUntil: 0,
             
             critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
             critMultiplier: 1.5 + (critDmgL * 0.05),
@@ -170,6 +193,21 @@ export const usePlayer = (
         lastPlayerHitTimeRef.current = 0;
     }, [persistentData, calculateStats]);
 
+    const activateModule = useCallback(() => {
+        setStats(prev => {
+            const now = performance.now();
+            if (prev.moduleType === ModuleType.NONE) return prev;
+            if (now < prev.moduleReadyTime) return prev; // Cooldown not ready
+            if (now < prev.moduleActiveUntil) return prev; // Already active
+
+            return {
+                ...prev,
+                moduleActiveUntil: now + prev.moduleDuration,
+                moduleReadyTime: now + prev.moduleCooldownMax
+            };
+        });
+    }, []);
+
     const updatePlayer = useCallback((dt: number, time: number) => {
         if (gameState !== GameState.PLAYING || isPaused) {
              // Drifting when dying or paused (no input control)
@@ -182,8 +220,14 @@ export const usePlayer = (
         
         const pStats = statsRef.current;
         let moveSpeed = pStats.speed;
+        
+        // Speed Buffs
         if (isBuffActive(pStats, 'SPEED', time)) {
-             moveSpeed *= 1.5; // 50% Speed Boost
+             moveSpeed *= 1.5; 
+        }
+        // Module Boost
+        if (time < pStats.moduleActiveUntil) {
+            moveSpeed *= pStats.modulePower;
         }
 
         playerPosRef.current.x += joystickDirRef.current.x * moveSpeed * dt;
@@ -310,6 +354,10 @@ export const usePlayer = (
             rehydratedStats.credits = current.credits;
             rehydratedStats.activeBuffs = current.activeBuffs;
             rehydratedStats.combatLog = current.combatLog;
+            
+            // Restore Module State times to prevent reset exploit
+            rehydratedStats.moduleReadyTime = current.moduleReadyTime;
+            rehydratedStats.moduleActiveUntil = current.moduleActiveUntil;
 
             // 5. Apply the Health/Shield ratios to the NEW fully calculated Max values
             rehydratedStats.currentHealth = Math.min(rehydratedStats.maxHealth, rehydratedStats.maxHealth * hpRatio);
@@ -321,6 +369,7 @@ export const usePlayer = (
 
     return {
         stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef, lastPlayerHitTimeRef,
-        initPlayer, updatePlayer, handleShieldRegen, addUpgrade, triggerPlayerHit, syncWithPersistentData
+        initPlayer, updatePlayer, handleShieldRegen, addUpgrade, triggerPlayerHit, syncWithPersistentData,
+        activateModule
     };
 };

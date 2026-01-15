@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
-import { PersistentData, ShipConfig, MetaUpgrade, ShipType, WeaponType, PlayerStats } from '../types';
-import { SHIPS, META_UPGRADES, WEAPON_PRICES } from '../constants';
+import { PersistentData, ShipConfig, MetaUpgrade, ShipType, WeaponType, PlayerStats, ModuleType } from '../types';
+import { SHIPS, META_UPGRADES, WEAPON_PRICES, MODULE_PRICES } from '../constants';
 
 interface GarageMenuProps {
   data: PersistentData;
@@ -18,21 +18,21 @@ const formatCredits = (num: number) => {
 };
 
 const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, onUpdate, onApplyEffect }) => {
-  const [activeTab, setActiveTab] = useState<'SHIPS' | 'WEAPONS' | 'CORE'>('SHIPS');
+  const [activeTab, setActiveTab] = useState<'SHIPS' | 'WEAPONS' | 'MODULES' | 'CORE'>('SHIPS');
   
-  // Track collapsed state for weapons. Key = WeaponType string.
-  // Initialize with currently equipped weapon expanded.
-  const [expandedWeapons, setExpandedWeapons] = useState<Record<string, boolean>>(() => ({
+  // Track collapsed state for weapons/modules
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(() => ({
     [WeaponType.PLASMA]: data.equippedWeapon === WeaponType.PLASMA,
     [WeaponType.MISSILE]: data.equippedWeapon === WeaponType.MISSILE,
     [WeaponType.LASER]: data.equippedWeapon === WeaponType.LASER,
-    [WeaponType.SWARM_LAUNCHER]: data.equippedWeapon === WeaponType.SWARM_LAUNCHER
+    [WeaponType.SWARM_LAUNCHER]: data.equippedWeapon === WeaponType.SWARM_LAUNCHER,
+    [ModuleType.AFTERBURNER]: (data.equippedModule || ModuleType.NONE) === ModuleType.AFTERBURNER
   }));
 
   const totalCredits = useMemo(() => data.credits + sessionCredits, [data.credits, sessionCredits]);
 
-  const toggleWeapon = (w: WeaponType) => {
-    setExpandedWeapons(prev => ({ ...prev, [w]: !prev[w] }));
+  const toggleItem = (id: string) => {
+    setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const getUpgradeCost = (upgrade: MetaUpgrade, currentLevel: number) => {
@@ -66,8 +66,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
     const unlocked = (data.unlockedWeapons || [WeaponType.PLASMA]).includes(w);
     if (unlocked) { 
         onUpdate({ ...data, equippedWeapon: w }, 0);
-        // Also expand it when equipped
-        setExpandedWeapons(prev => ({ ...prev, [w]: true }));
+        setExpandedItems(prev => ({ ...prev, [w]: true }));
     } 
     else {
       const price = WEAPON_PRICES[w] || 0;
@@ -75,10 +74,27 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
         let spentFromSession = Math.min(sessionCredits, price);
         let newPersistentCredits = data.credits - (price - spentFromSession);
         onUpdate({ ...data, credits: newPersistentCredits, unlockedWeapons: [...(data.unlockedWeapons || [WeaponType.PLASMA]), w], equippedWeapon: w }, spentFromSession);
-        // Expand on unlock
-        setExpandedWeapons(prev => ({ ...prev, [w]: true }));
+        setExpandedItems(prev => ({ ...prev, [w]: true }));
       }
     }
+  };
+
+  const handleModuleAction = (m: ModuleType) => {
+      const unlocked = (data.unlockedModules || []).includes(m);
+      if (unlocked) {
+          // Toggle equip
+          const newEquipped = data.equippedModule === m ? ModuleType.NONE : m;
+          onUpdate({ ...data, equippedModule: newEquipped }, 0);
+          if (newEquipped === m) setExpandedItems(prev => ({ ...prev, [m]: true }));
+      } else {
+          const price = MODULE_PRICES[m] || 0;
+          if (totalCredits >= price) {
+              let spentFromSession = Math.min(sessionCredits, price);
+              let newPersistentCredits = data.credits - (price - spentFromSession);
+              onUpdate({ ...data, credits: newPersistentCredits, unlockedModules: [...(data.unlockedModules || []), m], equippedModule: m }, spentFromSession);
+              setExpandedItems(prev => ({ ...prev, [m]: true }));
+          }
+      }
   };
 
   const getWeaponIcon = (w: WeaponType) => {
@@ -111,31 +127,25 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex gap-2 border-b border-slate-700/50 pb-0">
-            <button 
-                onClick={() => setActiveTab('SHIPS')}
-                className={`px-6 py-3 rounded-t-xl font-black text-sm uppercase tracking-widest transition-all relative top-[1px]
-                    ${activeTab === 'SHIPS' ? 'bg-slate-950 text-cyan-400 border-x border-t border-slate-700' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
-            >
-                <i className="fa-solid fa-shuttle-space mr-2" />
-                Vessels
-            </button>
-            <button 
-                onClick={() => setActiveTab('WEAPONS')}
-                className={`px-6 py-3 rounded-t-xl font-black text-sm uppercase tracking-widest transition-all relative top-[1px]
-                    ${activeTab === 'WEAPONS' ? 'bg-slate-950 text-amber-400 border-x border-t border-slate-700' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
-            >
-                <i className="fa-solid fa-crosshairs mr-2" />
-                Armory
-            </button>
-            <button 
-                onClick={() => setActiveTab('CORE')}
-                className={`px-6 py-3 rounded-t-xl font-black text-sm uppercase tracking-widest transition-all relative top-[1px]
-                    ${activeTab === 'CORE' ? 'bg-slate-950 text-emerald-400 border-x border-t border-slate-700' : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
-            >
-                <i className="fa-solid fa-microchip mr-2" />
-                Avionics
-            </button>
+        <div className="flex gap-2 border-b border-slate-700/50 pb-0 overflow-x-auto">
+            {[
+                { id: 'SHIPS', label: 'Vessels', icon: 'fa-shuttle-space', color: 'cyan' },
+                { id: 'WEAPONS', label: 'Armory', icon: 'fa-crosshairs', color: 'amber' },
+                { id: 'MODULES', label: 'Modules', icon: 'fa-puzzle-piece', color: 'fuchsia' },
+                { id: 'CORE', label: 'Avionics', icon: 'fa-microchip', color: 'emerald' }
+            ].map(tab => (
+                <button 
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`px-6 py-3 rounded-t-xl font-black text-sm uppercase tracking-widest transition-all relative top-[1px] whitespace-nowrap
+                        ${activeTab === tab.id 
+                            ? `bg-slate-950 text-${tab.color}-400 border-x border-t border-slate-700` 
+                            : 'text-slate-500 hover:text-white hover:bg-slate-800'}`}
+                >
+                    <i className={`fa-solid ${tab.icon} mr-2`} />
+                    {tab.label}
+                </button>
+            ))}
         </div>
       </div>
 
@@ -196,7 +206,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                     const isEquipped = (data.equippedWeapon || WeaponType.PLASMA) === w;
                     const price = WEAPON_PRICES[w];
                     const specificMetas = META_UPGRADES.filter(m => m.weaponType === w);
-                    const isExpanded = expandedWeapons[w];
+                    const isExpanded = expandedItems[w];
                     
                     return (
                         <div key={w} className={`p-6 border rounded-3xl flex flex-col gap-6 transition-all ${isEquipped ? 'border-amber-500 bg-amber-500/5' : 'border-slate-800 bg-slate-900/40'}`}>
@@ -204,7 +214,7 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
                             <div className="flex justify-between items-center flex-wrap gap-4">
                                 <div 
                                     className={`flex items-center gap-4 ${isUnlocked ? 'cursor-pointer' : ''}`}
-                                    onClick={() => isUnlocked && toggleWeapon(w)}
+                                    onClick={() => isUnlocked && toggleItem(w)}
                                 >
                                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border ${isEquipped ? 'bg-amber-500 text-slate-950 border-amber-400' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
                                          <i className={`fa-solid ${getWeaponIcon(w)}`} />
@@ -280,10 +290,98 @@ const GarageMenu: React.FC<GarageMenuProps> = ({ data, sessionCredits, onClose, 
             </div>
         )}
 
+        {/* MODULES TAB */}
+        {activeTab === 'MODULES' && (
+            <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                {[ModuleType.AFTERBURNER].map(m => {
+                    const isUnlocked = (data.unlockedModules || []).includes(m);
+                    const isEquipped = data.equippedModule === m;
+                    const price = MODULE_PRICES[m];
+                    const specificMetas = META_UPGRADES.filter(mu => mu.moduleType === m);
+                    const isExpanded = expandedItems[m];
+
+                    return (
+                        <div key={m} className={`p-6 border rounded-3xl flex flex-col gap-6 transition-all ${isEquipped ? 'border-fuchsia-500 bg-fuchsia-500/5' : 'border-slate-800 bg-slate-900/40'}`}>
+                            <div className="flex justify-between items-center flex-wrap gap-4">
+                                <div 
+                                    className={`flex items-center gap-4 ${isUnlocked ? 'cursor-pointer' : ''}`}
+                                    onClick={() => isUnlocked && toggleItem(m)}
+                                >
+                                     <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl border ${isEquipped ? 'bg-fuchsia-500 text-slate-950 border-fuchsia-400' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                                         <i className="fa-solid fa-forward-fast" />
+                                     </div>
+                                     <div>
+                                         <div className="flex items-center gap-3">
+                                            <h3 className="text-white text-2xl font-black italic uppercase tracking-tighter">AFTERBURNER</h3>
+                                            {isUnlocked && (
+                                                <i className={`fa-solid fa-chevron-${isExpanded ? 'up' : 'down'} text-slate-500 text-sm`} />
+                                            )}
+                                         </div>
+                                         <div className="text-slate-500 text-xs font-bold uppercase">{isUnlocked ? (isEquipped ? 'Active Module' : 'In Storage') : 'Experimental Tech'}</div>
+                                     </div>
+                                </div>
+                                <button 
+                                    disabled={!isUnlocked && totalCredits < price} 
+                                    onClick={() => handleModuleAction(m)} 
+                                    className={`px-8 py-3 rounded-xl text-xs font-black shadow-md transition-all shrink-0 uppercase tracking-widest
+                                        ${isEquipped ? 'bg-slate-700 text-fuchsia-400 border border-fuchsia-500 hover:bg-slate-600' : 
+                                        isUnlocked ? 'bg-slate-700 text-white hover:bg-slate-600' : 
+                                        'bg-cyan-600 text-white disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed hover:bg-cyan-500'}`}
+                                >
+                                {isEquipped ? 'UNEQUIP' : isUnlocked ? 'EQUIP' : (totalCredits < price ? 'INSUFFICIENT FUNDS' : `BUY: ${formatCredits(price)} C`)}
+                                </button>
+                            </div>
+
+                            {isUnlocked && isExpanded && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-800/50 animate-in fade-in zoom-in duration-200 origin-top">
+                                    {specificMetas.map(mu => {
+                                        const level = data.metaLevels[mu.id] || 0;
+                                        const cost = getUpgradeCost(mu, level);
+                                        const isMax = level >= mu.maxLevel;
+                                        const percent = Math.min(100, (level / mu.maxLevel) * 100);
+
+                                        return (
+                                            <div key={mu.id} className="p-4 bg-slate-950/60 rounded-2xl border border-slate-800 flex flex-col gap-3 shadow-inner hover:border-slate-700 transition-colors">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded bg-slate-900 flex items-center justify-center text-fuchsia-400 border border-slate-800">
+                                                        <i className={`fa-solid ${mu.icon}`} />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-baseline">
+                                                            <span className="text-slate-200 text-[11px] font-black uppercase tracking-tight truncate">{mu.name}</span>
+                                                            <span className="text-slate-500 text-[9px] font-black">{level}/{mu.maxLevel}</span>
+                                                        </div>
+                                                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden mt-1">
+                                                            <div className="h-full bg-fuchsia-500" style={{ width: `${percent}%` }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <p className="text-slate-500 text-[10px] leading-tight min-h-[2.5em]">{mu.description}</p>
+                                                <button 
+                                                    disabled={isMax || totalCredits < cost} 
+                                                    onClick={() => buyMeta(mu)} 
+                                                    className={`w-full py-2 rounded-lg font-black text-[10px] transition-all uppercase
+                                                        ${isMax ? 'bg-slate-900 text-emerald-500 border border-emerald-900/30' : 
+                                                        totalCredits < cost ? 'bg-slate-900 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50' :
+                                                        'bg-slate-800 text-fuchsia-400 border border-fuchsia-400/20 hover:bg-fuchsia-400/10'}`}
+                                                >
+                                                    {isMax ? 'MAX LEVEL' : `${formatCredits(cost)} C`}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        )}
+
         {/* CORE AVIONICS TAB */}
         {activeTab === 'CORE' && (
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                {META_UPGRADES.filter(m => !m.weaponType).map(u => {
+                {META_UPGRADES.filter(m => !m.weaponType && !m.moduleType).map(u => {
                     const level = data.metaLevels[u.id] || 0;
                     const cost = getUpgradeCost(u, level);
                     const isMax = level >= u.maxLevel;

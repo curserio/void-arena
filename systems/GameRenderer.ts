@@ -543,9 +543,38 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     
     const hitAge = time - lastHitTime;
     const isHitActive = hitAge < 250;
+    const isBoostActive = time < stats.moduleActiveUntil;
 
     ctx.save();
     ctx.translate(playerPos.x, playerPos.y);
+
+    // --- BOOST TRAIL (Afterburner) ---
+    if (isBoostActive) {
+        ctx.save();
+        // Rotate to trail behind movement
+        let moveAngle = Math.atan2(joystickDir.y, joystickDir.x);
+        if (joystickDir.x === 0 && joystickDir.y === 0) {
+             // If not moving, trail behind facing direction
+             moveAngle = Math.atan2(aimDir.y, aimDir.x);
+        }
+        ctx.rotate(moveAngle + Math.PI); // Point backwards
+
+        // Draw multiple long streaks
+        const length = 120 + Math.random() * 40;
+        const width = 25;
+        const grad = ctx.createLinearGradient(0, 0, length, 0);
+        grad.addColorStop(0, 'rgba(217, 70, 239, 0.8)'); // Fuchsia start
+        grad.addColorStop(1, 'rgba(217, 70, 239, 0)');   // Fade out
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, -width/2);
+        ctx.lineTo(length, 0);
+        ctx.lineTo(0, width/2);
+        ctx.fill();
+        
+        ctx.restore();
+    }
 
     // --- AIM RETICLE ---
     if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
@@ -608,9 +637,9 @@ const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joysti
     ctx.shadowBlur = 30; ctx.shadowColor = sColor;
     
     // Thrusters visual
-    if (Math.abs(joystickDir.x) > 0.1 || Math.abs(joystickDir.y) > 0.1) {
-        ctx.fillStyle = '#fff';
-        const tLen = 15 + Math.random() * 15;
+    if (Math.abs(joystickDir.x) > 0.1 || Math.abs(joystickDir.y) > 0.1 || isBoostActive) {
+        ctx.fillStyle = isBoostActive ? '#d946ef' : '#fff'; // Pink if boosting
+        const tLen = (15 + Math.random() * 15) * (isBoostActive ? 2 : 1);
         ctx.fillRect(-10, 20, 5, tLen);
         ctx.fillRect(5, 20, 5, tLen);
     }
@@ -664,7 +693,9 @@ export const renderGame = (
     }
     
     // Dynamic Zoom Application
-    ctx.scale(zoomLevel, zoomLevel);
+    // Zoom out slightly more when boosting
+    const boostZoom = (time < stats.moduleActiveUntil) ? 0.9 : 1.0;
+    ctx.scale(zoomLevel * boostZoom, zoomLevel * boostZoom);
     
     ctx.translate(-cameraPos.x, -cameraPos.y);
 
