@@ -42,6 +42,13 @@ const DEFAULT_DATA: PersistentData = {
   }
 };
 
+// Helper for formatting time (Seconds -> MM:SS)
+const formatSurvivalTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(GameState.START);
   const [isPaused, setIsPaused] = useState(false);
@@ -63,7 +70,7 @@ const App: React.FC = () => {
 
   // High Score Entry State
   const [newHighScoreName, setNewHighScoreName] = useState('');
-  const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number, accuracy: number, kills: number, credits: number} | null>(null);
+  const [pendingHighScore, setPendingHighScore] = useState<{score: number, rank: number, accuracy: number, kills: number, credits: number, survivalTime: number} | null>(null);
   const [hasSubmittedScore, setHasSubmittedScore] = useState(false);
   
   // Initialize Persistent Data with Auto-Detection and Migration
@@ -120,7 +127,8 @@ const App: React.FC = () => {
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
     enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef,
-    triggerManualLevelUp, onUpgradeSelected, activateModule
+    triggerManualLevelUp, onUpgradeSelected, activateModule,
+    gameTime
   } = useGameLogic(
     gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty, gameMode, debugConfig
   );
@@ -183,6 +191,9 @@ const App: React.FC = () => {
               const accuracy = metrics.shotsFired > 0 
                 ? Math.min(100, (metrics.shotsHit / metrics.shotsFired) * 100)
                 : 0;
+              
+              // Captured valid gametime at point of death
+              const finalSurvivalTime = gameTime;
 
               // 1. Save RPG Progress (Only in Standard Mode)
               if (gameMode === GameMode.STANDARD) {
@@ -217,7 +228,8 @@ const App: React.FC = () => {
                           rank,
                           accuracy: accuracy,
                           kills: metrics.enemiesKilled,
-                          credits: metrics.creditsEarned
+                          credits: metrics.creditsEarned,
+                          survivalTime: finalSurvivalTime
                       });
                       setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
                       setHasSubmittedScore(false);
@@ -232,7 +244,7 @@ const App: React.FC = () => {
 
           return () => clearTimeout(timer);
       }
-  }, [gameState, score, selectedDifficulty, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, gameMode]);
+  }, [gameState, score, selectedDifficulty, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, gameMode, gameTime]);
 
   const submitScore = () => {
       if (!pendingHighScore) return;
@@ -245,7 +257,8 @@ const App: React.FC = () => {
           difficulty: selectedDifficulty,
           accuracy: pendingHighScore.accuracy,
           enemiesKilled: pendingHighScore.kills,
-          creditsEarned: pendingHighScore.credits
+          creditsEarned: pendingHighScore.credits,
+          survivalTime: pendingHighScore.survivalTime
       };
 
       setPersistentData(p => {
@@ -526,7 +539,7 @@ const bestScore = persistentData.highScores?.[0]?.score || 0;
 const currentRank = persistentData.currentLevel || 1;
 
 return (
-  <div className="relative w-full h-screen overflow-hidden bg-slate-950 font-sans select-none touch-none">
+  <div className="relative w-full h-[100dvh] overflow-hidden bg-slate-950 font-sans select-none touch-none">
     <canvas ref={canvasRef} className="absolute inset-0" />
 
     {gameState === GameState.START && (
@@ -610,8 +623,8 @@ return (
            RANK: LV {persistentData.currentLevel || 1}
         </div>
 
-        <div className="absolute bottom-6 text-slate-600 font-bold text-xs tracking-widest opacity-50">
-          v0.2.0
+        <div className="absolute bottom-10 left-0 w-full text-center text-slate-600 font-bold text-xs tracking-widest opacity-50 z-[210] pointer-events-none">
+          v0.3.0
         </div>
       </div>
     )}
@@ -727,6 +740,11 @@ return (
                      <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
                          <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Enemies Killed</div>
                          <div className="text-red-500 font-black text-lg">{runMetricsRef.current.enemiesKilled.toLocaleString()}</div>
+                    </div>
+                    {/* Survival Time Stat */}
+                    <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center col-span-2">
+                         <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Survival Time</div>
+                         <div className="text-white font-black text-lg">{formatSurvivalTime(gameTime)}</div>
                     </div>
                  </div>
 

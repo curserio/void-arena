@@ -279,6 +279,7 @@ export const useGameLogic = (
     runMetricsRef,
     triggerManualLevelUp,
     onUpgradeSelected,
-    activateModule
+    activateModule,
+    gameTime: gameTimeRef.current // Export current game duration
   };
 };

@@ -253,6 +253,7 @@ export interface HighScoreEntry {
   accuracy?: number; // Percentage 0-100
   enemiesKilled?: number;
   creditsEarned?: number;
+  survivalTime?: number; // In Seconds
 }
 
 export interface PersistentData {

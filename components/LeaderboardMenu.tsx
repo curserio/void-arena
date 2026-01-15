@@ -15,6 +15,13 @@ const LeaderboardMenu: React.FC<LeaderboardMenuProps> = ({ scores, onClose }) =>
     .filter(s => s.difficulty === activeDiff || (!s.difficulty && activeDiff === GameDifficulty.NORMAL))
     .slice(0, 50); // Limit total display
 
+  const formatTime = (seconds?: number) => {
+      if (!seconds) return '-';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center z-[400] p-6 animate-in fade-in zoom-in duration-200">
       <div className="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col gap-6 max-h-[90vh]">
@@ -60,9 +67,10 @@ const LeaderboardMenu: React.FC<LeaderboardMenuProps> = ({ scores, onClose }) =>
                 <div className="min-w-[600px] h-full flex flex-col">
                     
                     {/* Header - Fixed at top relative to vertical scroll, moves with horizontal scroll */}
-                    <div className="grid grid-cols-10 bg-slate-900/80 p-3 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800 shrink-0">
+                    <div className="grid grid-cols-11 bg-slate-900/80 p-3 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800 shrink-0">
                         <div className="col-span-1 text-center">#</div>
                         <div className="col-span-3">Pilot</div>
+                        <div className="col-span-1 text-center">Time</div>
                         <div className="col-span-1 text-center">Acc</div>
                         <div className="col-span-2 text-center">Kills</div>
                         <div className="col-span-1 text-center">Credits</div>
@@ -78,13 +86,16 @@ const LeaderboardMenu: React.FC<LeaderboardMenuProps> = ({ scores, onClose }) =>
                             </div>
                         ) : (
                             filteredScores.map((entry, idx) => (
-                                <div key={idx} className={`grid grid-cols-10 p-3 border-b border-slate-800/50 items-center hover:bg-slate-800/30 transition-colors ${idx === 0 ? 'bg-amber-400/5' : ''}`}>
+                                <div key={idx} className={`grid grid-cols-11 p-3 border-b border-slate-800/50 items-center hover:bg-slate-800/30 transition-colors ${idx === 0 ? 'bg-amber-400/5' : ''}`}>
                                     <div className="col-span-1 text-center font-black text-slate-600">
                                         {idx === 0 ? <i className="fa-solid fa-crown text-amber-400" /> : idx + 1}
                                     </div>
                                     <div className="col-span-3 truncate pr-2">
                                         <div className={`font-bold truncate ${idx === 0 ? 'text-amber-200' : 'text-white'}`}>{entry.name || 'Unknown Pilot'}</div>
                                         <div className="text-[9px] text-slate-500">{new Date(entry.date).toLocaleDateString()}</div>
+                                    </div>
+                                    <div className="col-span-1 text-center text-xs font-bold text-slate-300">
+                                        {formatTime(entry.survivalTime)}
                                     </div>
                                     <div className="col-span-1 text-center text-xs font-bold text-slate-400">
                                         {entry.accuracy !== undefined ? `${entry.accuracy.toFixed(0)}%` : '-'}
