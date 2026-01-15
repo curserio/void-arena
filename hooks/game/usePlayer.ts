@@ -1,6 +1,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType, ModuleType } from '../../types';
+import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { isBuffActive } from '../../systems/PowerUpSystem';
 
@@ -40,16 +41,16 @@ export const usePlayer = (
         // Weapon Specific Meta Levels
         const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
         const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
-        const plasCountL = data.metaLevels['meta_plas_count'] || 0; 
+        const plasCountL = data.metaLevels['meta_plas_count'] || 0;
         const plasRateL = data.metaLevels['meta_plas_rate'] || 0;
-        
+
         const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
         const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
         const mslRadL = data.metaLevels['meta_msl_rad'] || 0;
-        
+
         const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
         const lsrDurL = data.metaLevels['meta_lsr_duration'] || 0;
-        
+
         const swarmCountL = data.metaLevels['meta_swarm_count'] || 0;
         const swarmAgilityL = data.metaLevels['meta_swarm_agility'] || 0;
         const swarmDmgL = data.metaLevels['meta_swarm_dmg'] || 0;
@@ -68,7 +69,7 @@ export const usePlayer = (
         let fRate = baseWStats.fireRate;
         let mRadius = 195; // Updated Base Radius (was 150)
         let lDuration = 0.3;
-        
+
         // Swarm defaults
         let sCount = 3; // Base 3
         let sAgility = 1.5; // Reduced Base Agility
@@ -76,22 +77,22 @@ export const usePlayer = (
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
             bSpeed *= (1 + plasSpdL * 0.08);
-            bCount += plasCountL; 
+            bCount += plasCountL;
             fRate *= (1 + plasRateL * 0.05); // +5% per level, max level 10 = +50% (4.0 -> 6.0)
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
             mRadius = 195 * (1 + mslRadL * 0.10); // 150 -> 195
         } else if (weapon === WeaponType.LASER) {
-             bDamageMult *= (1 + lsrDmgL * 0.05);
-             fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1); 
-             lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
-             bPierce = 999; 
+            bDamageMult *= (1 + lsrDmgL * 0.05);
+            fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1);
+            lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
+            bPierce = 999;
         } else if (weapon === WeaponType.SWARM_LAUNCHER) {
-             bDamageMult *= (1 + swarmDmgL * 0.05);
-             sCount = 3 + swarmCountL; // 3 base + upgrades (up to 20 total)
-             sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
-             fRate *= (1 + swarmCdL * 0.05); // CD reduction
+            bDamageMult *= (1 + swarmDmgL * 0.05);
+            sCount = 3 + swarmCountL; // 3 base + upgrades (up to 20 total)
+            sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
+            fRate *= (1 + swarmCdL * 0.05); // CD reduction
         }
 
         // Module Stats Calculation
@@ -108,19 +109,19 @@ export const usePlayer = (
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
         const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.15);
         const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * (1 + regenL * 0.10);
-        
+
         // Base stats from ship config + Meta scaling
         let metaStats: PlayerStats = {
             ...INITIAL_STATS,
-            ...shipConfig.baseStats, 
+            ...shipConfig.baseStats,
             shipType: data.equippedShip,
             weaponType: weapon,
             maxHealth: finalMaxHP,
-            currentHealth: finalMaxHP, 
+            currentHealth: finalMaxHP,
             maxShield: finalMaxShield,
             currentShield: finalMaxShield,
             shieldRegen: finalShieldRegen,
-            
+
             speed: (shipConfig.baseStats.speed || 240) * (1 + spdL * 0.02),
             damage: baseWStats.damage * (1 + dmgL * 0.05) * bDamageMult,
             fireRate: fRate,
@@ -132,14 +133,14 @@ export const usePlayer = (
             laserDuration: lDuration,
             swarmCount: sCount,
             swarmAgility: sAgility,
-            
+
             moduleType: module,
             moduleCooldownMax: mCd,
             moduleDuration: mDur,
             modulePower: mPwr,
             moduleReadyTime: 0,
             moduleActiveUntil: 0,
-            
+
             critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
             critMultiplier: 1.5 + (critDmgL * 0.05),
             creditMultiplier: 1.0 + (salvageL * 0.05),
@@ -148,13 +149,13 @@ export const usePlayer = (
             level: data.currentLevel || 1,
             xp: data.currentXp || 0,
             xpToNextLevel: data.xpToNextLevel || 250,
-            
+
             credits: 0, // Reset session credits (bank is in persistentData)
 
             invulnerableUntil: 0,
             activeBuffs: {},
             acquiredUpgrades: [],
-            
+
             combatLog: []
         };
 
@@ -164,7 +165,7 @@ export const usePlayer = (
     const initPlayer = useCallback(() => {
         // 1. Calculate Base Stats (Ship + Meta)
         let newStats = calculateStats(persistentData);
-        
+
         // 2. Hydrate saved "Level Up" rewards to make them permanent RPG style
         const savedIds = persistentData.acquiredUpgradeIds || [];
         const hydratedUpgrades: Upgrade[] = [];
@@ -184,7 +185,7 @@ export const usePlayer = (
         // 3. Reset Position
         playerPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
         cameraPosRef.current = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
-        
+
         // 4. Full Heal on Mission Start
         newStats.currentHealth = newStats.maxHealth;
         newStats.currentShield = newStats.maxShield;
@@ -210,20 +211,20 @@ export const usePlayer = (
 
     const updatePlayer = useCallback((dt: number, time: number) => {
         if (gameState !== GameState.PLAYING || isPaused) {
-             // Drifting when dying or paused (no input control)
-             if (gameState === GameState.DYING) {
-                 playerPosRef.current.x += joystickDirRef.current.x * 20 * dt; 
-                 playerPosRef.current.y += joystickDirRef.current.y * 20 * dt;
-             }
-             return;
+            // Drifting when dying or paused (no input control)
+            if (gameState === GameState.DYING) {
+                playerPosRef.current.x += joystickDirRef.current.x * 20 * dt;
+                playerPosRef.current.y += joystickDirRef.current.y * 20 * dt;
+            }
+            return;
         }
-        
+
         const pStats = statsRef.current;
         let moveSpeed = pStats.speed;
-        
+
         // Speed Buffs
         if (isBuffActive(pStats, 'SPEED', time)) {
-             moveSpeed *= 1.5; 
+            moveSpeed *= 1.5;
         }
         // Module Boost
         if (time < pStats.moduleActiveUntil) {
@@ -249,15 +250,15 @@ export const usePlayer = (
     const addUpgrade = useCallback((upgrade: Upgrade) => {
         setStats(p => {
             let newStats = { ...p };
-            
+
             // Only apply effect if it's a STAT upgrade and has an effect function
             if (upgrade.type === UpgradeType.STAT && upgrade.effect) {
                 newStats = upgrade.effect(newStats);
                 newStats.acquiredUpgrades = [...p.acquiredUpgrades, upgrade];
             }
-            
-            return { 
-                ...newStats, 
+
+            return {
+                ...newStats,
                 pendingLevelUps: Math.max(0, p.pendingLevelUps - 1)
             };
         });
@@ -288,15 +289,24 @@ export const usePlayer = (
             if (typeof source === 'string') {
                 sourceName = source;
             } else {
-                if (source.type === EntityType.ENEMY_SCOUT) sourceName = "Void Scout";
-                else if (source.type === EntityType.ENEMY_STRIKER) sourceName = "Crimson Striker";
-                else if (source.type === EntityType.ENEMY_LASER_SCOUT) sourceName = "Sniper Drone";
-                else if (source.type === EntityType.ENEMY_KAMIKAZE) sourceName = "Kamikaze Drone";
-                else if (source.type === EntityType.ENEMY_BOSS) sourceName = "Dreadnought";
-                else if (source.type === EntityType.ENEMY_BOSS_DESTROYER) sourceName = "Imperial Destroyer";
-                else if (source.type === EntityType.ENEMY_BULLET) sourceName = "Enemy Fire";
-                
-                if (source.isElite) sourceName = `Elite ${sourceName}`;
+                // Check enemyType first (new system), fall back to type (legacy)
+                const enemyType = 'enemyType' in source ? (source as any).enemyType : undefined;
+                if (enemyType) {
+                    if (enemyType === EnemyType.SCOUT) sourceName = "Void Scout";
+                    else if (enemyType === EnemyType.STRIKER) sourceName = "Crimson Striker";
+                    else if (enemyType === EnemyType.LASER_SCOUT) sourceName = "Sniper Drone";
+                    else if (enemyType === EnemyType.KAMIKAZE) sourceName = "Kamikaze Drone";
+                    else if (enemyType === EnemyType.BOSS_DREADNOUGHT) sourceName = "Dreadnought";
+                    else if (enemyType === EnemyType.BOSS_DESTROYER) sourceName = "Imperial Destroyer";
+                    else sourceName = "Enemy Fire";
+                } else {
+                    // Legacy fallback
+                    if (source.type === EntityType.ENEMY_BULLET) sourceName = "Enemy Fire";
+                    else if (source.id === 'environment') sourceName = "Environment";
+                }
+
+                if (source.isLegendary) sourceName = `Legendary ${sourceName}`;
+                else if (source.isElite) sourceName = `Elite ${sourceName}`;
                 if (source.isMiniboss) sourceName = `Giant ${sourceName}`;
                 if (source.level) enemyLevel = source.level;
             }
@@ -308,15 +318,15 @@ export const usePlayer = (
                 isFatal: newHealth <= 0,
                 enemyLevel
             };
-            
+
             // Keep last 5 entries
             const newLog = [...prev.combatLog, logEntry].slice(-6);
 
-            return { 
-                ...prev, 
-                currentShield: newShield, 
-                currentHealth: newHealth, 
-                lastShieldHitTime: time, 
+            return {
+                ...prev,
+                currentShield: newShield,
+                currentHealth: newHealth,
+                lastShieldHitTime: time,
                 invulnerableUntil: time + 300,
                 combatLog: newLog
             };
@@ -326,7 +336,7 @@ export const usePlayer = (
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
         // 1. Calculate base stats from NEW persistent data (Meta Upgrades)
         const freshBaseStats = calculateStats(newData);
-        
+
         setStats(current => {
             // 2. Determine current health/shield ratios relative to the OLD max
             // This ensures we preserve damage state when max values change
@@ -336,7 +346,7 @@ export const usePlayer = (
             // 3. Re-apply ALL current session upgrades to the FRESH base stats
             // This stacks Meta upgrades (in freshBase) with Session upgrades (in current.acquiredUpgrades)
             let rehydratedStats = { ...freshBaseStats };
-            
+
             if (current.acquiredUpgrades && current.acquiredUpgrades.length > 0) {
                 current.acquiredUpgrades.forEach(u => {
                     if (u.effect) {
@@ -354,7 +364,7 @@ export const usePlayer = (
             rehydratedStats.credits = current.credits;
             rehydratedStats.activeBuffs = current.activeBuffs;
             rehydratedStats.combatLog = current.combatLog;
-            
+
             // Restore Module State times to prevent reset exploit
             rehydratedStats.moduleReadyTime = current.moduleReadyTime;
             rehydratedStats.moduleActiveUntil = current.moduleActiveUntil;

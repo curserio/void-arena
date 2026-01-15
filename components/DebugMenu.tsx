@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { EntityType, DebugConfig } from '../types';
+import { DebugConfig } from '../types';
+import { EnemyType } from '../types/enemies';
 
 interface DebugMenuProps {
   onStart: (config: DebugConfig) => void;
@@ -8,17 +9,17 @@ interface DebugMenuProps {
 }
 
 const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
-  const [selectedType, setSelectedType] = useState<EntityType>(EntityType.ENEMY_SCOUT);
+  const [selectedType, setSelectedType] = useState<EnemyType>(EnemyType.SCOUT);
   const [level, setLevel] = useState(1);
   const [count, setCount] = useState(5);
 
   const ENEMY_TYPES = [
-    { type: EntityType.ENEMY_SCOUT, label: 'Void Scout', icon: 'fa-shuttle-space' },
-    { type: EntityType.ENEMY_STRIKER, label: 'Crimson Striker', icon: 'fa-jet-fighter' },
-    { type: EntityType.ENEMY_LASER_SCOUT, label: 'Sniper Drone', icon: 'fa-satellite' },
-    { type: EntityType.ENEMY_KAMIKAZE, label: 'Kamikaze Drone', icon: 'fa-bomb' },
-    { type: EntityType.ENEMY_BOSS, label: 'Dreadnought Boss', icon: 'fa-skull' },
-    { type: EntityType.ENEMY_BOSS_DESTROYER, label: 'Imperial Destroyer', icon: 'fa-shapes' },
+    { type: EnemyType.SCOUT, label: 'Void Scout', icon: 'fa-shuttle-space' },
+    { type: EnemyType.STRIKER, label: 'Crimson Striker', icon: 'fa-jet-fighter' },
+    { type: EnemyType.LASER_SCOUT, label: 'Sniper Drone', icon: 'fa-satellite' },
+    { type: EnemyType.KAMIKAZE, label: 'Kamikaze Drone', icon: 'fa-bomb' },
+    { type: EnemyType.BOSS_DREADNOUGHT, label: 'Dreadnought Boss', icon: 'fa-skull' },
+    { type: EnemyType.BOSS_DESTROYER, label: 'Imperial Destroyer', icon: 'fa-shapes' },
   ];
 
   const handleStart = () => {
@@ -51,8 +52,8 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
                 key={e.type}
                 onClick={() => setSelectedType(e.type)}
                 className={`flex items-center gap-2 p-3 rounded-xl border text-left transition-all
-                  ${selectedType === e.type 
-                    ? 'bg-emerald-900/40 border-emerald-500 text-emerald-400' 
+                  ${selectedType === e.type
+                    ? 'bg-emerald-900/40 border-emerald-500 text-emerald-400'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-600'}`}
               >
                 <i className={`fa-solid ${e.icon} w-5 text-center`} />
@@ -65,12 +66,12 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
         {/* Level Slider */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-end">
-             <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enemy Rank</label>
-             <span className="text-emerald-400 font-black text-xl">LV {level}</span>
+            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enemy Rank</label>
+            <span className="text-emerald-400 font-black text-xl">LV {level}</span>
           </div>
-          <input 
-            type="range" min="1" max="100" 
-            value={level} 
+          <input
+            type="range" min="1" max="100"
+            value={level}
             onChange={(e) => setLevel(parseInt(e.target.value))}
             className="w-full h-3 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
           />
@@ -79,19 +80,19 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
         {/* Count Slider */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-end">
-             <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Spawn Count</label>
-             <span className="text-emerald-400 font-black text-xl">x{count}</span>
+            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Spawn Count</label>
+            <span className="text-emerald-400 font-black text-xl">x{count}</span>
           </div>
-          <input 
-            type="range" min="1" max="25" 
-            value={count} 
+          <input
+            type="range" min="1" max="25"
+            value={count}
             onChange={(e) => setCount(parseInt(e.target.value))}
             className="w-full h-3 bg-slate-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
           />
           <p className="text-slate-600 text-[9px] font-bold">Note: Targets will auto-respawn upon destruction.</p>
         </div>
 
-        <button 
+        <button
           onClick={handleStart}
           className="w-full py-4 bg-emerald-600 text-white font-black text-xl rounded-xl uppercase tracking-widest active:scale-95 transition-all shadow-lg hover:bg-emerald-500 mt-2"
         >

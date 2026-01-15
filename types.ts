@@ -17,7 +17,7 @@ export enum GameMode {
 }
 
 export interface DebugConfig {
-  enemyType: EntityType;
+  enemyType: import('./types/enemies').EnemyType;
   level: number;
   count: number;
 }
@@ -42,12 +42,6 @@ export interface DifficultyConfig {
 
 export enum EntityType {
   PLAYER = 'PLAYER',
-  ENEMY_SCOUT = 'ENEMY_SCOUT',
-  ENEMY_STRIKER = 'ENEMY_STRIKER',
-  ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT',
-  ENEMY_KAMIKAZE = 'ENEMY_KAMIKAZE',
-  ENEMY_BOSS = 'ENEMY_BOSS',
-  ENEMY_BOSS_DESTROYER = 'ENEMY_BOSS_DESTROYER', // New Boss Type
   ASTEROID = 'ASTEROID',
   BULLET = 'BULLET',
   ENEMY_BULLET = 'ENEMY_BULLET',
@@ -106,18 +100,19 @@ export interface Entity {
   radius: number;
   health: number;
   maxHealth: number;
-  shield?: number;      
-  maxShield?: number;   
+  shield?: number;
+  maxShield?: number;
   color: string;
   value?: number;
   level?: number;
+
   powerUpId?: PowerUpId; // Changed from enum to string ID
   pierceCount?: number;
   lastShotTime?: number;
   lastMissileTime?: number; // For Destroyer Boss
   lastSpawnTime?: number;   // For Destroyer Boss
   lastMeleeHitTime?: number;
-  lastHitTime?: number; 
+  lastHitTime?: number;
   lastShieldHitTime?: number;
   isMelee?: boolean;
   aiPhase?: number;
@@ -125,17 +120,18 @@ export interface Entity {
   duration?: number;
   maxDuration?: number;
   weaponType?: WeaponType;
-  seed?: number; 
+  seed?: number;
   isCharging?: boolean;
   chargeProgress?: number;
   angle?: number;
   isFiring?: boolean;
-  slowUntil?: number; 
+  slowUntil?: number;
   slowFactor?: number;
   isDashing?: boolean;
   dashUntil?: number;
   isElite?: boolean;
-  isMiniboss?: boolean; 
+  isLegendary?: boolean;  // NEW
+  isMiniboss?: boolean;
   isBoss?: boolean;
   targetId?: string; // For Homing Missiles
   hasDeathDefiance?: boolean; // For Elite Kamikaze (Shield Gate)
@@ -168,7 +164,7 @@ export interface MetaUpgrade {
   icon: string;
   maxLevel: number;
   costBase: number;
-  costFactor: number; 
+  costFactor: number;
   weaponType?: WeaponType;
   moduleType?: ModuleType;
 }
@@ -183,11 +179,11 @@ export interface ShipConfig {
 }
 
 export interface CombatLogEntry {
-    timestamp: number;
-    damage: number;
-    source: string;
-    isFatal: boolean;
-    enemyLevel?: number;
+  timestamp: number;
+  damage: number;
+  source: string;
+  isFatal: boolean;
+  enemyLevel?: number;
 }
 
 export interface PlayerStats {
@@ -198,7 +194,7 @@ export interface PlayerStats {
   shieldRegen: number;
   lastShieldHitTime: number;
   speed: number;
-  fireRate: number; 
+  fireRate: number;
   damage: number;
   bulletSpeed: number;
   bulletCount: number;
@@ -212,21 +208,21 @@ export interface PlayerStats {
   hasShield: boolean;
   credits: number;
   shipType: ShipType;
-  
+
   // Stored upgrade history (Only STAT upgrades)
   acquiredUpgrades: Upgrade[];
-  
+
   invulnerableUntil: number;
   critChance: number;
   critMultiplier: number;
   creditMultiplier: number;
-  
+
   // Weapon specific calculated stats
   missileRadius: number;
   laserDuration: number;
   swarmCount: number;
   swarmAgility: number; // Turn speed in radians per sec
-  
+
   // Module Stats
   moduleType: ModuleType;
   moduleCooldownMax: number;
@@ -263,7 +259,7 @@ export interface PersistentData {
   equippedShip: ShipType;
   equippedWeapon: WeaponType;
   unlockedWeapons: WeaponType[];
-  
+
   // Modules
   equippedModule: ModuleType;
   unlockedModules: ModuleType[];
@@ -273,7 +269,7 @@ export interface PersistentData {
   currentXp: number;
   xpToNextLevel: number;
   acquiredUpgradeIds: string[]; // Store IDs to reconstruct upgrades
-  
+
   highScores: HighScoreEntry[];
 
   // Settings
