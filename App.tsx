@@ -33,7 +33,8 @@ const DEFAULT_DATA: PersistentData = {
   highScores: [],
   settings: {
     controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE,
-    zoomLevel: DEFAULT_ZOOM
+    zoomLevel: DEFAULT_ZOOM,
+    autoShowLevelUp: true
   }
 };
 
@@ -64,11 +65,15 @@ const App: React.FC = () => {
     if (!data.settings) {
       data.settings = {
         controlScheme: isTouchDevice() ? ControlScheme.TWIN_STICK : ControlScheme.KEYBOARD_MOUSE,
-        zoomLevel: DEFAULT_ZOOM
+        zoomLevel: DEFAULT_ZOOM,
+        autoShowLevelUp: true
       };
     } else {
       if (data.settings.zoomLevel === undefined) {
           data.settings.zoomLevel = DEFAULT_ZOOM;
+      }
+      if (data.settings.autoShowLevelUp === undefined) {
+          data.settings.autoShowLevelUp = true;
       }
     }
     
@@ -98,7 +103,8 @@ const App: React.FC = () => {
     stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
     initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack,
-    enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef
+    enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef,
+    triggerManualLevelUp, onUpgradeSelected
   } = useGameLogic(
     gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty
   );
@@ -112,69 +118,106 @@ const App: React.FC = () => {
     localStorage.setItem('stellar_survivor_v11_rpg', JSON.stringify(persistentData));
   }, [persistentData]);
 
-  // Handle Death / Game Over persistence logic
+  const { spawnExplosion } = useGameLogic(gameState, setGameState, persistentData, setOfferedUpgrades, isGamePaused, selectedDifficulty).particlesRef.current.length > 0 ? { spawnExplosion: () => {} } : { spawnExplosion: (p, r, c) => {} };
+  
+  // Handle Death Transition
   useEffect(() => {
     if (gameState === GameState.PLAYING && stats.currentHealth <= 0) {
-      // Calculate Final Run Stats
-      const metrics = runMetricsRef.current;
-      const accuracy = metrics.shotsFired > 0 
-        ? Math.min(100, (metrics.shotsHit / metrics.shotsFired) * 100)
-        : 0;
-
-      // 1. Save RPG Progress
-      setPersistentData(p => ({ 
-        ...p, 
-        credits: p.credits + stats.credits,
-        currentLevel: stats.level,
-        currentXp: stats.xp,
-        xpToNextLevel: stats.xpToNextLevel,
-        acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
-      }));
-
-      // 2. Leaderboard Logic
-      // Filter high scores by current difficulty for rank calculation
-      const currentScores = (persistentData.highScores || [])
-          .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL));
+      setGameState(GameState.DYING);
       
-      const newScore = score;
-      const sorted = [...currentScores].sort((a, b) => b.score - a.score);
+      // Trigger visual effects manually here since we are outside the loop
+      // We can push to particlesRef directly since it's exposed
+      particlesRef.current.push({
+          id: 'PLAYER_DEATH_BOOM',
+          type: 'EXPLOSION' as any,
+          pos: { ...playerPosRef.current },
+          vel: { x: 0, y: 0 },
+          radius: 120,
+          color: '#06b6d4',
+          health: 1, maxHealth: 1,
+          duration: 0,
+          maxDuration: 2.0 // Long explosion
+      });
       
-      let rank = -1;
-      if (sorted.length < 10) {
-          rank = sorted.filter(s => s.score > newScore).length + 1;
-      } else {
-          if (newScore > sorted[9].score) {
-               rank = sorted.filter(s => s.score > newScore).length + 1;
-          }
+      // Secondary explosions
+      for(let i=0; i<5; i++) {
+          setTimeout(() => {
+            particlesRef.current.push({
+                id: `PLAYER_DEATH_SUB_${i}`,
+                type: 'EXPLOSION' as any,
+                pos: { 
+                    x: playerPosRef.current.x + (Math.random()-0.5)*60, 
+                    y: playerPosRef.current.y + (Math.random()-0.5)*60 
+                },
+                vel: { x: 0, y: 0 },
+                radius: 40 + Math.random() * 40,
+                color: Math.random() > 0.5 ? '#fff' : '#facc15',
+                health: 1, maxHealth: 1,
+                duration: 0,
+                maxDuration: 0.8
+            });
+          }, i * 200);
       }
-
-      if (rank !== -1 && newScore > 0) {
-          setPendingHighScore({ 
-              score: newScore, 
-              rank,
-              accuracy: accuracy,
-              kills: metrics.enemiesKilled,
-              credits: metrics.creditsEarned
-          });
-          setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
-          setHasSubmittedScore(false);
-      } else {
-          setPendingHighScore(null);
-          setHasSubmittedScore(true);
-      }
-
-      setGameState(GameState.GAMEOVER);
     }
-  }, [stats.currentHealth, gameState, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades, score, selectedDifficulty]);
+  }, [stats.currentHealth, gameState, playerPosRef, particlesRef]);
 
-  // Failsafe: If stuck in Leveling with no upgrades (rare race condition), force play
+  // Handle Dying -> GameOver Transition
   useEffect(() => {
-    if (gameState === GameState.LEVELING && offeredUpgrades.length === 0) {
-        // Fallback: Just resume play if no upgrades generated
-        console.warn("Failsafe: Leveling state detected with no upgrades. Resuming.");
-        setGameState(GameState.PLAYING);
-    }
-  }, [gameState, offeredUpgrades]);
+      if (gameState === GameState.DYING) {
+          const timer = setTimeout(() => {
+              // Calculate Final Run Stats
+              const metrics = runMetricsRef.current;
+              const accuracy = metrics.shotsFired > 0 
+                ? Math.min(100, (metrics.shotsHit / metrics.shotsFired) * 100)
+                : 0;
+
+              // 1. Save RPG Progress
+              setPersistentData(p => ({ 
+                ...p, 
+                credits: p.credits + stats.credits,
+                currentLevel: stats.level,
+                currentXp: stats.xp,
+                xpToNextLevel: stats.xpToNextLevel,
+                acquiredUpgradeIds: stats.acquiredUpgrades.map(u => u.id)
+              }));
+
+              // 2. Leaderboard Logic
+              const currentScores = (persistentData.highScores || [])
+                  .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL));
+              
+              const newScore = score;
+              const sorted = [...currentScores].sort((a, b) => b.score - a.score);
+              
+              let rank = -1;
+              if (sorted.length < 10) {
+                  rank = sorted.filter(s => s.score > newScore).length + 1;
+              } else {
+                  if (newScore > sorted[9].score) {
+                       rank = sorted.filter(s => s.score > newScore).length + 1;
+                  }
+              }
+
+              if (rank !== -1 && newScore > 0) {
+                  setPendingHighScore({ 
+                      score: newScore, 
+                      rank,
+                      accuracy: accuracy,
+                      kills: metrics.enemiesKilled,
+                      credits: metrics.creditsEarned
+                  });
+                  setNewHighScoreName(`Pilot-${Math.floor(Math.random()*1000)}`);
+                  setHasSubmittedScore(false);
+              } else {
+                  setPendingHighScore(null);
+                  setHasSubmittedScore(true);
+              }
+
+              setGameState(GameState.GAMEOVER);
+          }, 2500); // 2.5 seconds of death animation
+
+          return () => clearTimeout(timer);
+      }
+  }, [gameState, score, selectedDifficulty, stats.credits, stats.level, stats.xp, stats.xpToNextLevel, stats.acquiredUpgrades]);
 
   const submitScore = () => {
       if (!pendingHighScore) return;
@@ -191,10 +234,8 @@ const App: React.FC = () => {
       };
 
       setPersistentData(p => {
-          // Keep ALL scores, simply append the new one
-          // Sorting and limiting happens at display/retrieval time per difficulty
           const newScores = [...(p.highScores || []), entry]
-             .sort((a, b) => b.score - a.score); // Global sort, though specific display will filter
+             .sort((a, b) => b.score - a.score); 
           return { ...p, highScores: newScores };
       });
 
@@ -210,7 +251,7 @@ const App: React.FC = () => {
   const mousePos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const isMouseDown = useRef(false);
 
-  // --- REFS FOR GAME LOOP (Prevent Stale Closures) ---
+  // --- REFS FOR GAME LOOP ---
   const persistentDataRef = useRef(persistentData);
   const isPausedRef = useRef(isPaused);
   const gameStateRef = useRef(gameState);
@@ -303,7 +344,8 @@ const App: React.FC = () => {
       aimDirRef.current, 
       time,
       lastPlayerHitTime.current,
-      currentZoom
+      currentZoom,
+      currentState
     );
 
     requestRef.current = requestAnimationFrame(frame);
@@ -379,6 +421,7 @@ const handleResetProgress = () => {
     setShowSettings(false);
 };
 
+// ... Aim handlers (abbreviated for brevity, no changes) ...
 const aimTouchIdRef = useRef<number | null>(null);
 
 const handleTapAimInput = useCallback((clientX: number, clientY: number) => {
@@ -558,138 +601,114 @@ return (
       </div>
     )}
 
+    {/* Leaderboard, Settings, Guide, Cheats, Garage, Upgrade Menu - No changes */}
     {showLeaderboard && (
-        <LeaderboardMenu 
-            scores={persistentData.highScores || []}
-            onClose={() => setShowLeaderboard(false)}
-        />
+        <LeaderboardMenu scores={persistentData.highScores || []} onClose={() => setShowLeaderboard(false)} />
     )}
-
     {showSettings && (
-      <SettingsMenu 
-        data={persistentData}
-        onUpdate={setPersistentData}
-        onReset={handleResetProgress}
-        onClose={() => setShowSettings(false)}
-      />
+      <SettingsMenu data={persistentData} onUpdate={setPersistentData} onReset={handleResetProgress} onClose={() => setShowSettings(false)} />
     )}
-
     {showGuide && (
       <GuideMenu onClose={() => setShowGuide(false)} />
     )}
-
     {showCheats && (
-      <CheatsMenu 
-        data={persistentData} 
-        onUpdate={setPersistentData} 
-        onClose={() => setShowCheats(false)} 
-      />
+      <CheatsMenu data={persistentData} onUpdate={setPersistentData} onClose={() => setShowCheats(false)} />
     )}
-
     {showGarage && (
-      <GarageMenu
-        data={persistentData}
-        sessionCredits={gameState === GameState.PLAYING ? stats.credits : 0}
-        onUpdate={handleGarageUpdate}
-        onApplyEffect={setStats}
-        onClose={() => setShowGarage(false)}
-      />
+      <GarageMenu data={persistentData} sessionCredits={gameState === GameState.PLAYING ? stats.credits : 0} onUpdate={handleGarageUpdate} onApplyEffect={setStats} onClose={() => setShowGarage(false)} />
     )}
-
     {showUpgradesList && (
       <UpgradesList acquired={stats.acquiredUpgrades} onClose={() => setShowUpgradesList(false)} />
     )}
 
+    {/* GAMEOVER SCREEN with Combat Log */}
     {gameState === GameState.GAMEOVER && (
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-2xl z-[200] p-6">
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/90 backdrop-blur-2xl z-[200] p-6 animate-in fade-in duration-500">
         <h2 className="text-white text-6xl font-black uppercase mb-6 italic tracking-tighter text-center">Mission Failed</h2>
         
-        {!hasSubmittedScore && pendingHighScore ? (
-            <div className="w-full max-w-sm bg-slate-900 border border-amber-500 rounded-2xl p-6 mb-6 flex flex-col gap-4 animate-in fade-in zoom-in">
-                <div className="text-center">
-                    <div className="text-amber-400 font-black text-xl uppercase tracking-widest mb-1">New High Score!</div>
-                    <div className="text-white text-4xl font-black tabular-nums">{pendingHighScore.score.toLocaleString()}</div>
-                    <div className="text-slate-400 text-xs font-bold uppercase mt-1">Rank #{pendingHighScore.rank}</div>
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                    <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enter Pilot Name</label>
-                    <input 
-                        type="text" 
-                        value={newHighScoreName}
-                        onChange={(e) => setNewHighScoreName(e.target.value)}
-                        maxLength={12}
-                        className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold text-center uppercase focus:border-cyan-500 outline-none"
-                    />
-                </div>
+        <div className="flex gap-8 w-full max-w-4xl justify-center items-start">
+            
+            {/* Left Col: High Score / Score */}
+            <div className="flex-1 flex flex-col items-center max-w-md">
+                {!hasSubmittedScore && pendingHighScore ? (
+                    <div className="w-full bg-slate-900 border border-amber-500 rounded-2xl p-6 mb-6 flex flex-col gap-4">
+                        <div className="text-center">
+                            <div className="text-amber-400 font-black text-xl uppercase tracking-widest mb-1">New High Score!</div>
+                            <div className="text-white text-4xl font-black tabular-nums">{pendingHighScore.score.toLocaleString()}</div>
+                            <div className="text-slate-400 text-xs font-bold uppercase mt-1">Rank #{pendingHighScore.rank}</div>
+                        </div>
+                        
+                        <div className="flex flex-col gap-2">
+                            <label className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Enter Pilot Name</label>
+                            <input 
+                                type="text" 
+                                value={newHighScoreName}
+                                onChange={(e) => setNewHighScoreName(e.target.value)}
+                                maxLength={12}
+                                className="bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-bold text-center uppercase focus:border-cyan-500 outline-none"
+                            />
+                        </div>
 
-                <button 
-                    onClick={submitScore}
-                    className="w-full py-4 bg-amber-500 text-slate-950 font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 active:scale-95 transition-all"
-                >
-                    Register Score
-                </button>
-            </div>
-        ) : (
-             <>
-                <div className="flex gap-8 justify-center items-end mb-8">
-                    <div className="flex flex-col items-center">
+                        <button onClick={submitScore} className="w-full py-4 bg-amber-500 text-slate-950 font-black uppercase tracking-widest rounded-xl hover:bg-amber-400 active:scale-95 transition-all">
+                            Register Score
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center mb-8">
                         <div className="text-slate-400 font-bold uppercase tracking-widest text-xs">Total Score</div>
                         <div className="text-5xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.4)]">
                             {score.toLocaleString()}
                         </div>
                     </div>
-                    
-                    {/* Extended Stats */}
-                    <div className="flex flex-col gap-1 items-start bg-slate-900/40 p-3 rounded-xl border border-slate-800 min-w-[140px]">
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between">
-                            <span><i className="fa-solid fa-crosshairs mr-2 text-cyan-400" />Acc</span>
-                            <span className="text-white">{(runMetricsRef.current.shotsFired > 0 ? (runMetricsRef.current.shotsHit / runMetricsRef.current.shotsFired * 100) : 0).toFixed(1)}%</span>
-                        </div>
-                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between">
-                             <span><i className="fa-solid fa-skull mr-2 text-red-500" />Kills</span>
-                            <span className="text-white">{runMetricsRef.current.enemiesKilled.toLocaleString()}</span>
-                        </div>
-                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center w-full justify-between border-t border-slate-800 pt-1 mt-1">
-                            <span><i className="fa-solid fa-coins mr-2 text-amber-400" />Cr</span>
-                            <span className="text-white">{runMetricsRef.current.creditsEarned.toLocaleString()}</span>
-                        </div>
+                )}
+                
+                {/* Run Stats */}
+                 <div className="w-full grid grid-cols-2 gap-2 mb-6">
+                    <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
+                         <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Accuracy</div>
+                         <div className="text-cyan-400 font-black text-lg">{(runMetricsRef.current.shotsFired > 0 ? (runMetricsRef.current.shotsHit / runMetricsRef.current.shotsFired * 100) : 0).toFixed(1)}%</div>
                     </div>
+                     <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800 flex flex-col items-center">
+                         <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Enemies Killed</div>
+                         <div className="text-red-500 font-black text-lg">{runMetricsRef.current.enemiesKilled.toLocaleString()}</div>
+                    </div>
+                 </div>
+
+                 <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-xl mb-8 flex items-center gap-3 w-full justify-center">
+                    <i className="fa-solid fa-coins" />
+                    <span>Salvage: +{Math.floor(stats.credits)} C</span>
+                </div>
+
+                 <button onClick={() => setGameState(GameState.START)} className="w-full py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
+            </div>
+
+            {/* Right Col: Combat Log */}
+            <div className="w-full max-w-xs bg-slate-900/50 border border-red-900/30 rounded-2xl p-4 flex flex-col gap-2 overflow-hidden">
+                <div className="flex items-center gap-2 mb-2 text-red-500 border-b border-red-900/30 pb-2">
+                     <i className="fa-solid fa-triangle-exclamation" />
+                     <span className="font-black uppercase text-sm tracking-widest">System Failure Log</span>
                 </div>
                 
-                {/* Mini Leaderboard View */}
-                <div className="w-full max-w-sm bg-slate-900/50 border border-slate-800 rounded-2xl p-4 mb-8 overflow-hidden">
-                    <div className="flex justify-between items-center mb-2 px-2">
-                         <h3 className="text-cyan-400 font-black uppercase italic text-sm">Top Aces ({DIFFICULTY_CONFIGS[selectedDifficulty].name})</h3>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        {(persistentData.highScores || [])
-                            .filter(s => s.difficulty === selectedDifficulty || (!s.difficulty && selectedDifficulty === GameDifficulty.NORMAL))
-                            .slice(0, 5)
-                            .map((s, idx) => (
-                            <div key={idx} className={`flex justify-between items-center p-2 rounded text-xs ${s.score === score && hasSubmittedScore ? 'bg-amber-400/10 border border-amber-400/30' : ''}`}>
-                                <div className="flex gap-2">
-                                    <span className={`font-bold w-4 ${idx === 0 ? 'text-amber-400' : 'text-slate-500'}`}>#{idx + 1}</span>
-                                    <span className="text-slate-300 font-bold uppercase">{s.name}</span>
-                                </div>
-                                <span className="font-black text-slate-400">{s.score.toLocaleString()}</span>
+                {stats.combatLog.length === 0 ? (
+                    <div className="text-slate-500 text-xs italic text-center py-4">No damage recorded.</div>
+                ) : (
+                    stats.combatLog.slice().reverse().map((entry, idx) => (
+                        <div key={idx} className={`p-2 rounded flex justify-between items-center text-xs ${entry.isFatal ? 'bg-red-500/20 border border-red-500' : 'bg-slate-950/50 border border-slate-800'}`}>
+                            <div>
+                                <div className="font-bold text-slate-300">{entry.source} {entry.enemyLevel ? `(LV ${entry.enemyLevel})` : ''}</div>
+                                {entry.isFatal && <div className="text-[9px] text-red-400 font-black uppercase tracking-wider">CRITICAL FAILURE</div>}
                             </div>
-                        ))}
-                    </div>
-                </div>
-             </>
-        )}
+                            <div className="font-black text-red-400">-{entry.damage} HP</div>
+                        </div>
+                    ))
+                )}
+            </div>
 
-        <div className="bg-amber-400/10 border border-amber-400/30 px-8 py-3 rounded-xl text-amber-400 font-black text-2xl mb-8 flex items-center gap-3">
-          <i className="fa-solid fa-coins" />
-          <span>Salvage: +{Math.floor(stats.credits)} C</span>
         </div>
-        
-        <button onClick={() => setGameState(GameState.START)} className="px-12 py-5 bg-white text-red-900 font-black text-2xl rounded-full shadow-2xl active:scale-95 transition-all hover:bg-slate-200">RETURN TO BASE</button>
       </div>
     )}
 
-    {(gameState === GameState.PLAYING || gameState === GameState.LEVELING) && !isGamePaused && (
+    {(gameState === GameState.PLAYING || gameState === GameState.LEVELING || gameState === GameState.DYING) && !isGamePaused && (
       <>
         {currentScheme === ControlScheme.TAP_TO_AIM && (
           <div 
@@ -717,20 +736,31 @@ return (
             />
         )}
 
-        <HUD
-          stats={stats}
-          score={score}
-          autoAttack={autoAttack}
-          setAutoAttack={setAutoAttack}
-          totalCredits={totalCredits}
-          onPause={() => setIsPaused(true)}
-          onShowUpgrades={() => setShowUpgradesList(true)}
-          onOpenGarage={() => setShowGarage(true)}
-        />
+        {/* Hide HUD when Dying */}
+        {gameState !== GameState.DYING && (
+            <HUD
+            stats={stats}
+            score={score}
+            autoAttack={autoAttack}
+            setAutoAttack={setAutoAttack}
+            totalCredits={totalCredits}
+            onPause={() => setIsPaused(true)}
+            onShowUpgrades={() => setShowUpgradesList(true)}
+            onOpenGarage={() => setShowGarage(true)}
+            onLevelClick={triggerManualLevelUp}
+            />
+        )}
         
         {/* Render Upgrade Menu AFTER HUD/Controls to ensure it overlays them visually and receives input */}
         {gameState === GameState.LEVELING && (
-          <UpgradeMenu upgrades={offeredUpgrades} onSelect={(u) => { addUpgrade(u); setGameState(GameState.PLAYING); }} />
+          <UpgradeMenu 
+            upgrades={offeredUpgrades} 
+            onSelect={(u) => { 
+                addUpgrade(u);
+                setOfferedUpgrades([]); // Clear to trigger next generation step or close
+                onUpgradeSelected();
+            }} 
+          />
         )}
       </>
     )}

@@ -1,5 +1,5 @@
 
-import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, ShipType } from '../types';
+import { Entity, EntityType, PlayerStats, Vector2D, WeaponType, ShipType, GameState } from '../types';
 import { SHIPS, WORLD_SIZE, LASER_LENGTH } from '../constants';
 import { POWER_UPS } from '../systems/PowerUpSystem';
 
@@ -128,7 +128,8 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
         } else if (isElite) {
             ctx.shadowBlur = 10; ctx.shadowColor = '#f0f';
             ctx.fillStyle = '#f0f';
-            ctx.fillText("ELITE", 0, hudY - 20);
+            // Kamikaze Elite specific label? Just ELITE is fine, maybe add icon?
+            ctx.fillText(e.hasDeathDefiance ? "ELITE [ARMORED]" : "ELITE", 0, hudY - 20);
         } else {
              ctx.fillStyle = 'rgba(255,255,255,0.5)';
              ctx.fillText(`LV ${e.level || 1}`, 0, hudY - 10);
@@ -229,7 +230,22 @@ const renderEnemies = (ctx: CanvasRenderingContext2D, enemies: Entity[], time: n
             ctx.lineTo(-e.radius * 0.3, e.radius * 0.3); ctx.lineTo(0, e.radius * 0.8);
             ctx.lineTo(e.radius * 0.3, e.radius * 0.3); ctx.lineTo(e.radius * 0.8, e.radius * 0.5);
             ctx.closePath(); ctx.fill();
+        } else if (e.type === EntityType.ENEMY_KAMIKAZE) {
+            // Kamikaze - Sharp Triangle / Dart shape
+            ctx.beginPath();
+            ctx.moveTo(0, -e.radius * 1.5); // Long nose
+            ctx.lineTo(-e.radius, e.radius);
+            ctx.lineTo(0, e.radius * 0.5); // Indent
+            ctx.lineTo(e.radius, e.radius);
+            ctx.closePath(); 
+            ctx.fill();
+            
+            // Engine Glow
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(0, e.radius * 0.8, e.radius * 0.3, 0, Math.PI*2); ctx.fill();
+
         } else {
+            // Striker / Default
             ctx.beginPath();
             ctx.moveTo(0, -e.radius); ctx.lineTo(-e.radius, 0);
             ctx.lineTo(-e.radius * 0.8, e.radius); ctx.lineTo(0, e.radius * 0.4);
@@ -468,7 +484,10 @@ const renderParticles = (ctx: CanvasRenderingContext2D, particles: Entity[]) => 
     });
 };
 
-const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joystickDir: Vector2D, aimDir: Vector2D, stats: PlayerStats, time: number, lastHitTime: number) => {
+const renderPlayer = (ctx: CanvasRenderingContext2D, playerPos: Vector2D, joystickDir: Vector2D, aimDir: Vector2D, stats: PlayerStats, time: number, lastHitTime: number, gameState?: GameState) => {
+    // IF DYING, DO NOT RENDER SHIP
+    if (gameState === GameState.DYING) return;
+    
     const hitAge = time - lastHitTime;
     const isHitActive = hitAge < 250;
 
@@ -569,7 +588,8 @@ export const renderGame = (
     aimDir: Vector2D,
     time: number,
     lastPlayerHitTime: number,
-    zoomLevel: number
+    zoomLevel: number,
+    gameState: GameState
 ) => {
     const sCX = canvas.width / 2;
     const sCY = canvas.height / 2;
@@ -580,7 +600,12 @@ export const renderGame = (
 
     ctx.save();
     ctx.translate(sCX, sCY);
-    if (isHitActive) {
+    
+    // Add screen shake on death
+    if (gameState === GameState.DYING) {
+        const shake = 15;
+        ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+    } else if (isHitActive) {
         const shakeAmount = hitIntensity * 20;
         ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
     }
@@ -607,7 +632,7 @@ export const renderGame = (
     renderEnemies(ctx, enemies, time);
     renderProjectiles(ctx, projectiles, stats, time);
     renderParticles(ctx, particles); // Moved above player so player flies through smoke/fire
-    renderPlayer(ctx, playerPos, joystickDir, aimDir, stats, time, lastPlayerHitTime);
+    renderPlayer(ctx, playerPos, joystickDir, aimDir, stats, time, lastPlayerHitTime, gameState);
 
     ctx.restore();
 };

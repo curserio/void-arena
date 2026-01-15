@@ -33,7 +33,7 @@ export const useCollision = (
     pickupsRef: React.MutableRefObject<Entity[]>,
     playerPosRef: React.MutableRefObject<Vector2D>,
     statsRef: React.MutableRefObject<PlayerStats>,
-    triggerPlayerHit: (time: number, damage: number) => void,
+    triggerPlayerHit: (time: number, damage: number, source: Entity | string) => void,
     spawnDrops: (enemy: Entity) => number,
     spawnDamageText: (pos: Vector2D, dmg: number, color: string) => void,
     spawnExplosion: (pos: Vector2D, radius: number, color: string) => void,
@@ -41,7 +41,7 @@ export const useCollision = (
     setScore: React.Dispatch<React.SetStateAction<number>>,
     setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
     setOfferedUpgrades: (u: any[]) => void,
-    setGameState: (s: GameState) => void,
+    // setGameState removed from here to fix race condition
     persistentData: PersistentData,
     onEnemyHit: () => void,
     onEnemyKilled: () => void,
@@ -62,6 +62,40 @@ export const useCollision = (
         // 1. Insert Enemies into Grid
         enemies.forEach(e => grid.insert(e));
 
+        const applyDamageToEnemy = (e: Entity, dmg: number, isCrit: boolean, explosionColor?: string) => {
+            let hullDmg = dmg;
+
+            // Shield Logic
+            if (e.shield && e.shield > 0) {
+                e.lastShieldHitTime = time;
+                if (e.shield >= dmg) {
+                    e.shield -= dmg;
+                    hullDmg = 0;
+                } else {
+                    hullDmg -= e.shield;
+                    e.shield = 0;
+                }
+            }
+
+            // Death Defiance (Elite Kamikaze Ability)
+            if (hullDmg >= e.health && e.hasDeathDefiance) {
+                hullDmg = 0;
+                e.shield = 0; 
+                e.hasDeathDefiance = false; 
+                spawnDamageText(e.pos, 0, '#ffffff'); 
+                spawnExplosion(e.pos, e.radius * 1.5, '#f0f'); 
+            }
+
+            if (hullDmg > 0) e.health -= hullDmg;
+            
+            e.lastHitTime = time;
+            
+            let textColor = isCrit ? '#facc15' : '#fff';
+            if (explosionColor) textColor = explosionColor;
+            
+            spawnDamageText(e.pos, dmg, textColor);
+        };
+
         // 2. Projectile vs Enemy
         for (const p of projectiles) {
             if (p.health <= 0) continue;
@@ -69,7 +103,6 @@ export const useCollision = (
             if (p.type === EntityType.ENEMY_BULLET) continue;
 
             if (p.weaponType === WeaponType.LASER) {
-                // RAYCAST / LINE COLLISION FOR LASER
                 if (p.isFiring) {
                     const angle = p.angle || 0;
                     const startX = playerPos.x;
@@ -77,37 +110,17 @@ export const useCollision = (
                     const endX = startX + Math.cos(angle) * LASER_LENGTH;
                     const endY = startY + Math.sin(angle) * LASER_LENGTH;
 
-                    // Naive check against all enemies for Laser (optimization: use grid raycast in future)
-                    // For now, just iterate enemies as laser penetrates everything
                     enemies.forEach(e => {
                         const distSq = distToSegmentSq(e.pos, {x: startX, y: startY}, {x: endX, y: endY});
-                        if (distSq < (e.radius + 20) ** 2) { // 20 is laser thickness approx
-                            // Tick Damage
-                            if (time - (e.lastHitTime || 0) > 100) { // 10 ticks per second
-                                e.lastHitTime = time;
-                                onEnemyHit(); // Track Stats (Laser counts as hit per tick)
+                        if (distSq < (e.radius + 20) ** 2) { 
+                            if (time - (e.lastHitTime || 0) > 100) { 
+                                onEnemyHit(); 
 
-                                let dmg = pStats.damage * 0.2; // Continuous beam does less dmg per tick
-                                
-                                // Crits
+                                let dmg = pStats.damage * 0.2; 
                                 const isCrit = Math.random() < pStats.critChance;
                                 if (isCrit) dmg *= pStats.critMultiplier;
 
-                                // Shield Logic
-                                let hullDmg = dmg;
-                                if (e.shield && e.shield > 0) {
-                                    e.lastShieldHitTime = time;
-                                    if (e.shield >= dmg) {
-                                        e.shield -= dmg;
-                                        hullDmg = 0;
-                                    } else {
-                                        hullDmg -= e.shield;
-                                        e.shield = 0;
-                                    }
-                                }
-                                
-                                if (hullDmg > 0) e.health -= hullDmg;
-                                spawnDamageText(e.pos, dmg, isCrit ? '#facc15' : '#fff');
+                                applyDamageToEnemy(e, dmg, isCrit);
                             }
                         }
                     });
@@ -119,97 +132,65 @@ export const useCollision = (
                     if (e.health <= 0) continue;
 
                     if (checkCircleCollision(p, e)) {
-                        // HIT!
-                        onEnemyHit(); // Track Stats
+                        onEnemyHit(); 
 
                         let damage = pStats.damage;
                         const isCrit = Math.random() < pStats.critChance;
                         if (isCrit) damage *= pStats.critMultiplier;
 
-                        // Missile AOE Logic (Standard Missile OR Swarm Launcher)
                         if (p.weaponType === WeaponType.MISSILE || p.weaponType === WeaponType.SWARM_LAUNCHER) {
                             
-                            // Determine radius and color based on type
                             const isSwarm = p.weaponType === WeaponType.SWARM_LAUNCHER;
-                            const explosionRad = isSwarm ? 150 : pStats.missileRadius; // Swarm 150 (standard), Missile uses stats (starts 195)
-                            const boomColor = isSwarm ? '#e879f9' : '#fb923c'; // Pinkish for swarm, Orange for missile
+                            const explosionRad = isSwarm ? 150 : pStats.missileRadius;
+                            const boomColor = isSwarm ? '#e879f9' : '#fb923c'; 
                             
-                            spawnExplosion(p.pos, explosionRad, boomColor); // Visual Boom
+                            spawnExplosion(p.pos, explosionRad, boomColor); 
                             
-                            // Area Damage
                              enemies.forEach(subE => {
                                  const dist = Math.hypot(subE.pos.x - p.pos.x, subE.pos.y - p.pos.y);
-                                 if (dist < explosionRad) { // AOE Radius
+                                 if (dist < explosionRad) { 
                                      let subDmg = damage;
-                                     // Falloff
                                      if (dist > (explosionRad * 0.4)) subDmg *= 0.7;
-                                     
-                                     // Shield Logic for subE
-                                     let sHullDmg = subDmg;
-                                     if (subE.shield && subE.shield > 0) {
-                                         subE.lastShieldHitTime = time;
-                                         if (subE.shield >= subDmg) {
-                                             subE.shield -= subDmg;
-                                             sHullDmg = 0;
-                                         } else {
-                                             sHullDmg -= subE.shield;
-                                             subE.shield = 0;
-                                         }
-                                     }
-                                     if (sHullDmg > 0) subE.health -= sHullDmg;
-                                     subE.lastHitTime = time;
-                                     spawnDamageText(subE.pos, subDmg, boomColor);
+                                     applyDamageToEnemy(subE, subDmg, isCrit, boomColor);
                                  }
                              });
-                             p.health = 0; // Missile dies on contact
+                             p.health = 0; 
                         } else {
-                            // Plasma / Standard Logic
-                            
-                            // Apply Slow (Cryo-Plasma Meta)
                             if (pStats.weaponType === WeaponType.PLASMA) {
                                 const chillLvl = persistentData.metaLevels['meta_plas_area'] || 0;
                                 if (chillLvl > 0) {
                                     e.slowUntil = time + 2000;
-                                    e.slowFactor = 0.3; // 30% slow
+                                    e.slowFactor = 0.3; 
                                 }
                             }
 
-                            // Shield Logic
-                            let hullDmg = damage;
-                            if (e.shield && e.shield > 0) {
-                                e.lastShieldHitTime = time;
-                                if (e.shield >= damage) {
-                                    e.shield -= damage;
-                                    hullDmg = 0;
-                                } else {
-                                    hullDmg -= e.shield;
-                                    e.shield = 0;
-                                }
-                            }
-
-                            if (hullDmg > 0) e.health -= hullDmg;
-                            e.lastHitTime = time;
-                            spawnDamageText(e.pos, damage, isCrit ? '#facc15' : '#fff');
-                            spawnExplosion(p.pos, 20, '#22d3ee'); // Small hit puff
+                            applyDamageToEnemy(e, damage, isCrit);
+                            
+                            spawnExplosion(p.pos, 20, '#22d3ee'); 
 
                             p.pierceCount = (p.pierceCount || 1) - 1;
                             if (p.pierceCount <= 0) p.health = 0;
                         }
-                        break; // Collided with one enemy, handle next bullet
+                        break; 
                     }
                 }
             }
         }
 
         // 3. Player vs Enemy (Body Collision)
-        // Check surrounding cells of player
         const playerCandidates = grid.retrieve({ pos: playerPos, radius: 20 } as Entity);
         for (const e of playerCandidates) {
             const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
-            // Player radius approx 20, enemy radius varies
             if (dist < 20 + e.radius) {
-                // Collision damage logic
-                triggerPlayerHit(time, 15); // Static 15 dmg on collision for now
+                let collisionDmg = 15;
+                if (e.type === EntityType.ENEMY_KAMIKAZE) collisionDmg = 50;
+                
+                triggerPlayerHit(time, collisionDmg, e); 
+                
+                // If it's a Kamikaze, it explodes on contact
+                if (e.type === EntityType.ENEMY_KAMIKAZE) {
+                    e.health = 0;
+                }
             }
         }
 
@@ -223,54 +204,97 @@ export const useCollision = (
                 if (p.isElite) dmg = 20;
                 if (p.isMiniboss) dmg = 35;
                 
-                triggerPlayerHit(time, dmg);
+                triggerPlayerHit(time, dmg, p);
                 p.health = 0;
             }
         }
+        
+        // 4b. Enemy Lasers vs Player (Beam Collision)
+        enemies.forEach(e => {
+            if ((e.type === EntityType.ENEMY_LASER_SCOUT || e.type === EntityType.ENEMY_BOSS) && e.isFiring) {
+                const angle = e.angle || 0;
+                const isBoss = e.type === EntityType.ENEMY_BOSS;
+                
+                // Beam Properties
+                const len = isBoss ? 1600 : 1200;
+                // Generous hitbox width to make dodging harder
+                const baseWidth = isBoss ? 90 : 40; 
+                // Beam shrinks slightly visually, let's keep hitbox reliable but scale slightly
+                const progress = e.chargeProgress || 0;
+                const width = Math.max(20, baseWidth * (1 - progress * 0.3));
+
+                const startX = e.pos.x;
+                const startY = e.pos.y;
+                const endX = startX + Math.cos(angle) * len;
+                const endY = startY + Math.sin(angle) * len;
+
+                const distSq = distToSegmentSq(playerPos, {x: startX, y: startY}, {x: endX, y: endY});
+                
+                // Player radius approx 20
+                if (distSq < (width / 2 + 20) ** 2) {
+                    let dmg = isBoss ? 20 : 12; // Per Tick (increased base damage)
+                    
+                    // Level Scaling
+                    const lvl = e.level || 1;
+                    if (isBoss) dmg += (lvl * 0.5); 
+                    else dmg += (lvl * 0.2); // Scout laser now scales with level too
+
+                    triggerPlayerHit(time, dmg, isBoss ? "Dreadnought Beam" : "Sniper Beam");
+                }
+            }
+        });
 
         // 5. Pickup Collection
+        let xpGained = 0;
+        let creditsGained = 0;
+        
         for (const p of pickups) {
             const dist = Math.hypot(p.pos.x - playerPos.x, p.pos.y - playerPos.y);
             if (dist < 40) { // Collection range
                 // Apply Effect
                 if (p.type === EntityType.XP_GEM) {
-                    setStats(prev => {
-                        let newXp = prev.xp + (p.value || 1);
-                        let newLevel = prev.level;
-                        let newXpToNext = prev.xpToNextLevel;
-                        let leveledUp = false;
-
-                        // Level Up Loop
-                        while (newXp >= newXpToNext) {
-                            newXp -= newXpToNext;
-                            newLevel++;
-                            newXpToNext = Math.floor(newXpToNext * 1.2);
-                            leveledUp = true;
-                        }
-
-                        if (leveledUp) {
-                            // Generate upgrades
-                            const pool = UPGRADES.filter(u => !prev.acquiredUpgrades.some(owned => owned.id === u.id) || u.id === 'health_pack'); // Allow repeatable health
-                            const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
-                            setOfferedUpgrades(shuffled);
-                            setGameState(GameState.LEVELING);
-                        }
-                        
-                        return { ...prev, xp: newXp, level: newLevel, xpToNextLevel: newXpToNext };
-                    });
+                    xpGained += (p.value || 1);
                 } else if (p.type === EntityType.CREDIT) {
-                    const amount = Math.floor((p.value || 0) * pStats.creditMultiplier);
-                    setStats(prev => ({ ...prev, credits: prev.credits + amount }));
-                    onCreditCollected(amount);
+                    creditsGained += Math.floor((p.value || 0) * pStats.creditMultiplier);
                 } else if (p.type === EntityType.POWERUP && p.powerUpId) {
                      const config = POWER_UPS[p.powerUpId];
                      if (config) {
                          setStats(prev => config.onPickup(prev, time));
                      }
                 }
-                
                 p.health = 0; 
             }
+        }
+
+        if (creditsGained > 0) {
+            setStats(prev => ({ ...prev, credits: prev.credits + creditsGained }));
+            onCreditCollected(creditsGained);
+        }
+
+        if (xpGained > 0) {
+            // State Update - Just update stats. The GameLogic effect will handle the Leveling state switch
+            // based on the updated pendingLevelUps value. This prevents the race condition.
+            setStats(prev => {
+                let newXp = prev.xp + xpGained;
+                let newLevel = prev.level;
+                let newXpToNext = prev.xpToNextLevel;
+                let actualLevelsGained = 0;
+
+                while (newXp >= newXpToNext) {
+                    newXp -= newXpToNext;
+                    newLevel++;
+                    newXpToNext = Math.floor(newXpToNext * 1.2);
+                    actualLevelsGained++;
+                }
+                
+                return { 
+                    ...prev, 
+                    xp: newXp, 
+                    level: newLevel, 
+                    xpToNextLevel: newXpToNext,
+                    pendingLevelUps: prev.pendingLevelUps + actualLevelsGained
+                };
+            });
         }
 
         // 6. Death Logic
@@ -280,10 +304,21 @@ export const useCollision = (
                 const scoreAdd = spawnDrops(e);
                 setScore(s => s + scoreAdd);
                 spawnExplosion(e.pos, e.radius * 2.5, e.color); // BOOM!
+                
+                // Kamikaze Explosion Damage to Player
+                if (e.type === EntityType.ENEMY_KAMIKAZE) {
+                    const dist = Math.hypot(e.pos.x - playerPos.x, e.pos.y - playerPos.y);
+                    const blastRadius = 120;
+                    if (dist < blastRadius) {
+                        triggerPlayerHit(time, 40, "Kamikaze Blast"); 
+                    }
+                    // Add secondary visual blast for Kamikaze
+                     spawnExplosion(e.pos, 100, '#f97316');
+                }
             }
         });
 
-    }, [gridRef, onCreditCollected, onEnemyHit, onEnemyKilled, triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, setScore, setStats, setOfferedUpgrades, setGameState, persistentData]);
+    }, [gridRef, onCreditCollected, onEnemyHit, onEnemyKilled, triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, setScore, setStats, setOfferedUpgrades, persistentData]);
 
     return { checkCollisions };
 };

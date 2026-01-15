@@ -63,7 +63,8 @@ export const DIFFICULTY_CONFIGS: Record<GameDifficulty, DifficultyConfig> = {
 // Rebalanced Weapons
 export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: number; bulletSpeed: number }> = {
   // Plasma: Fast, crowd control (slows), moderate damage
-  [WeaponType.PLASMA]: { fireRate: 6.0, damage: 35, bulletSpeed: 900 },
+  // Nerfed Base Fire Rate to 4.0 (was 6.0). Upgrades restore it.
+  [WeaponType.PLASMA]: { fireRate: 4.0, damage: 35, bulletSpeed: 900 },
   // Missile: Slow fire, huge AOE damage, good for clearing packs
   [WeaponType.MISSILE]: { fireRate: 0.8, damage: 180, bulletSpeed: 600 },
   // Laser: Charge mechanic. High damage tick.
@@ -89,6 +90,7 @@ export const INITIAL_STATS: PlayerStats = {
   xp: 0,
   level: 1,
   xpToNextLevel: 250, 
+  pendingLevelUps: 0, // NEW: Tracks stored levels
   weaponType: WeaponType.PLASMA,
   pierceCount: 1,
   hasShield: true,
@@ -106,7 +108,10 @@ export const INITIAL_STATS: PlayerStats = {
   swarmAgility: 1.5, // Reduced base agility (was 3.0)
   
   // Refactored Buffer System
-  activeBuffs: {}
+  activeBuffs: {},
+
+  // Combat Log
+  combatLog: []
 };
 
 export const XP_PER_GEM = 15; 
@@ -263,6 +268,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
   },
 
   // --- WEAPON SPECIFIC: PLASMA ---
+  { id: 'meta_plas_rate', name: 'Plasma Cycler', description: '+5% Fire Rate per level.', icon: 'fa-bolt', maxLevel: 10, costBase: 500, costFactor: 1.2, weaponType: WeaponType.PLASMA },
   { id: 'meta_plas_area', name: 'Cryo-Plasma', description: 'Plasma slows enemies effectively (Chill).', icon: 'fa-snowflake', maxLevel: 10, costBase: 1000, costFactor: 1.6, weaponType: WeaponType.PLASMA },
   { id: 'meta_plas_dmg', name: 'Plasma Intensity', description: '+5% Damage per level.', icon: 'fa-fire-burner', maxLevel: 100, costBase: 200, costFactor: 1.12, weaponType: WeaponType.PLASMA },
   { id: 'meta_plas_speed', name: 'Velocity Coil', description: '+8% Projectile Speed per level.', icon: 'fa-wind', maxLevel: 30, costBase: 400, costFactor: 1.2, weaponType: WeaponType.PLASMA },
@@ -280,12 +286,12 @@ export const META_UPGRADES: MetaUpgrade[] = [
   { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER },
 
   // --- WEAPON SPECIFIC: SWARM LAUNCHER ---
-  // Max Level 6 to reach 3 (base) + 6 = 9 Rockets
-  { id: 'meta_swarm_count', name: 'Extended Magazines', description: '+1 Rocket per salvo.', icon: 'fa-layer-group', maxLevel: 6, costBase: 5000, costFactor: 1.7, weaponType: WeaponType.SWARM_LAUNCHER },
+  // Rebalanced: Removed Speed, Increased Count Cap to 20 total, Increased DMG cap, Increased CD reduction levels
+  { id: 'meta_swarm_count', name: 'Extended Magazines', description: '+1 Rocket per salvo.', icon: 'fa-layer-group', maxLevel: 17, costBase: 10000, costFactor: 1.55, weaponType: WeaponType.SWARM_LAUNCHER },
   { id: 'meta_swarm_agility', name: 'Thrust Vectoring', description: 'Improves rocket homing turn rate.', icon: 'fa-paper-plane', maxLevel: 20, costBase: 2000, costFactor: 1.3, weaponType: WeaponType.SWARM_LAUNCHER },
-  { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 50, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER },
-  { id: 'meta_swarm_speed', name: 'Solid Fuel Boost', description: '+5% Rocket Speed per level.', icon: 'fa-wind', maxLevel: 20, costBase: 800, costFactor: 1.2, weaponType: WeaponType.SWARM_LAUNCHER },
-  { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: 'Reduces cooldown between salvos.', icon: 'fa-clock', maxLevel: 10, costBase: 3000, costFactor: 1.5, weaponType: WeaponType.SWARM_LAUNCHER },
+  { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 100, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER },
+  // Speed Upgrade Removed
+  { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: 'Reduces cooldown between salvos.', icon: 'fa-clock', maxLevel: 50, costBase: 3000, costFactor: 1.25, weaponType: WeaponType.SWARM_LAUNCHER },
 ];
 
 export const SHIPS: ShipConfig[] = [

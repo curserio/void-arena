@@ -30,6 +30,81 @@ export const useEnemies = (
         }
     }, [difficulty]);
 
+    const createEnemy = (type: EntityType, x: number, y: number, gameMinutes: number, difficultyMultiplier: number, levelBonus: number, isEliteOverride?: boolean, isMinibossOverride?: boolean) => {
+        let isMiniboss = isMinibossOverride !== undefined ? isMinibossOverride : false;
+        let isElite = isEliteOverride !== undefined ? isEliteOverride : Math.random() < Math.min(0.2, 0.01 + gameMinutes * 0.02);
+
+        // Miniboss logic from original code, mostly applies if passed in or rolled
+        if (!isMiniboss && !isElite && Math.random() < 0.03 && gameMinutes > 1.5) {
+             // 3% chance for random miniboss if not already special
+        }
+
+        let baseHp = 100;
+        let baseRadius = 22;
+        let color = '#fff';
+        let hasDeathDefiance = false;
+
+        if (type === EntityType.ENEMY_SCOUT) {
+            baseHp = 80 * difficultyMultiplier;
+            color = `hsl(${260 + Math.random() * 30}, 80%, 60%)`;
+        } else if (type === EntityType.ENEMY_STRIKER) {
+            baseHp = 220 * difficultyMultiplier;
+            baseRadius = 26;
+            color = `hsl(${340 + Math.random() * 20}, 80%, 60%)`;
+        } else if (type === EntityType.ENEMY_LASER_SCOUT) {
+            baseHp = 150 * difficultyMultiplier;
+            baseRadius = 24;
+            color = '#a855f7';
+        } else if (type === EntityType.ENEMY_KAMIKAZE) {
+            baseHp = 40 * difficultyMultiplier; // Low HP
+            baseRadius = 18;
+            color = '#f97316'; // Orange
+        }
+
+        if (isMiniboss) {
+            baseHp *= 12;
+            baseRadius *= 2.0;
+            color = '#ef4444';
+        } else if (isElite) {
+            baseHp *= 3;
+            baseRadius *= 1.3;
+            color = '#f0f';
+            
+            // Special Ability for Elite Kamikaze
+            if (type === EntityType.ENEMY_KAMIKAZE) {
+                hasDeathDefiance = true;
+            }
+        }
+
+        const maxShield = (isMiniboss || isElite || (gameMinutes > 5 && Math.random() > 0.7)) ? baseHp * 0.5 : 0;
+        
+        // Spawn Flash Check
+        const distToPlayer = Math.hypot(x - playerPosRef.current.x, y - playerPosRef.current.y);
+        if (distToPlayer < 1300) {
+            spawnSpawnFlash({ x, y });
+        }
+
+        return {
+            id: Math.random().toString(36),
+            type: type,
+            pos: { x, y }, vel: { x: 0, y: 0 },
+            radius: baseRadius,
+            health: baseHp, maxHealth: baseHp,
+            shield: maxShield, maxShield: maxShield,
+            color: color,
+            isMelee: type === EntityType.ENEMY_STRIKER,
+            level: Math.floor(difficultyMultiplier) + levelBonus, 
+            isElite: isElite, 
+            isMiniboss: isMiniboss,
+            hasDeathDefiance: hasDeathDefiance,
+            aiPhase: Math.random() * Math.PI * 2, 
+            aiSeed: Math.random(),
+            lastHitTime: 0, lastShieldHitTime: 0,
+            isCharging: false, isFiring: false, chargeProgress: 0, 
+            lastShotTime: 0
+        };
+    };
+
     const spawnEnemy = useCallback((gameTime: number, currentTime: number) => {
         const gameMinutes = gameTime / 60;
         
@@ -81,84 +156,45 @@ export const useEnemies = (
 
         // 2. Normal Enemy Type Roll
         const roll = Math.random();
-        let type = EntityType.ENEMY_SCOUT;
-        if (roll > 0.90 && gameTime > 60) type = EntityType.ENEMY_LASER_SCOUT;
-        else if (roll > 0.75) type = EntityType.ENEMY_STRIKER;
+        
+        // 10% Chance for Kamikaze Wave (starts a bit later)
+        if (gameTime > 30 && roll > 0.90) {
+            // KAMIKAZE SPAWN
+            const spawnCount = 3 + Math.floor(Math.random() * 3); // 3-5 drones
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 900 + Math.random() * 300;
+            const baseX = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(angle) * dist));
+            const baseY = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(angle) * dist));
 
-        // 3. Miniboss & Elite Logic
-        const activeMinibosses = enemiesRef.current.filter(e => e.isMiniboss).length;
-        const allowMiniboss = gameTime > 90 && activeMinibosses < 2;
+            const isEliteWave = Math.random() < 0.2; 
 
-        let isMiniboss = false;
-        let isElite = Math.random() < Math.min(0.2, 0.01 + gameMinutes * 0.02);
-
-        if (allowMiniboss && Math.random() < 0.03) { 
-            isMiniboss = true;
-            isElite = false; 
+            if (isEliteWave) {
+                 // Single Elite
+                 const e = createEnemy(EntityType.ENEMY_KAMIKAZE, baseX, baseY, gameMinutes, difficultyMultiplier, levelBonus, true, false);
+                 enemiesRef.current.push(e);
+            } else {
+                // Swarm
+                for (let i = 0; i < spawnCount; i++) {
+                    const offsetX = (Math.random() - 0.5) * 100;
+                    const offsetY = (Math.random() - 0.5) * 100;
+                    const e = createEnemy(EntityType.ENEMY_KAMIKAZE, baseX + offsetX, baseY + offsetY, gameMinutes, difficultyMultiplier, levelBonus, false, false);
+                    enemiesRef.current.push(e);
+                }
+            }
+            return;
         }
 
-        // Spawn Position (Safe Distance)
-        // Previous was 800+300. Increased to 1000+400 to push them further out initially.
+        let type = EntityType.ENEMY_SCOUT;
+        if (roll > 0.75 && gameTime > 60) type = EntityType.ENEMY_LASER_SCOUT;
+        else if (roll > 0.60) type = EntityType.ENEMY_STRIKER;
+
         const a = Math.random() * Math.PI * 2;
         const d = 1000 + Math.random() * 400; 
         const x = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(a) * d));
         const y = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(a) * d));
 
-        // Stats Calculation
-        let baseHp = 100;
-        let baseRadius = 22;
-        let color = '#fff';
+        enemiesRef.current.push(createEnemy(type, x, y, gameMinutes, difficultyMultiplier, levelBonus));
 
-        if (type === EntityType.ENEMY_SCOUT) {
-            baseHp = 80 * difficultyMultiplier;
-            color = `hsl(${260 + Math.random() * 30}, 80%, 60%)`;
-        } else if (type === EntityType.ENEMY_STRIKER) {
-            baseHp = 220 * difficultyMultiplier;
-            baseRadius = 26;
-            color = `hsl(${340 + Math.random() * 20}, 80%, 60%)`;
-        } else if (type === EntityType.ENEMY_LASER_SCOUT) {
-            baseHp = 150 * difficultyMultiplier;
-            baseRadius = 24;
-            color = '#a855f7';
-        }
-
-        if (isMiniboss) {
-            baseHp *= 12;
-            baseRadius *= 2.0;
-            color = '#ef4444';
-        } else if (isElite) {
-            baseHp *= 3;
-            baseRadius *= 1.3;
-            color = '#f0f';
-        }
-
-        const maxShield = (isMiniboss || isElite || (gameMinutes > 5 && Math.random() > 0.7)) ? baseHp * 0.5 : 0;
-
-        // Check distance for "On-Screen Flash" logic
-        // If enemy spawns within ~1300 pixels (reasonable visible range on desktop or zoomed out), trigger flash
-        const distToPlayer = Math.hypot(x - playerPosRef.current.x, y - playerPosRef.current.y);
-        if (distToPlayer < 1300) {
-            spawnSpawnFlash({ x, y });
-        }
-
-        enemiesRef.current.push({
-            id: Math.random().toString(36),
-            type: type,
-            pos: { x, y }, vel: { x: 0, y: 0 },
-            radius: baseRadius,
-            health: baseHp, maxHealth: baseHp,
-            shield: maxShield, maxShield: maxShield,
-            color: color,
-            isMelee: type === EntityType.ENEMY_STRIKER,
-            level: Math.floor(difficultyMultiplier) + levelBonus, 
-            isElite: isElite, 
-            isMiniboss: isMiniboss,
-            aiPhase: Math.random() * Math.PI * 2, 
-            aiSeed: Math.random(),
-            lastHitTime: 0, lastShieldHitTime: 0,
-            isCharging: false, isFiring: false, chargeProgress: 0, 
-            lastShotTime: currentTime + Math.random() * 1000
-        });
     }, [playerPosRef, difficulty, spawnSpawnFlash]);
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
@@ -171,7 +207,6 @@ export const useEnemies = (
         let spawnDelay = Math.max(0.1, 1.2 - (gameTime / 300));
         if (isRushHour) spawnDelay /= 3;
 
-        // Higher difficulty spawns slightly faster
         spawnDelay /= (1 + (difficulty.statMultiplier - 1) * 0.2);
 
         spawnTimerRef.current += dt;
@@ -197,69 +232,51 @@ export const useEnemies = (
             const dx = playerPos.x - e.pos.x, dy = playerPos.y - e.pos.y, d = Math.hypot(dx, dy);
 
             if (e.type === EntityType.ENEMY_BOSS) {
-                // --- BOSS AI ---
-                const bossSpeed = 40 * speedMult; // Very slow
-                
-                // Move towards player slowly, but stop if too close or firing
+                const bossSpeed = 40 * speedMult; 
                 if (d > 400 && !e.isFiring) {
                     e.vel.x = (dx / d) * bossSpeed;
                     e.vel.y = (dy / d) * bossSpeed;
                 } else {
-                    e.vel.x *= 0.95; // Drag
+                    e.vel.x *= 0.95; 
                     e.vel.y *= 0.95;
                 }
-
                 e.pos.x += e.vel.x * dt;
                 e.pos.y += e.vel.y * dt;
 
-                // Rotation: Always face player slowly
                 const targetAngle = Math.atan2(dy, dx);
                 let currentAngle = e.angle || 0;
                 let angleDiff = targetAngle - currentAngle;
-                
-                // Angle Wrapping
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                
-                // Slow rotation speed (Reduced from 2.0 to 0.8 for easier dodging)
                 e.angle = currentAngle + angleDiff * 0.8 * dt;
 
-                // Firing Logic
                 if (!e.isCharging && !e.isFiring && (time - (e.lastShotTime || 0) > 6000)) {
-                    // Start Charge
-                    e.isCharging = true;
-                    e.chargeProgress = 0;
+                    e.isCharging = true; e.chargeProgress = 0;
                 }
-
                 if (e.isCharging) {
-                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.4; // 2.5s Charge
+                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.4;
                     if (e.chargeProgress >= 1.0) {
-                        e.isCharging = false;
-                        e.isFiring = true;
-                        e.chargeProgress = 0;
-                        e.lastShotTime = time;
+                        e.isCharging = false; e.isFiring = true; e.chargeProgress = 0; e.lastShotTime = time;
                     }
                 }
-
                 if (e.isFiring) {
-                    // Fire for 3 seconds
-                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.33;
-                    if (e.chargeProgress >= 1.0) {
-                        e.isFiring = false;
-                        e.chargeProgress = 0;
-                    }
+                    e.chargeProgress = (e.chargeProgress || 0) + dt * 0.25; // Adjusted to ~4s fire duration (was 0.15)
+                    if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                 }
 
-            } else if (e.type === EntityType.ENEMY_SCOUT || e.type === EntityType.ENEMY_STRIKER || e.type === EntityType.ENEMY_LASER_SCOUT) {
-                // ... (Existing Logic for standard enemies) ...
+            } else {
+                // STANDARD ENEMIES
+                const speedScale = 1 + (gameTime / 600) * 0.5; 
                 
-                // Base Speed Scaling with Level (Time)
-                const speedScale = 1 + (gameTime / 600) * 0.5; // +50% speed over 10 mins
-                let baseSpd = (e.type === EntityType.ENEMY_STRIKER ? 110 : 80) * speedScale * speedMult;
-                
-                if (e.isMiniboss) baseSpd *= 0.65;
+                let baseSpd = 80;
+                if (e.type === EntityType.ENEMY_STRIKER) baseSpd = 110;
+                if (e.type === EntityType.ENEMY_KAMIKAZE) baseSpd = 350; 
 
-                // Separation (Swarming)
+                baseSpd *= speedScale * speedMult;
+                if (e.isMiniboss) baseSpd *= 0.65;
+                if (e.isElite && e.type !== EntityType.ENEMY_KAMIKAZE) baseSpd *= 0.8;
+
+                // Separation
                 let sepX = 0, sepY = 0;
                 enemiesRef.current.forEach(other => {
                     if (other.id === e.id) return;
@@ -270,9 +287,59 @@ export const useEnemies = (
                     }
                 });
 
-                // --- AI BEHAVIORS ---
-                
-                if (e.type === EntityType.ENEMY_LASER_SCOUT) {
+                if (e.type === EntityType.ENEMY_KAMIKAZE) {
+                     // NEW LOGIC: Inertia-based Drift
+                     const currentSpeed = Math.hypot(e.vel.x, e.vel.y);
+                     const targetDirX = dx / d;
+                     const targetDirY = dy / d;
+
+                     // Determine new direction (Steering)
+                     // If speed is 0 (just spawned), align instantly to create explosive start
+                     let newDirX = targetDirX;
+                     let newDirY = targetDirY;
+
+                     if (currentSpeed > 50) {
+                         // Turning Inertia: How fast can they change vector?
+                         const turnRate = 2.5 * dt; // Adjusts how "drifty" they are
+                         const normVelX = e.vel.x / currentSpeed;
+                         const normVelY = e.vel.y / currentSpeed;
+                         
+                         newDirX = normVelX + (targetDirX - normVelX) * turnRate;
+                         newDirY = normVelY + (targetDirY - normVelY) * turnRate;
+                         
+                         // Re-normalize
+                         const len = Math.hypot(newDirX, newDirY);
+                         newDirX /= len;
+                         newDirY /= len;
+                     }
+
+                     // Speed Logic
+                     // Check alignment with target to determine acceleration
+                     const alignment = (newDirX * targetDirX) + (newDirY * targetDirY);
+                     let newSpeed = currentSpeed;
+
+                     if (currentSpeed < 50) {
+                         // Explosive Launch
+                         newSpeed = baseSpd;
+                     } else if (alignment > 0.9) {
+                         // Aligned: Accelerate SLOWLY
+                         // WAS 120, increased to 250 for snappier recovery
+                         const acceleration = 250 * dt; 
+                         newSpeed = Math.min(baseSpd, currentSpeed + acceleration);
+                     } else {
+                         // Turning / Drifting: Decelerate (Scrub speed)
+                         newSpeed = Math.max(100, currentSpeed * 0.97); 
+                     }
+                     
+                     // Apply Velocity
+                     e.vel.x = newDirX * newSpeed;
+                     e.vel.y = newDirY * newSpeed;
+
+                     // Add separation forces (external influence)
+                     e.vel.x += sepX * dt * 5;
+                     e.vel.y += sepY * dt * 5;
+
+                } else if (e.type === EntityType.ENEMY_LASER_SCOUT) {
                     const optimalRange = 600; 
                     const orbitDir = (e.aiSeed || 0) > 0.5 ? 1 : -1;
                     let moveX = 0; let moveY = 0;
@@ -304,9 +371,10 @@ export const useEnemies = (
                         if (e.chargeProgress >= 1.0) { e.isCharging = false; e.isFiring = true; e.chargeProgress = 0; e.lastShotTime = time; }
                     }
                     if (e.isFiring) {
-                        e.chargeProgress = (e.chargeProgress || 0) + dt * 2.0; 
+                        e.chargeProgress = (e.chargeProgress || 0) + dt * 0.8; // Slowed down: ~1.25s fire duration
                         if (e.chargeProgress >= 1.0) { e.isFiring = false; e.chargeProgress = 0; }
                     }
+
                 } else if (e.isMelee) {
                     if (d < 250 && !e.isDashing && time - (e.lastShotTime || 0) > 5000) {
                         e.isDashing = true; e.dashUntil = time + 600; e.lastShotTime = time; 
@@ -318,7 +386,7 @@ export const useEnemies = (
                         const pulse = 1.0 + Math.sin(time * 0.005 + (e.aiPhase || 0)) * 0.2;
                         e.vel.x = (dx / d) * baseSpd * pulse + sepX; e.vel.y = (dy / d) * baseSpd * pulse + sepY;
                     }
-                } else {
+                } else if (e.type === EntityType.ENEMY_SCOUT || e.type === EntityType.ENEMY_STRIKER) {
                     const orbitRadius = 320 + (e.aiSeed || 0) * 100;
                     const idealAngle = (e.aiSeed || 0) * Math.PI * 2 + (time * 0.0003); 
                     const tx = playerPos.x + Math.cos(idealAngle) * orbitRadius;
@@ -342,15 +410,13 @@ export const useEnemies = (
                             });
                         }
                     }
+                } else if (e.type === EntityType.ASTEROID) {
+                    if (e.pos.x < e.radius || e.pos.x > WORLD_SIZE - e.radius) e.vel.x *= -1;
+                    if (e.pos.y < e.radius || e.pos.y > WORLD_SIZE - e.radius) e.vel.y *= -1;
                 }
                 
                 e.pos.x += e.vel.x * dt; 
                 e.pos.y += e.vel.y * dt;
-
-            } else if (e.type === EntityType.ASTEROID) {
-                if (e.pos.x < e.radius || e.pos.x > WORLD_SIZE - e.radius) e.vel.x *= -1;
-                if (e.pos.y < e.radius || e.pos.y > WORLD_SIZE - e.radius) e.vel.y *= -1;
-                e.pos.x += e.vel.x * dt; e.pos.y += e.vel.y * dt;
             }
 
             if (e.health <= 0) alive = false;

@@ -13,6 +13,7 @@ interface HUDProps {
   onPause: () => void;
   onShowUpgrades: () => void;
   onOpenGarage: () => void;
+  onLevelClick?: () => void; // New callback
 }
 
 interface DamagePopup {
@@ -83,11 +84,12 @@ const PowerUpIndicator: React.FC<{
   );
 };
 
-const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage }) => {
+const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage, onLevelClick }) => {
   const healthPercent = Math.max(0, (stats.currentHealth / stats.maxHealth) * 100);
   const shieldPercent = Math.max(0, (stats.currentShield / stats.maxShield) * 100);
   const xpPercent = Math.max(0, Math.min(100, (stats.xp / stats.xpToNextLevel) * 100));
   const isInvulnerable = performance.now() < stats.invulnerableUntil;
+  const hasPendingLevels = stats.pendingLevelUps > 0;
 
   const currentShipName = SHIPS.find(s => s.type === stats.shipType)?.name || 'Vessel';
 
@@ -137,17 +139,23 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
         <div className="flex flex-col gap-2 pointer-events-auto max-w-[45%]">
           
           {/* Ship Info & XP Bar */}
-          <div className="bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2 flex flex-col shadow-2xl min-w-[110px]">
+          <button 
+            onClick={hasPendingLevels ? onLevelClick : undefined}
+            className={`bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 rounded-xl p-2 flex flex-col shadow-2xl min-w-[110px] transition-all 
+                ${hasPendingLevels ? 'animate-pulse ring-2 ring-cyan-400 cursor-pointer active:scale-95' : ''}`}
+          >
              <div className="flex justify-between items-center mb-1">
                  <span className="text-cyan-400/70 text-[9px] font-black uppercase tracking-widest truncate">{currentShipName}</span>
-                 <div className="bg-cyan-500 text-slate-950 px-1.5 rounded text-[9px] font-black shrink-0">LV {stats.level}</div>
+                 <div className={`bg-cyan-500 text-slate-950 px-1.5 rounded text-[9px] font-black shrink-0 ${hasPendingLevels ? 'bg-white' : ''}`}>
+                     {hasPendingLevels ? 'UPGRADE!' : `LV ${stats.level}`}
+                 </div>
              </div>
              
              {/* Embedded XP Bar */}
              <div className="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-700/50 mb-1">
                 <div className="h-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.8)] transition-all duration-700" style={{ width: `${xpPercent}%` }} />
              </div>
-          </div>
+          </button>
           
           {/* Credits (Compacted) */}
           <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-xl p-2 flex items-center gap-2 shadow-2xl min-w-[110px] w-fit">

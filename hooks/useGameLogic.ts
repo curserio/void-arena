@@ -1,9 +1,9 @@
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import {
   GameState, PlayerStats, PersistentData, GameDifficulty
 } from '../types';
-import { INITIAL_STATS, WORLD_SIZE, DIFFICULTY_CONFIGS } from '../constants';
+import { INITIAL_STATS, WORLD_SIZE, DIFFICULTY_CONFIGS, UPGRADES } from '../constants';
 import { usePlayer } from './game/usePlayer';
 import { useEnemies } from './game/useEnemies';
 import { useProjectiles } from './game/useProjectiles';
@@ -70,9 +70,64 @@ export const useGameLogic = (
   const { checkCollisions } = useCollision(
     enemiesRef, projectilesRef, pickupsRef, playerPosRef, statsRef,
     triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, addParticles,
-    setScore, setStats, setOfferedUpgrades, setGameState, persistentData,
+    setScore, setStats, setOfferedUpgrades, persistentData,
     handleEnemyHit, handleEnemyKilled, handleCreditCollected
   );
+
+  // Manual Level Up Trigger (for HUD)
+  const triggerManualLevelUp = useCallback(() => {
+      if (statsRef.current.pendingLevelUps > 0) {
+          setGameState(GameState.LEVELING);
+      }
+  }, [setGameState]);
+
+  // AUTO LEVEL UP TRIGGER
+  // Watches for changes in pendingLevelUps. If > 0 and auto-show is enabled, trigger state change.
+  useEffect(() => {
+    const autoShow = persistentData.settings.autoShowLevelUp ?? true;
+    if (gameState === GameState.PLAYING && stats.pendingLevelUps > 0 && autoShow) {
+        setGameState(GameState.LEVELING);
+    }
+  }, [stats.pendingLevelUps, gameState, persistentData.settings.autoShowLevelUp, setGameState]);
+
+
+  // Effect to manage Upgrade Generation loop
+  const [hasGeneratedOffers, setHasGeneratedOffers] = useState(false);
+
+  useEffect(() => {
+      if (gameState === GameState.LEVELING) {
+          const currentPending = stats.pendingLevelUps;
+          
+          if (currentPending > 0 && !hasGeneratedOffers) {
+              // Generate Upgrades
+              const pool = UPGRADES.filter(u => !stats.acquiredUpgrades.some(owned => owned.id === u.id) || u.id === 'health_pack');
+              const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
+              setOfferedUpgrades(shuffled);
+              setHasGeneratedOffers(true);
+          }
+          // Note: We REMOVED the auto-close 'else if' block here.
+          // Closing is now handled explicitly by user interaction in onUpgradeSelected
+          // to prevent race conditions causing the menu to slam shut instantly.
+      } else {
+          setHasGeneratedOffers(false);
+      }
+  }, [gameState, hasGeneratedOffers, stats.pendingLevelUps, stats.acquiredUpgrades, setGameState, setOfferedUpgrades]);
+
+  // When user selects an upgrade (in App.tsx), they call addUpgrade then clear offers.
+  // We need to reset the generation flag when offers are cleared to allow next batch.
+  const onUpgradeSelected = useCallback(() => {
+      // Determine if we should close the menu or generate next batch
+      // statsRef.current still holds the 'before decrement' value because state update is async.
+      // So if we had 1 level, after this selection we have 0.
+      const levelsRemaining = statsRef.current.pendingLevelUps - 1;
+      
+      if (levelsRemaining <= 0) {
+          setGameState(GameState.PLAYING);
+      }
+      
+      setHasGeneratedOffers(false);
+  }, [setGameState]);
+
 
   // Initialize Game
   const initGame = useCallback(() => {
@@ -130,6 +185,8 @@ export const useGameLogic = (
     syncWithPersistentData, autoAttack, setAutoAttack,
     // Expose split refs for the renderer
     enemiesRef, projectilesRef, pickupsRef, particlesRef,
-    runMetricsRef
+    runMetricsRef,
+    triggerManualLevelUp,
+    onUpgradeSelected
   };
 };

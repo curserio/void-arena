@@ -5,6 +5,7 @@ export enum GameState {
   START = 'START',
   PLAYING = 'PLAYING',
   LEVELING = 'LEVELING',
+  DYING = 'DYING',
   GAMEOVER = 'GAMEOVER',
   GARAGE = 'GARAGE'
 }
@@ -32,6 +33,7 @@ export enum EntityType {
   ENEMY_SCOUT = 'ENEMY_SCOUT',
   ENEMY_STRIKER = 'ENEMY_STRIKER',
   ENEMY_LASER_SCOUT = 'ENEMY_LASER_SCOUT',
+  ENEMY_KAMIKAZE = 'ENEMY_KAMIKAZE',
   ENEMY_BOSS = 'ENEMY_BOSS',
   ASTEROID = 'ASTEROID',
   BULLET = 'BULLET',
@@ -116,6 +118,7 @@ export interface Entity {
   isMiniboss?: boolean; 
   isBoss?: boolean;
   targetId?: string; // For Homing Missiles
+  hasDeathDefiance?: boolean; // For Elite Kamikaze (Shield Gate)
 }
 
 export interface Upgrade {
@@ -147,6 +150,14 @@ export interface ShipConfig {
   color: string;
 }
 
+export interface CombatLogEntry {
+    timestamp: number;
+    damage: number;
+    source: string;
+    isFatal: boolean;
+    enemyLevel?: number;
+}
+
 export interface PlayerStats {
   maxHealth: number;
   currentHealth: number;
@@ -163,6 +174,7 @@ export interface PlayerStats {
   xp: number;
   level: number;
   xpToNextLevel: number;
+  pendingLevelUps: number; // Stored levels waiting to be spent
   weaponType: WeaponType;
   pierceCount: number;
   hasShield: boolean;
@@ -183,6 +195,9 @@ export interface PlayerStats {
   // Generic Active Buffs System
   // Key: PowerUpId, Value: Expiration Timestamp (ms)
   activeBuffs: Record<string, number>;
+
+  // Death Recap
+  combatLog: CombatLogEntry[];
 }
 
 export interface HighScoreEntry {
@@ -216,6 +231,7 @@ export interface PersistentData {
   // Settings
   settings: {
     controlScheme: ControlScheme;
-    zoomLevel?: number; // Optional primarily for old data migration
+    zoomLevel?: number;
+    autoShowLevelUp?: boolean;
   };
 }

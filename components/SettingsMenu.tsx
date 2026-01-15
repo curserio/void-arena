@@ -14,6 +14,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
   const [confirmReset, setConfirmReset] = useState(false);
   const currentScheme = data.settings?.controlScheme || ControlScheme.TWIN_STICK;
   const currentZoom = data.settings?.zoomLevel || DEFAULT_ZOOM;
+  const autoShowLevelUp = data.settings?.autoShowLevelUp ?? true;
 
   const setScheme = (scheme: ControlScheme) => {
     onUpdate({
@@ -33,6 +34,16 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
         zoomLevel: zoom
       }
     });
+  };
+
+  const toggleAutoLevel = () => {
+      onUpdate({
+          ...data,
+          settings: {
+              ...data.settings,
+              autoShowLevelUp: !autoShowLevelUp
+          }
+      });
   };
 
   const handleResetClick = () => {
@@ -104,7 +115,9 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
         </div>
 
         <div className="flex flex-col gap-4">
-           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Camera Optic</h3>
+           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Interface</h3>
+           
+           {/* Zoom Settings */}
            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {ZOOM_PRESETS.map((preset) => {
                   const isActive = Math.abs(currentZoom - preset.value) < 0.01;
@@ -121,6 +134,26 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
                   );
               })}
            </div>
+
+           {/* Auto Level Up Toggle */}
+           <button 
+              onClick={toggleAutoLevel}
+              className={`p-4 rounded-xl border transition-all flex justify-between items-center
+                  ${autoShowLevelUp ? 'bg-slate-900 border-emerald-500/50' : 'bg-slate-950 border-slate-800'}`}
+           >
+               <div className="flex items-center gap-3">
+                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${autoShowLevelUp ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400' : 'bg-slate-900 border-slate-700 text-slate-600'}`}>
+                       <i className="fa-solid fa-layer-group" />
+                   </div>
+                   <div className="text-left">
+                       <div className={`font-bold text-xs uppercase ${autoShowLevelUp ? 'text-white' : 'text-slate-400'}`}>Auto-Open Level Up</div>
+                       <div className="text-[9px] text-slate-500">Show selection menu immediately</div>
+                   </div>
+               </div>
+               <div className={`w-10 h-5 rounded-full relative transition-colors ${autoShowLevelUp ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+                   <div className={`absolute top-1 bottom-1 w-3 rounded-full bg-white transition-all ${autoShowLevelUp ? 'left-6' : 'left-1'}`} />
+               </div>
+           </button>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-slate-800 pt-6">

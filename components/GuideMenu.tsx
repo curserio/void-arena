@@ -200,6 +200,16 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
                         icon="fa-satellite"
                         color="#c084fc"
                       />
+                      {/* Kamikaze */}
+                      <EnemyCard 
+                        name="Kamikaze Drone" 
+                        role="Suicide Bomber" 
+                        baseHp={40 * viewLevel} 
+                        speed="Extreme" 
+                        desc="Drifts fast and explodes on contact. Elite has shield gate."
+                        icon="fa-play"
+                        color="#f97316"
+                      />
                       {/* Boss */}
                       <EnemyCard 
                         name="Dreadnought Boss" 

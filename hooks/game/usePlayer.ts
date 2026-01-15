@@ -1,6 +1,6 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState } from '../../types';
+import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType } from '../../types';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { isBuffActive } from '../../systems/PowerUpSystem';
 
@@ -38,6 +38,7 @@ export const usePlayer = (
         const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
         const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
         const plasCountL = data.metaLevels['meta_plas_count'] || 0; 
+        const plasRateL = data.metaLevels['meta_plas_rate'] || 0;
         
         const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
         const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
@@ -49,7 +50,6 @@ export const usePlayer = (
         const swarmCountL = data.metaLevels['meta_swarm_count'] || 0;
         const swarmAgilityL = data.metaLevels['meta_swarm_agility'] || 0;
         const swarmDmgL = data.metaLevels['meta_swarm_dmg'] || 0;
-        const swarmSpdL = data.metaLevels['meta_swarm_speed'] || 0;
         const swarmCdL = data.metaLevels['meta_swarm_cd'] || 0;
 
 
@@ -70,6 +70,7 @@ export const usePlayer = (
             bDamageMult *= (1 + plasDmgL * 0.05);
             bSpeed *= (1 + plasSpdL * 0.08);
             bCount += plasCountL; 
+            fRate *= (1 + plasRateL * 0.05); // +5% per level, max level 10 = +50% (4.0 -> 6.0)
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
@@ -81,10 +82,9 @@ export const usePlayer = (
              bPierce = 999; 
         } else if (weapon === WeaponType.SWARM_LAUNCHER) {
              bDamageMult *= (1 + swarmDmgL * 0.05);
-             bSpeed *= (1 + swarmSpdL * 0.05);
-             sCount = 3 + swarmCountL; // 3 base + upgrades (up to 9)
+             sCount = 3 + swarmCountL; // 3 base + upgrades (up to 20 total)
              sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
-             fRate *= (1 + swarmCdL * 0.05); // Minor CD reduction
+             fRate *= (1 + swarmCdL * 0.05); // CD reduction
         }
 
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
@@ -128,7 +128,9 @@ export const usePlayer = (
 
             invulnerableUntil: 0,
             activeBuffs: {},
-            acquiredUpgrades: []
+            acquiredUpgrades: [],
+            
+            combatLog: []
         };
 
         // Re-apply saved in-game upgrades (RPG Style)
@@ -161,9 +163,16 @@ export const usePlayer = (
     }, [persistentData, calculateStats]);
 
     const updatePlayer = useCallback((dt: number, time: number) => {
-        if (gameState !== GameState.PLAYING || isPaused) return;
-        const pStats = statsRef.current;
+        if (gameState !== GameState.PLAYING || isPaused) {
+             // Drifting when dying or paused (no input control)
+             if (gameState === GameState.DYING) {
+                 playerPosRef.current.x += joystickDirRef.current.x * 20 * dt; 
+                 playerPosRef.current.y += joystickDirRef.current.y * 20 * dt;
+             }
+             return;
+        }
         
+        const pStats = statsRef.current;
         let moveSpeed = pStats.speed;
         if (isBuffActive(pStats, 'SPEED', time)) {
              moveSpeed *= 1.5; // 50% Speed Boost
@@ -188,11 +197,15 @@ export const usePlayer = (
     const addUpgrade = useCallback((upgrade: Upgrade) => {
         setStats(p => {
             const newStats = upgrade.effect(p);
-            return { ...newStats, acquiredUpgrades: [...p.acquiredUpgrades, upgrade] };
+            return { 
+                ...newStats, 
+                acquiredUpgrades: [...p.acquiredUpgrades, upgrade],
+                pendingLevelUps: Math.max(0, p.pendingLevelUps - 1)
+            };
         });
     }, []);
 
-    const triggerPlayerHit = useCallback((time: number, damage: number) => {
+    const triggerPlayerHit = useCallback((time: number, damage: number, source: Entity | string) => {
         const p = statsRef.current;
         if (time < p.invulnerableUntil) return;
 
@@ -209,26 +222,53 @@ export const usePlayer = (
                 remainingDmg -= shieldDamage;
             }
             if (remainingDmg > 0) newHealth = Math.max(0, newHealth - remainingDmg);
-            return { ...prev, currentShield: newShield, currentHealth: newHealth, lastShieldHitTime: time, invulnerableUntil: time + 300 };
+
+            // Log entry
+            let sourceName = "Unknown Hazard";
+            let enemyLevel: number | undefined = undefined;
+
+            if (typeof source === 'string') {
+                sourceName = source;
+            } else {
+                if (source.type === EntityType.ENEMY_SCOUT) sourceName = "Void Scout";
+                else if (source.type === EntityType.ENEMY_STRIKER) sourceName = "Crimson Striker";
+                else if (source.type === EntityType.ENEMY_LASER_SCOUT) sourceName = "Sniper Drone";
+                else if (source.type === EntityType.ENEMY_KAMIKAZE) sourceName = "Kamikaze Drone";
+                else if (source.type === EntityType.ENEMY_BOSS) sourceName = "Dreadnought";
+                else if (source.type === EntityType.ENEMY_BULLET) sourceName = "Enemy Fire";
+                
+                if (source.isElite) sourceName = `Elite ${sourceName}`;
+                if (source.isMiniboss) sourceName = `Giant ${sourceName}`;
+                if (source.level) enemyLevel = source.level;
+            }
+
+            const logEntry = {
+                timestamp: Date.now(),
+                damage: damage,
+                source: sourceName,
+                isFatal: newHealth <= 0,
+                enemyLevel
+            };
+            
+            // Keep last 5 entries
+            const newLog = [...prev.combatLog, logEntry].slice(-6);
+
+            return { 
+                ...prev, 
+                currentShield: newShield, 
+                currentHealth: newHealth, 
+                lastShieldHitTime: time, 
+                invulnerableUntil: time + 300,
+                combatLog: newLog
+            };
         });
     }, []);
 
     const syncWithPersistentData = useCallback((newData: PersistentData) => {
         const baseStats = calculateStats(newData);
         setStats(current => {
-            // Logic to merge current session state with new meta state
-            // Re-apply current session upgrades to the new base stats
-            // (Note: calculateStats already includes stored RPG upgrades, so we just need to ensure consistency)
-            
-            // This function is mostly used when Garage updates happen mid-game (if allowed)
-            // or to ensure UI sync. Since we are RPG style, calculateStats does the heavy lifting.
-            
-            // If in RPG mode, 'current.acquiredUpgrades' should theoretically match 'newData.acquiredUpgradeIds'
-            // unless we just bought a meta upgrade.
-            
             let finalStats = { ...baseStats };
             
-            // Preserve strictly real-time session data
             const hpRatio = current.maxHealth > 0 ? current.currentHealth / current.maxHealth : 1;
             const shieldRatio = current.maxShield > 0 ? current.currentShield / current.maxShield : 1;
 
@@ -236,7 +276,8 @@ export const usePlayer = (
             finalStats.currentShield = Math.min(finalStats.maxShield, finalStats.maxShield * shieldRatio);
             
             finalStats.credits = current.credits; // Session credits
-            finalStats.activeBuffs = current.activeBuffs; 
+            finalStats.activeBuffs = current.activeBuffs;
+            finalStats.combatLog = current.combatLog; // Preserve Log 
 
             return finalStats;
         });

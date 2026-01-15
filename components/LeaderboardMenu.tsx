@@ -30,7 +30,7 @@ const LeaderboardMenu: React.FC<LeaderboardMenuProps> = ({ scores, onClose }) =>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-800">
+        <div className="flex gap-2 overflow-x-auto pb-2 border-b border-slate-800 custom-scrollbar">
             {Object.values(DIFFICULTY_CONFIGS).map(config => {
                 const isActive = activeDiff === config.id;
                 return (
@@ -50,48 +50,59 @@ const LeaderboardMenu: React.FC<LeaderboardMenuProps> = ({ scores, onClose }) =>
             })}
         </div>
 
-        {/* Table Header */}
-        <div className="bg-slate-950/50 rounded-2xl border border-slate-800 flex-1 flex flex-col overflow-hidden min-h-0">
-            <div className="grid grid-cols-10 bg-slate-900/80 p-3 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800 min-w-[600px] shrink-0">
-                <div className="col-span-1 text-center">#</div>
-                <div className="col-span-3">Pilot</div>
-                <div className="col-span-1 text-center">Acc</div>
-                <div className="col-span-2 text-center">Kills</div>
-                <div className="col-span-1 text-center">Credits</div>
-                <div className="col-span-2 text-right">Score</div>
-            </div>
+        {/* Table Container */}
+        <div className="bg-slate-950/50 rounded-2xl border border-slate-800 flex-1 w-full min-h-0 overflow-hidden flex flex-col">
             
-            <div className="overflow-y-auto custom-scrollbar flex-1 min-w-[600px]">
-                {filteredScores.length === 0 ? (
-                    <div className="p-12 text-center flex flex-col items-center gap-3">
-                        <i className="fa-solid fa-ghost text-4xl text-slate-800" />
-                        <div className="text-slate-600 font-bold uppercase text-xs">No Records Found for {DIFFICULTY_CONFIGS[activeDiff].name} Tier</div>
+            {/* Horizontal Scroll Wrapper */}
+            <div className="overflow-x-auto overflow-y-hidden flex-1 w-full custom-scrollbar">
+                
+                {/* Min Width Container ensures table structure holds */}
+                <div className="min-w-[600px] h-full flex flex-col">
+                    
+                    {/* Header - Fixed at top relative to vertical scroll, moves with horizontal scroll */}
+                    <div className="grid grid-cols-10 bg-slate-900/80 p-3 text-[10px] font-black uppercase text-slate-500 tracking-widest border-b border-slate-800 shrink-0">
+                        <div className="col-span-1 text-center">#</div>
+                        <div className="col-span-3">Pilot</div>
+                        <div className="col-span-1 text-center">Acc</div>
+                        <div className="col-span-2 text-center">Kills</div>
+                        <div className="col-span-1 text-center">Credits</div>
+                        <div className="col-span-2 text-right">Score</div>
                     </div>
-                ) : (
-                    filteredScores.map((entry, idx) => (
-                        <div key={idx} className={`grid grid-cols-10 p-3 border-b border-slate-800/50 items-center hover:bg-slate-800/30 transition-colors ${idx === 0 ? 'bg-amber-400/5' : ''}`}>
-                            <div className="col-span-1 text-center font-black text-slate-600">
-                                {idx === 0 ? <i className="fa-solid fa-crown text-amber-400" /> : idx + 1}
+                    
+                    {/* Body - Vertically Scrollable */}
+                    <div className="overflow-y-auto custom-scrollbar flex-1">
+                        {filteredScores.length === 0 ? (
+                            <div className="p-12 text-center flex flex-col items-center gap-3">
+                                <i className="fa-solid fa-ghost text-4xl text-slate-800" />
+                                <div className="text-slate-600 font-bold uppercase text-xs">No Records Found for {DIFFICULTY_CONFIGS[activeDiff].name} Tier</div>
                             </div>
-                            <div className="col-span-3">
-                                <div className={`font-bold ${idx === 0 ? 'text-amber-200' : 'text-white'}`}>{entry.name || 'Unknown Pilot'}</div>
-                                <div className="text-[9px] text-slate-500">{new Date(entry.date).toLocaleDateString()}</div>
-                            </div>
-                            <div className="col-span-1 text-center text-xs font-bold text-slate-400">
-                                {entry.accuracy !== undefined ? `${entry.accuracy.toFixed(0)}%` : '-'}
-                            </div>
-                            <div className="col-span-2 text-center text-xs font-bold text-slate-400">
-                                {entry.enemiesKilled !== undefined ? entry.enemiesKilled.toLocaleString() : '-'}
-                            </div>
-                             <div className="col-span-1 text-center text-xs font-bold text-amber-400/70">
-                                {entry.creditsEarned !== undefined ? (entry.creditsEarned / 1000).toFixed(1) + 'k' : '-'}
-                            </div>
-                            <div className="col-span-2 text-right font-black text-cyan-400 tabular-nums">
-                                {entry.score.toLocaleString()}
-                            </div>
-                        </div>
-                    ))
-                )}
+                        ) : (
+                            filteredScores.map((entry, idx) => (
+                                <div key={idx} className={`grid grid-cols-10 p-3 border-b border-slate-800/50 items-center hover:bg-slate-800/30 transition-colors ${idx === 0 ? 'bg-amber-400/5' : ''}`}>
+                                    <div className="col-span-1 text-center font-black text-slate-600">
+                                        {idx === 0 ? <i className="fa-solid fa-crown text-amber-400" /> : idx + 1}
+                                    </div>
+                                    <div className="col-span-3 truncate pr-2">
+                                        <div className={`font-bold truncate ${idx === 0 ? 'text-amber-200' : 'text-white'}`}>{entry.name || 'Unknown Pilot'}</div>
+                                        <div className="text-[9px] text-slate-500">{new Date(entry.date).toLocaleDateString()}</div>
+                                    </div>
+                                    <div className="col-span-1 text-center text-xs font-bold text-slate-400">
+                                        {entry.accuracy !== undefined ? `${entry.accuracy.toFixed(0)}%` : '-'}
+                                    </div>
+                                    <div className="col-span-2 text-center text-xs font-bold text-slate-400">
+                                        {entry.enemiesKilled !== undefined ? entry.enemiesKilled.toLocaleString() : '-'}
+                                    </div>
+                                     <div className="col-span-1 text-center text-xs font-bold text-amber-400/70">
+                                        {entry.creditsEarned !== undefined ? (entry.creditsEarned / 1000).toFixed(1) + 'k' : '-'}
+                                    </div>
+                                    <div className="col-span-2 text-right font-black text-cyan-400 tabular-nums">
+                                        {entry.score.toLocaleString()}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
 
