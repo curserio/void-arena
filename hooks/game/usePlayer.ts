@@ -104,6 +104,11 @@ export const usePlayer = (
             mDur = 10000 + (abDurL * 1000); // 10s base + 1s per level
             mCd = Math.max(5000, 60000 - (abCdL * 2000)); // 60s base - 2s per level (min 5s)
             mPwr = 2.0 * (1 + abSpdL * 0.10); // 2x base speed * upgrades
+        } else if (module === ModuleType.SHIELD_BURST) {
+            // Shield Burst: instant shield restore + 0.5s invulnerability
+            mDur = 500; // 0.5s invulnerability
+            mCd = 20000; // 20s cooldown (no upgrades yet)
+            mPwr = 1.0; // Full shield restore (100%)
         }
 
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
@@ -201,11 +206,21 @@ export const usePlayer = (
             if (now < prev.moduleReadyTime) return prev; // Cooldown not ready
             if (now < prev.moduleActiveUntil) return prev; // Already active
 
-            return {
+            let newStats = {
                 ...prev,
                 moduleActiveUntil: now + prev.moduleDuration,
                 moduleReadyTime: now + prev.moduleCooldownMax
             };
+
+            // Module-specific activation effects
+            if (prev.moduleType === ModuleType.SHIELD_BURST) {
+                // Instantly restore shield to max
+                newStats.currentShield = newStats.maxShield;
+                // Grant invulnerability for duration
+                newStats.invulnerableUntil = now + prev.moduleDuration;
+            }
+
+            return newStats;
         });
     }, []);
 
@@ -228,8 +243,8 @@ export const usePlayer = (
         if (powerUpManager.isBuffActive(pStats, 'SPEED', time)) {
             moveSpeed *= 1.5;
         }
-        // Module Boost
-        if (time < pStats.moduleActiveUntil) {
+        // Afterburner Module Boost (only for Afterburner, not other modules)
+        if (pStats.moduleType === ModuleType.AFTERBURNER && time < pStats.moduleActiveUntil) {
             moveSpeed *= pStats.modulePower;
         }
 

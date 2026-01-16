@@ -16,7 +16,12 @@ const MODULES = [
         icon: 'fa-forward-fast',
         description: 'Temporary speed boost. Dodge attacks and reposition quickly.'
     },
-    // Future modules can be added here
+    {
+        type: ModuleType.SHIELD_BURST,
+        name: 'Shield Burst',
+        icon: 'fa-shield-heart',
+        description: 'Instantly restores shield and grants brief invulnerability.'
+    },
 ];
 
 export const ModuleSelector: React.FC = () => {

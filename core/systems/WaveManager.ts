@@ -82,16 +82,22 @@ export class WaveManager {
 
     /**
      * Get difficulty multiplier for enemy stats
-     * Uses soft-cap formula: linear early game, logarithmic late game
-     * This extends gameplay before reaching near-impossible difficulty
+     * Uses soft-cap formula with difficulty-based curve steepness
+     * Higher difficulties scale faster over time
      */
     getDifficultyMultiplier(gameTime: number): number {
         const gameMinutes = gameTime / 60;
 
-        // Soft-cap formula: linear growth up to 10min, then logarithmic scaling
-        // This allows longer gameplay before hitting impossibility
-        const linearPart = gameMinutes * 0.3; // Slower early growth
-        const logPart = Math.log10(1 + gameMinutes * 0.15) * 3; // Soft cap for late game
+        // Base curve steepness varies by difficulty
+        // Normal: 0.35, Hard: 0.45, Nightmare: 0.55, Hell: 0.65
+        const curveSteepness = 0.35 + (this.difficulty.statMultiplier - 1) * 0.03;
+
+        // Linear scaling - steeper on higher difficulties
+        const linearPart = gameMinutes * curveSteepness;
+
+        // Logarithmic soft-cap - higher difficulties get more log growth
+        const logFactor = 3 + (this.difficulty.statMultiplier - 1) * 0.5;
+        const logPart = Math.log10(1 + gameMinutes * 0.2) * logFactor;
 
         const timeMultiplier = 1 + linearPart + logPart;
 
@@ -105,7 +111,7 @@ export class WaveManager {
     getCreditMultiplier(gameTime: number): number {
         const gameMinutes = gameTime / 60;
         // Gradual credit scaling - keeps up with enemy HP scaling
-        return 1 + (gameMinutes * 0.08) + Math.log10(1 + gameMinutes * 0.1);
+        return 1 + (gameMinutes * 0.1) + Math.log10(1 + gameMinutes * 0.15);
     }
 
     /**

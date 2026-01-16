@@ -4,6 +4,7 @@ import { ModuleType, WeaponType } from '../../types';
 export const MODULE_PRICES: Record<ModuleType, number> = {
     [ModuleType.NONE]: 0,
     [ModuleType.AFTERBURNER]: 8000,
+    [ModuleType.SHIELD_BURST]: 12000,
 };
 
 export const WEAPON_PRICES: Record<WeaponType, number> = {

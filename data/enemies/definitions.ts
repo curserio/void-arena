@@ -169,7 +169,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
 
     [EnemyType.BOSS_DREADNOUGHT]: {
         type: EnemyType.BOSS_DREADNOUGHT,
-        baseHealth: 3000,
+        baseHealth: 4000,
         baseRadius: 70,
         baseSpeed: 40,
 
@@ -202,7 +202,7 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
 
     [EnemyType.BOSS_DESTROYER]: {
         type: EnemyType.BOSS_DESTROYER,
-        baseHealth: 2500,
+        baseHealth: 3500,
         baseRadius: 75,
         baseSpeed: 35,
 

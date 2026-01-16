@@ -48,8 +48,9 @@ export const renderGame = (
         ctx.translate((Math.random() - 0.5) * shakeAmount, (Math.random() - 0.5) * shakeAmount);
     }
 
-    // Dynamic zoom (zoom out during boost)
-    const boostZoom = (time < stats.moduleActiveUntil) ? 0.9 : 1.0;
+    // Dynamic zoom (zoom out during Afterburner boost only)
+    const isAfterburnerActive = stats.moduleType === 'AFTERBURNER' && time < stats.moduleActiveUntil;
+    const boostZoom = isAfterburnerActive ? 0.9 : 1.0;
     ctx.scale(zoomLevel * boostZoom, zoomLevel * boostZoom);
 
     ctx.translate(-cameraPos.x, -cameraPos.y);

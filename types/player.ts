@@ -3,7 +3,8 @@ import { ShipType } from './ships';
 
 export enum ModuleType {
     NONE = 'NONE',
-    AFTERBURNER = 'AFTERBURNER'
+    AFTERBURNER = 'AFTERBURNER',
+    SHIELD_BURST = 'SHIELD_BURST'
 }
 
 export enum ControlScheme {
