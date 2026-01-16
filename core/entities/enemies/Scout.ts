@@ -74,9 +74,7 @@ export class Scout extends BaseEnemy {
         const speedMult = this.getSpeedMultiplier(time);
         const speedScale = 1 + (gameTime / 600) * 0.5;
         let speed = this.baseSpeed * speedScale * speedMult;
-
-        if (this.isMiniboss) speed *= 0.65;
-        if (this.isElite) speed *= 0.8;
+        // Note: Tier speed modifiers already applied in factory via modifiers.ts
 
         // Movement via behavior
         const direction = this.movement.calculateVelocity(aiCtx);

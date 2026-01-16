@@ -23,7 +23,7 @@ export const ENEMY_MODIFIERS: Record<EnemyTier, TierModifier> = {
     [EnemyTier.ELITE]: {
         healthMult: 3.0,
         radiusMult: 1.3,
-        speedMult: 0.85,
+        speedMult: 0.9,
         damageMult: 1.5,
         xpMult: 3.0,
         creditMult: 2.5,
@@ -37,7 +37,7 @@ export const ENEMY_MODIFIERS: Record<EnemyTier, TierModifier> = {
     [EnemyTier.LEGENDARY]: {
         healthMult: 8.0,
         radiusMult: 1.6,
-        speedMult: 0.75,
+        speedMult: 0.85,
         damageMult: 2.0,
         xpMult: 8.0,
         creditMult: 6.0,
@@ -51,7 +51,7 @@ export const ENEMY_MODIFIERS: Record<EnemyTier, TierModifier> = {
     [EnemyTier.MINIBOSS]: {
         healthMult: 15.0,
         radiusMult: 2.0,
-        speedMult: 0.6,
+        speedMult: 0.75,
         damageMult: 2.5,
         xpMult: 15.0,
         creditMult: 10.0,

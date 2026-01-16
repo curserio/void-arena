@@ -67,8 +67,8 @@ export class Striker extends BaseEnemy {
         const speedScale = 1 + (gameTime / 600) * 0.5;
         let speed = this.baseSpeed * speedScale * speedMult;
 
-        if (this.isMiniboss) speed *= 0.65;
-        if (this.isElite) speed *= 0.8;
+        // Note: Tier speed modifiers already applied in factory via modifiers.ts
+        // No additional speed reduction needed here for melee mobility
 
         // Distance to player for dash logic
         const dx = playerPos.x - this.pos.x;
@@ -78,12 +78,12 @@ export class Striker extends BaseEnemy {
         // Dash initiation
         if (distToPlayer < 250 && !this.isDashing && time - this.lastShotTime > 5000) {
             this.isDashing = true;
-            this.dashUntil = time + 600;
+            this.dashUntil = time + 800; // Longer dash (was 600)
             this.lastShotTime = time;
 
-            // Dash velocity
-            this.vel.x = (dx / distToPlayer) * speed * 3.5;
-            this.vel.y = (dy / distToPlayer) * speed * 3.5;
+            // Dash velocity - faster dash
+            this.vel.x = (dx / distToPlayer) * speed * 4.0;
+            this.vel.y = (dy / distToPlayer) * speed * 4.0;
         }
 
         // Dash state handling

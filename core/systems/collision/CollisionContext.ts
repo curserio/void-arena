@@ -42,7 +42,7 @@ export interface CollisionContext {
 }
 
 /**
- * Helper to apply damage to an enemy with shield logic
+ * Helper to apply damage to an enemy using takeDamage() for proper damage reduction
  */
 export function applyDamageToEnemy(
     e: IEnemy,
@@ -52,32 +52,20 @@ export function applyDamageToEnemy(
     explosionColor?: string
 ): void {
     const { time, callbacks } = ctx;
-    let hullDmg = dmg;
 
-    // Shield Logic
-    if (e.shield && e.shield > 0) {
-        e.lastShieldHitTime = time;
-        if (e.shield >= dmg) {
-            e.shield -= dmg;
-            hullDmg = 0;
-        } else {
-            hullDmg -= e.shield;
-            e.shield = 0;
-        }
-    }
-
-    // Death Defiance (Elite Kamikaze)
-    if (hullDmg >= e.health && e.hasDeathDefiance) {
-        hullDmg = 0;
-        e.shield = 0;
+    // Death Defiance check first (Elite Kamikaze survives one lethal hit)
+    if (dmg >= e.health && e.hasDeathDefiance) {
         e.hasDeathDefiance = false;
+        e.shield = 0;
         callbacks.spawnDamageText(e.pos, 0, '#ffffff');
         callbacks.spawnExplosion(e.pos, e.radius * 1.5, '#f0f');
+        return;
     }
 
-    if (hullDmg > 0) e.health -= hullDmg;
-    e.lastHitTime = time;
+    // Use enemy's takeDamage() method - handles isShielded damage reduction
+    const damageResult = e.takeDamage(dmg, time);
 
-    const textColor = explosionColor || (isCrit ? '#facc15' : '#fff');
-    callbacks.spawnDamageText(e.pos, dmg, textColor);
+    // Display actual damage dealt (after reduction if shielded)
+    const textColor = explosionColor || (isCrit ? '#facc15' : (e.isShielded ? '#67e8f9' : '#fff'));
+    callbacks.spawnDamageText(e.pos, damageResult.actualDamage, textColor);
 }
