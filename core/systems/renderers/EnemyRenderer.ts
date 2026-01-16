@@ -132,6 +132,9 @@ export function renderEnemies(
             case EnemyType.KAMIKAZE:
                 renderKamikaze(ctx, e);
                 break;
+            case EnemyType.SHIELDER:
+                renderShielder(ctx, e, time);
+                break;
             case EnemyType.STRIKER:
             case EnemyType.LASER_SCOUT:
             default:
@@ -407,6 +410,65 @@ function renderKamikaze(ctx: CanvasRenderingContext2D, e: Entity | IEnemy): void
     ctx.beginPath();
     ctx.arc(0, e.radius * 0.8, e.radius * 0.3, 0, Math.PI * 2);
     ctx.fill();
+}
+
+/**
+ * Shielder - Support unit with protective aura
+ */
+function renderShielder(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, time: number): void {
+    const pulse = 0.7 + Math.sin(time * 0.003) * 0.3;
+    const AURA_RADIUS = 150; // Match SHIELD_AURA_RADIUS constant
+
+    // Draw protective aura bubble first (behind shielder)
+    ctx.save();
+    ctx.globalAlpha = 0.15 * pulse;
+    const auraGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, AURA_RADIUS);
+    auraGrad.addColorStop(0, 'rgba(34, 211, 238, 0.4)');
+    auraGrad.addColorStop(0.7, 'rgba(34, 211, 238, 0.2)');
+    auraGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, AURA_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Aura ring
+    ctx.globalAlpha = 0.3 * pulse;
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath();
+    ctx.arc(0, 0, AURA_RADIUS, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    // Draw shielder body - hexagonal shape
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI / 3) - Math.PI / 2;
+        const x = Math.cos(angle) * e.radius;
+        const y = Math.sin(angle) * e.radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner glow
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.beginPath();
+    ctx.arc(0, 0, e.radius * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rotating energy ring
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 2;
+    ctx.save();
+    ctx.rotate(time * 0.002);
+    ctx.beginPath();
+    ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 1.5);
+    ctx.stroke();
+    ctx.restore();
 }
 
 function renderStriker(ctx: CanvasRenderingContext2D, e: Entity | IEnemy): void {

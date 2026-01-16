@@ -137,6 +137,30 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         },
     },
 
+    [EnemyType.SHIELDER]: {
+        type: EnemyType.SHIELDER,
+        baseHealth: 80,
+        baseRadius: 24,
+        baseSpeed: 60,
+
+        name: 'Shield Drone',
+        role: 'Support Unit',
+        guideIcon: 'fa-shield',
+        description: 'Creates protective shield bubble around nearby enemies. Priority target.',
+
+        color: '#22d3ee', // Cyan
+
+        movementBehavior: MovementBehavior.SHIELDING,
+        attackPattern: AttackPattern.NONE, // No attacks, just shield aura
+        attackCooldown: 0,
+
+        xpValue: 50, // High XP - priority target
+        creditValue: 25,
+        powerUpChance: 0.08, // Higher drop chance
+
+        attacks: {},
+    },
+
     [EnemyType.ASTEROID]: {
         type: EnemyType.ASTEROID,
         baseHealth: 120, // Base HP, scaled by radius

@@ -15,6 +15,7 @@ import { UpdateContext, IProjectileSpawn, IEnemySpawn } from '../../types/entiti
 import { enemyFactory } from '../../core/factories/EnemyFactory';
 import { projectileIdGen } from '../../core/utils/IdGenerator';
 import { BaseEnemy } from '../../core/entities/enemies/BaseEnemy';
+import { SHIELD_AURA_RADIUS } from '../../core/entities/enemies/Shielder';
 import { WaveManager, SpawnDecision } from '../../core/systems/WaveManager';
 import { DEFAULT_WAVE_CONFIG } from '../../data/spawning/waveConfig';
 
@@ -81,7 +82,7 @@ export const useEnemies = (
         isMinibossOverride?: boolean
     ): IEnemy | null => {
         // Validate enemy type (regular enemies only, not bosses)
-        const validTypes = [EnemyType.SCOUT, EnemyType.STRIKER, EnemyType.LASER_SCOUT, EnemyType.KAMIKAZE, EnemyType.ASTEROID];
+        const validTypes = [EnemyType.SCOUT, EnemyType.STRIKER, EnemyType.LASER_SCOUT, EnemyType.KAMIKAZE, EnemyType.SHIELDER, EnemyType.ASTEROID];
         if (!validTypes.includes(enemyType)) {
             console.warn(`createEnemy called with invalid type: ${enemyType}. Use spawnBoss for boss types.`);
             return null;
@@ -208,7 +209,12 @@ export const useEnemies = (
         if (gameMode === GameMode.STANDARD) {
             spawnTimerRef.current += dt;
 
-            const decision = waveManager.getSpawnDecision(gameTime, spawnTimerRef.current);
+            // Count current shielders for spawn limit
+            const shielderCount = enemiesRef.current.filter(
+                e => e.isAlive && e.enemyType === EnemyType.SHIELDER
+            ).length;
+
+            const decision = waveManager.getSpawnDecision(gameTime, spawnTimerRef.current, shielderCount);
 
             if (decision.shouldSpawn) {
                 processSpawnDecision(decision, gameTime, time);
@@ -257,7 +263,32 @@ export const useEnemies = (
             time,
             gameTime,
             playerPos: playerPosRef.current,
+            enemies: enemiesRef.current,
         };
+
+        // --- UPDATE SHIELDED STATUS (once per frame, before damage) ---
+        // Find all alive shielders
+        const shielders = enemiesRef.current.filter(
+            e => e.isAlive && e.enemyType === EnemyType.SHIELDER
+        );
+
+        // Update isShielded for all enemies (no stacking - just boolean)
+        for (const enemy of enemiesRef.current) {
+            if (!enemy.isAlive) continue;
+
+            // Check if this enemy is within ANY shielder's aura (including itself if it's a shielder)
+            let inAura = false;
+            for (const shielder of shielders) {
+                const dx = enemy.pos.x - shielder.pos.x;
+                const dy = enemy.pos.y - shielder.pos.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist <= SHIELD_AURA_RADIUS) {
+                    inAura = true;
+                    break; // No stacking - one aura is enough
+                }
+            }
+            (enemy as BaseEnemy).isShielded = inAura;
+        }
 
         for (const enemy of enemiesRef.current) {
             // Call the enemy's own update method

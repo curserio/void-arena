@@ -61,6 +61,9 @@ export abstract class BaseEnemy implements IEnemy {
     slowUntil: number = 0;
     slowFactor: number = 0;
 
+    // Shield aura protection (set by updateShieldedStatus)
+    isShielded: boolean = false;
+
     // AI state
     aiPhase: number;
     aiSeed: number;
@@ -114,9 +117,14 @@ export abstract class BaseEnemy implements IEnemy {
 
     /**
      * Apply damage to this enemy
+     * Applies 50% damage reduction if under Shielder aura
      */
     takeDamage(amount: number, time: number): DamageResult {
-        let remaining = amount;
+        // Apply shielder damage reduction (50%)
+        const SHIELDER_DAMAGE_REDUCTION = 0.5;
+        const effectiveDamage = this.isShielded ? amount * (1 - SHIELDER_DAMAGE_REDUCTION) : amount;
+
+        let remaining = effectiveDamage;
         let shieldDamage = 0;
         let healthDamage = 0;
 

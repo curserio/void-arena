@@ -17,6 +17,7 @@ export enum EnemyType {
     STRIKER = 'STRIKER',
     LASER_SCOUT = 'LASER_SCOUT',
     KAMIKAZE = 'KAMIKAZE',
+    SHIELDER = 'SHIELDER',
     ASTEROID = 'ASTEROID',
     BOSS_DREADNOUGHT = 'BOSS_DREADNOUGHT',
     BOSS_DESTROYER = 'BOSS_DESTROYER',
@@ -43,6 +44,7 @@ export enum MovementBehavior {
     KITE = 'KITE',             // LaserScout: maintain distance
     CHARGE = 'CHARGE',         // Kamikaze: inertial charge
     DRIFT = 'DRIFT',           // Asteroid: float randomly
+    SHIELDING = 'SHIELDING',   // Shielder: stay near allies
     BOSS_STANDARD = 'BOSS_STANDARD',     // Dreadnought
     BOSS_DESTROYER = 'BOSS_DESTROYER',   // Destroyer
 }
@@ -240,6 +242,9 @@ export interface IEnemy {
     // Slow effect
     slowUntil: number;
     slowFactor: number;
+
+    // Shield aura protection status
+    isShielded: boolean;
 
     // AI state
     aiPhase: number;

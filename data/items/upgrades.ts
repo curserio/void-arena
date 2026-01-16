@@ -283,5 +283,5 @@ export const META_UPGRADES: MetaUpgrade[] = [
 
     // --- MODULE: SHIELD BURST ---
     { id: 'meta_sb_dur', name: 'Extended Barrier', description: '+0.25s Invulnerability.', icon: 'fa-hourglass-half', maxLevel: 6, costBase: 2500, costFactor: 1.35, moduleType: ModuleType.SHIELD_BURST },
-    { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST },
+    { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-0.2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST },
 ];

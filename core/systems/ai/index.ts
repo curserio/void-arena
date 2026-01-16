@@ -14,6 +14,8 @@ export { RushBehavior } from './behaviors/RushBehavior';
 export type { RushConfig } from './behaviors/RushBehavior';
 export { KiteBehavior } from './behaviors/KiteBehavior';
 export type { KiteConfig } from './behaviors/KiteBehavior';
+export { ShieldingBehavior } from './behaviors/ShieldingBehavior';
+export type { ShieldingConfig } from './behaviors/ShieldingBehavior';
 
 // Attack Behaviors
 export type { IAttackBehavior } from './attacks/IAttackBehavior';

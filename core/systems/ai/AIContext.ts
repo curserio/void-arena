@@ -13,6 +13,9 @@ export interface AIContext {
     // Target position (usually player)
     playerPos: Vector2D;
 
+    // All enemies (for behaviors that need ally awareness)
+    enemies?: readonly BaseEnemy[];
+
     // Timing
     dt: number;
     time: number;

@@ -177,6 +177,7 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
                   EnemyType.STRIKER,
                   EnemyType.LASER_SCOUT,
                   EnemyType.KAMIKAZE,
+                  EnemyType.SHIELDER,
                   EnemyType.BOSS_DREADNOUGHT,
                   EnemyType.BOSS_DESTROYER
                 ].map(type => {

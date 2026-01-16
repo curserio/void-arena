@@ -30,6 +30,7 @@ import { Scout } from '../entities/enemies/Scout';
 import { Striker } from '../entities/enemies/Striker';
 import { LaserScout } from '../entities/enemies/LaserScout';
 import { Kamikaze } from '../entities/enemies/Kamikaze';
+import { Shielder } from '../entities/enemies/Shielder';
 import { Asteroid } from '../entities/enemies/Asteroid';
 import { Dreadnought } from '../entities/enemies/bosses/Dreadnought';
 import { Destroyer } from '../entities/enemies/bosses/Destroyer';
@@ -124,6 +125,12 @@ export class EnemyFactory {
 
             case EnemyType.KAMIKAZE:
                 return new Kamikaze(
+                    id, pos, tier, finalHealth, finalRadius,
+                    shield, color, level, finalSpeed, modifier.damageMult
+                );
+
+            case EnemyType.SHIELDER:
+                return new Shielder(
                     id, pos, tier, finalHealth, finalRadius,
                     shield, color, level, finalSpeed, modifier.damageMult
                 );

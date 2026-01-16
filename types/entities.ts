@@ -107,6 +107,7 @@ export interface UpdateContext {
     time: number;
     gameTime: number;
     playerPos: Vector2D;
+    enemies?: readonly IEntity[]; // For AI behaviors needing ally awareness
 }
 
 /**

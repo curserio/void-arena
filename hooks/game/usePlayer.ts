@@ -112,7 +112,7 @@ export const usePlayer = (
             } else if (moduleType === ModuleType.SHIELD_BURST) {
                 // Base: 0.5s invuln, 20s CD
                 duration = 500 + (sbDurL * 250); // +0.25s per level
-                cooldown = Math.max(10000, 20000 - (sbCdL * 500)); // -0.5s per level, min 10s
+                cooldown = Math.max(15000, 20000 - (sbCdL * 200)); // -0.2s per level, min 15s
                 power = sbHealL * 5; // Bonus shield on use (+5 per level)
             }
 
