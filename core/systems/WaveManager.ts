@@ -82,10 +82,30 @@ export class WaveManager {
 
     /**
      * Get difficulty multiplier for enemy stats
+     * Uses soft-cap formula: linear early game, logarithmic late game
+     * This extends gameplay before reaching near-impossible difficulty
      */
     getDifficultyMultiplier(gameTime: number): number {
         const gameMinutes = gameTime / 60;
-        return (1 + (gameMinutes * 0.4) + (Math.pow(gameMinutes, 1.5) * 0.10)) * this.difficulty.statMultiplier;
+
+        // Soft-cap formula: linear growth up to 10min, then logarithmic scaling
+        // This allows longer gameplay before hitting impossibility
+        const linearPart = gameMinutes * 0.3; // Slower early growth
+        const logPart = Math.log10(1 + gameMinutes * 0.15) * 3; // Soft cap for late game
+
+        const timeMultiplier = 1 + linearPart + logPart;
+
+        return timeMultiplier * this.difficulty.statMultiplier;
+    }
+
+    /**
+     * Get credit multiplier based on game time
+     * Credits scale to match increasing upgrade costs
+     */
+    getCreditMultiplier(gameTime: number): number {
+        const gameMinutes = gameTime / 60;
+        // Gradual credit scaling - keeps up with enemy HP scaling
+        return 1 + (gameMinutes * 0.08) + Math.log10(1 + gameMinutes * 0.1);
     }
 
     /**

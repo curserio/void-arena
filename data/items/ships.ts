@@ -22,8 +22,8 @@ export const SHIPS: ShipConfig[] = [
         type: ShipType.DREADNOUGHT,
         name: 'Behemoth',
         description: 'Mobile fortress. Huge firepower.',
-        baseStats: { speed: 160, maxHealth: 500, maxShield: 120, shieldRegen: 1, bulletCount: 2 },
-        cost: 250000,
+        baseStats: { speed: 175, maxHealth: 500, maxShield: 120, shieldRegen: 1, bulletCount: 2 },
+        cost: 150000,
         color: '#facc15'
     }
 ];
