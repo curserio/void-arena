@@ -1,12 +1,21 @@
 /**
  * Destroyer Boss
  * Heavy boss with twin plasma, homing missiles, and Kamikaze spawning
+ * 
+ * Uses: TwinPlasmaPhase, MissileSalvoPhase, DroneSpawnPhase
  */
 
 import { BaseBoss } from './BaseBoss';
-import { Vector2D, UpdateContext, EnemyUpdateResult, IProjectileSpawn } from '../../../../types/entities';
-import { EnemyType, EnemyTier, EnemyDefinition, } from '../../../../types/enemies';
+import { Vector2D, UpdateContext, EnemyUpdateResult } from '../../../../types/entities';
+import { EnemyType, EnemyTier, EnemyDefinition } from '../../../../types/enemies';
 import { getEnemyDefinition } from '../../../../data/enemies/definitions';
+import { AIContext } from '../../../systems/ai/AIContext';
+import {
+    IBossPhase,
+    TwinPlasmaPhase,
+    MissileSalvoPhase,
+    DroneSpawnPhase
+} from '../../../systems/ai/phases';
 
 export class Destroyer extends BaseBoss {
     readonly enemyType = EnemyType.BOSS_DESTROYER;
@@ -14,6 +23,9 @@ export class Destroyer extends BaseBoss {
     private readonly definition: EnemyDefinition;
     private readonly baseSpeed: number;
     private readonly desiredDist: number = 600;
+
+    // Boss phases
+    private readonly attackPhases: IBossPhase[];
 
     constructor(
         id: string,
@@ -32,6 +44,25 @@ export class Destroyer extends BaseBoss {
 
         this.definition = definition;
         this.baseSpeed = definition.baseSpeed;
+
+        // Initialize attack phases
+        this.attackPhases = [
+            new TwinPlasmaPhase({
+                cooldown: 1200,
+                projectileRadius: definition.projectileRadius ?? 12,
+                projectileSpeed: definition.projectileSpeed ?? 480,
+                baseDamage: definition.attacks?.projectile ?? 15,
+            }),
+            new MissileSalvoPhase({
+                cooldown: 4000,
+                baseDamage: definition.attacks?.missile ?? 25,
+                turnRate: 1.2,
+            }),
+            new DroneSpawnPhase({
+                cooldown: 8000,
+                droneType: EnemyType.KAMIKAZE,
+            }),
+        ];
 
         // Initialize cooldowns
         this.lastShotTime = initialTime + 2000;
@@ -83,94 +114,13 @@ export class Destroyer extends BaseBoss {
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         this.angle += angleDiff * 1.5 * dt;
 
-        // Weapon 1: Twin Plasma (Rapid)
-        if (time - this.lastShotTime > 1200) {
-            this.lastShotTime = time;
-
-            const aim = this.angle;
-            const offset = 25;
-            // Tier-based plasma color: normal = reddish, higher tiers = body color
-            const plasmaColor = this.tier === EnemyTier.NORMAL ? '#f43f5e' : this.color;
-            const plasmaRadius = this.definition.projectileRadius ?? 12;
-            const plasmaSpeed = this.definition.projectileSpeed ?? 480;
-            const plasmaDamage = (this.definition.attacks?.projectile ?? 15) * this.damageMult;
-
-            // Left cannon
-            result.bulletsToSpawn.push({
-                pos: {
-                    x: this.pos.x + Math.cos(aim + Math.PI / 2) * offset,
-                    y: this.pos.y + Math.sin(aim + Math.PI / 2) * offset
-                },
-                vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
-                radius: plasmaRadius,
-                color: plasmaColor,
-                damage: plasmaDamage,
-                isElite: true,
-                level: this.level,
-            });
-
-            // Right cannon
-            result.bulletsToSpawn.push({
-                pos: {
-                    x: this.pos.x + Math.cos(aim - Math.PI / 2) * offset,
-                    y: this.pos.y + Math.sin(aim - Math.PI / 2) * offset
-                },
-                vel: { x: Math.cos(aim) * plasmaSpeed, y: Math.sin(aim) * plasmaSpeed },
-                radius: plasmaRadius,
-                color: plasmaColor,
-                damage: plasmaDamage,
-                isElite: true,
-                level: this.level,
-            });
-        }
-
-        // Weapon 2: Homing Missile Salvo
-        if (time - this.lastMissileTime > 4000) {
-            this.lastMissileTime = time;
-
-            const salvoCount = 4 + Math.floor(Math.random() * 3);
-            const missileDamage = (this.definition.attacks?.missile ?? 25) * this.damageMult;
-
-            for (let i = 0; i < salvoCount; i++) {
-                const spread = (Math.random() - 0.5) * 1.5;
-                const launchAngle = this.angle + spread;
-
-                result.bulletsToSpawn.push({
-                    pos: { x: this.pos.x, y: this.pos.y },
-                    vel: { x: Math.cos(launchAngle) * 200, y: Math.sin(launchAngle) * 200 },
-                    radius: 10,
-                    color: '#f97316',
-                    damage: missileDamage,
-                    isHoming: true,
-                    turnRate: 0.6,
-                    maxDuration: 4.0,
-                    isElite: true,
-                    level: this.level,
-                });
-            }
-        }
-
-        // Ability: Spawn Kamikaze Drones
-        if (time - this.lastSpawnTime > 8000) {
-            this.lastSpawnTime = time;
-
-            const droneCount = 2 + Math.floor(Math.random() * 3);
-
-            for (let i = 0; i < droneCount; i++) {
-                const ejectAngle = this.angle + Math.PI + (Math.random() - 0.5);
-
-                result.enemiesToSpawn.push({
-                    type: EnemyType.KAMIKAZE,
-                    pos: {
-                        x: this.pos.x + (Math.random() - 0.5) * 50,
-                        y: this.pos.y + (Math.random() - 0.5) * 50
-                    },
-                    vel: {
-                        x: Math.cos(ejectAngle) * 300,
-                        y: Math.sin(ejectAngle) * 300,
-                    },
-                    difficultyMult: Math.max(0.5, this.level * 0.2),
-                });
+        // Execute attack phases
+        const aiCtx: AIContext = { enemy: this, playerPos, dt, time, gameTime };
+        for (const phase of this.attackPhases) {
+            if (phase.shouldExecute(aiCtx, this)) {
+                const phaseResult = phase.execute(aiCtx, this);
+                result.bulletsToSpawn.push(...phaseResult.bulletsToSpawn);
+                result.enemiesToSpawn.push(...phaseResult.enemiesToSpawn);
             }
         }
 

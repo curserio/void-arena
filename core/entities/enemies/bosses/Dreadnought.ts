@@ -1,18 +1,25 @@
 /**
  * Dreadnought Boss
  * Standard boss with charged beam attack
+ * 
+ * Uses: ChargedBeamPhase
  */
 
 import { BaseBoss } from './BaseBoss';
 import { Vector2D, UpdateContext, EnemyUpdateResult } from '../../../../types/entities';
-import { EnemyType, EnemyTier, IEnemy, EnemyDefinition } from '../../../../types/enemies';
+import { EnemyType, EnemyTier, EnemyDefinition } from '../../../../types/enemies';
 import { getEnemyDefinition } from '../../../../data/enemies/definitions';
+import { AIContext } from '../../../systems/ai/AIContext';
+import { IBossPhase, ChargedBeamPhase } from '../../../systems/ai/phases';
 
 export class Dreadnought extends BaseBoss {
     readonly enemyType = EnemyType.BOSS_DREADNOUGHT;
 
     private readonly definition: EnemyDefinition;
     private readonly baseSpeed: number;
+
+    // Boss phases
+    private readonly attackPhases: IBossPhase[];
 
     constructor(
         id: string,
@@ -32,13 +39,22 @@ export class Dreadnought extends BaseBoss {
         this.definition = definition;
         this.baseSpeed = definition.baseSpeed;
 
+        // Initialize attack phases
+        this.attackPhases = [
+            new ChargedBeamPhase({
+                cooldown: definition.attackCooldown,
+                chargeSpeed: 0.4,
+                fireSpeed: 0.25,
+            }),
+        ];
+
         // Initialize cooldowns
         this.lastShotTime = initialTime + 2000;
     }
 
     update(context: UpdateContext): EnemyUpdateResult {
         const result = this.emptyResult();
-        const { dt, time, playerPos } = context;
+        const { dt, time, playerPos, gameTime } = context;
 
         // Update phase based on health
         this.updatePhase();
@@ -63,46 +79,26 @@ export class Dreadnought extends BaseBoss {
         this.pos.x += this.vel.x * dt;
         this.pos.y += this.vel.y * dt;
 
-        // Rotation towards player with constant speed
+        // Rotation towards player
         const targetAngle = Math.atan2(dy, dx);
         let angleDiff = targetAngle - this.angle;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
         const turnRate = 0.3;
         const maxTurn = turnRate * dt;
-
         if (Math.abs(angleDiff) > maxTurn) {
             this.angle += Math.sign(angleDiff) * maxTurn;
         } else {
             this.angle += angleDiff;
         }
 
-        // Charged beam attack
-        const attackCooldown = this.definition.attackCooldown;
-
-        if (!this.isCharging && !this.isFiring && (time - this.lastShotTime > attackCooldown)) {
-            this.isCharging = true;
-            this.chargeProgress = 0;
-        }
-
-        if (this.isCharging) {
-            this.chargeProgress += dt * 0.4;
-
-            if (this.chargeProgress >= 1.0) {
-                this.isCharging = false;
-                this.isFiring = true;
-                this.chargeProgress = 0;
-                this.lastShotTime = time;
-            }
-        }
-
-        if (this.isFiring) {
-            this.chargeProgress += dt * 0.25;
-
-            if (this.chargeProgress >= 1.0) {
-                this.isFiring = false;
-                this.chargeProgress = 0;
+        // Execute attack phases
+        const aiCtx: AIContext = { enemy: this, playerPos, dt, time, gameTime };
+        for (const phase of this.attackPhases) {
+            if (phase.shouldExecute(aiCtx, this)) {
+                const phaseResult = phase.execute(aiCtx, this);
+                result.bulletsToSpawn.push(...phaseResult.bulletsToSpawn);
+                result.enemiesToSpawn.push(...phaseResult.enemiesToSpawn);
             }
         }
 

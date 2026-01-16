@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { GameMode, PlayerStats, RunMetrics } from '../types';
-import { formatSurvivalTime } from '../utils/formatting';
+import { formatSurvivalTime } from '../core/utils/formatting';
 
 interface GameOverScreenProps {
     score: number;
