@@ -117,7 +117,7 @@ export const useProjectiles = (
                     projectilesRef.current.push(p);
 
                 } else {
-                    // STANDARD (PLASMA / MISSILE)
+                    // STANDARD (PLASMA / MISSILE / RAILGUN / FLAK)
                     const angles = isOmni ? [-0.3, 0, 0.3] : [0];
 
                     angles.forEach(spreadAngle => {
@@ -152,6 +152,34 @@ export const useProjectiles = (
                                 WeaponEffect.EXPLOSIVE
                             );
                             projectilesRef.current.push(p);
+                        } else if (pStats.weaponType === WeaponType.RAILGUN) {
+                            // RAILGUN: Single high-damage piercing shot
+                            const dir = { x: Math.cos(currentAngle), y: Math.sin(currentAngle) };
+                            const p = ProjectileFactory.createPlayerProjectile(
+                                { x: playerPosRef.current.x, y: playerPosRef.current.y },
+                                dir,
+                                { ...baseStats, color: '#60a5fa', radius: 6, pierce: 999, duration: 1500 }, // Blue, thin, infinite pierce
+                                time
+                            );
+                            projectilesRef.current.push(p);
+                        } else if (pStats.weaponType === WeaponType.FLAK_CANNON) {
+                            // FLAK CANNON: pellets in 45° spread (base 8, upgradeable via Scattershot)
+                            const pelletCount = pStats.bulletCount; // Uses bulletCount from stats
+                            const spreadAngle = Math.PI / 4; // 45 degrees
+                            const startAngle = currentAngle - spreadAngle / 2;
+                            const angleStep = pelletCount > 1 ? spreadAngle / (pelletCount - 1) : 0;
+
+                            for (let i = 0; i < pelletCount; i++) {
+                                const pAngle = startAngle + i * angleStep;
+                                const dir = { x: Math.cos(pAngle), y: Math.sin(pAngle) };
+                                const p = ProjectileFactory.createPlayerProjectile(
+                                    { x: playerPosRef.current.x, y: playerPosRef.current.y },
+                                    dir,
+                                    { ...baseStats, color: '#fbbf24', radius: 5, duration: 800 }, // Medium range, golden
+                                    time
+                                );
+                                projectilesRef.current.push(p);
+                            }
                         }
                     });
                 }

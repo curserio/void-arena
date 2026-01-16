@@ -99,6 +99,22 @@ export const usePlayer = (
             sCount = 3 + swarmCountL; // 3 base + upgrades (up to 20 total)
             sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
             fRate *= (1 + swarmCdL * 0.05); // CD reduction
+        } else if (weapon === WeaponType.RAILGUN) {
+            const railDmgL = data.metaLevels['meta_rail_dmg'] || 0;
+            const railRateL = data.metaLevels['meta_rail_rate'] || 0;
+            const railSpeedL = data.metaLevels['meta_rail_speed'] || 0;
+            bDamageMult *= (1 + railDmgL * 0.05); // +5% per level
+            fRate *= (1 + railRateL * 0.05); // +5% per level
+            bSpeed *= (1 + railSpeedL * 0.10); // +10% per level
+            bPierce = 999; // Always infinite pierce
+        } else if (weapon === WeaponType.FLAK_CANNON) {
+            const flakDmgL = data.metaLevels['meta_flak_dmg'] || 0;
+            const flakPelletsL = data.metaLevels['meta_flak_pellets'] || 0;
+            const flakRangeL = data.metaLevels['meta_flak_range'] || 0;
+            bDamageMult *= (1 + flakDmgL * 0.05); // +5% per pellet per level
+            bCount = 8 + (flakPelletsL * 2); // 8 base + 2 per level
+            // flakRangeL affects duration in fireWeapon, store it in bulletSpeed as multiplier workaround
+            bSpeed *= (1 + flakRangeL * 0.15); // +15% effective range per level
         }
 
         // Build module slots from equipped modules

@@ -12,5 +12,7 @@ export const WEAPON_PRICES: Record<WeaponType, number> = {
     [WeaponType.PLASMA]: 0,
     [WeaponType.MISSILE]: 15000,
     [WeaponType.LASER]: 30000,
-    [WeaponType.SWARM_LAUNCHER]: 28000
+    [WeaponType.SWARM_LAUNCHER]: 28000,
+    [WeaponType.RAILGUN]: 45000,
+    [WeaponType.FLAK_CANNON]: 25000
 };

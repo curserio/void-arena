@@ -33,7 +33,9 @@ export enum WeaponType {
     PLASMA = 'PLASMA',
     MISSILE = 'MISSILE',
     LASER = 'LASER',
-    SWARM_LAUNCHER = 'SWARM_LAUNCHER'
+    SWARM_LAUNCHER = 'SWARM_LAUNCHER',
+    RAILGUN = 'RAILGUN',
+    FLAK_CANNON = 'FLAK_CANNON'
 }
 
 export interface PlayerStats {

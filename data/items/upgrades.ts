@@ -284,4 +284,14 @@ export const META_UPGRADES: MetaUpgrade[] = [
     // --- MODULE: SHIELD BURST ---
     { id: 'meta_sb_dur', name: 'Extended Barrier', description: '+0.25s Invulnerability.', icon: 'fa-hourglass-half', maxLevel: 6, costBase: 2500, costFactor: 1.35, moduleType: ModuleType.SHIELD_BURST },
     { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-0.2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST },
+
+    // --- WEAPON SPECIFIC: RAILGUN ---
+    { id: 'meta_rail_dmg', name: 'Core Penetrator', description: '+5% Damage per level.', icon: 'fa-bolt', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.RAILGUN },
+    { id: 'meta_rail_rate', name: 'Capacitor Array', description: '+5% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.RAILGUN },
+    { id: 'meta_rail_speed', name: 'Hypervelocity', description: '+10% Projectile Speed per level.', icon: 'fa-fighter-jet', maxLevel: 20, costBase: 1000, costFactor: 1.3, weaponType: WeaponType.RAILGUN },
+
+    // --- WEAPON SPECIFIC: FLAK CANNON ---
+    { id: 'meta_flak_dmg', name: 'Frag Rounds', description: '+5% Damage per pellet per level.', icon: 'fa-spray-can', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAK_CANNON },
+    { id: 'meta_flak_pellets', name: 'Scattershot', description: '+2 Pellets per shot.', icon: 'fa-ellipsis', maxLevel: 4, costBase: 8000, costFactor: 2.0, weaponType: WeaponType.FLAK_CANNON },
+    { id: 'meta_flak_range', name: 'Barrel Extension', description: '+15% Range per level.', icon: 'fa-ruler-horizontal', maxLevel: 20, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.FLAK_CANNON },
 ];

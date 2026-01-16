@@ -105,6 +105,12 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
                   extraInfo.push({ label: 'Pierce', val: 'Infinite' });
                 } else if (w === WeaponType.PLASMA) {
                   extraInfo.push({ label: 'Effect', val: 'Slows Enemies' });
+                } else if (w === WeaponType.RAILGUN) {
+                  extraInfo.push({ label: 'Pierce', val: 'Infinite' });
+                  extraInfo.push({ label: 'Charge Time', val: '0.5s' });
+                } else if (w === WeaponType.FLAK_CANNON) {
+                  extraInfo.push({ label: 'Pellets', val: '8' });
+                  extraInfo.push({ label: 'Spread', val: '45°' });
                 }
 
                 return (

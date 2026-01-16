@@ -183,8 +183,10 @@ export const renderPlayer = (
     }
 
     // 3.5 Invulnerability Effect (golden aura when invulnerable)
+    // Only show aura for long invuln (modules), not short i-frames (<500ms)
     const isInvulnerable = time < stats.invulnerableUntil;
-    if (isInvulnerable) {
+    const invulnRemaining = stats.invulnerableUntil - time;
+    if (isInvulnerable && invulnRemaining > 500) {
         drawInvulnerability(ctx, time);
     }
 

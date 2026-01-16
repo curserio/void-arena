@@ -14,6 +14,8 @@ const WEAPONS = [
     { type: WeaponType.MISSILE, name: 'Missile Launcher', icon: 'fa-rocket', description: 'Slow but powerful AOE explosions' },
     { type: WeaponType.LASER, name: 'Beam Laser', icon: 'fa-sun', description: 'Charge to unleash devastating beam' },
     { type: WeaponType.SWARM_LAUNCHER, name: 'Swarm Launcher', icon: 'fa-hive', description: 'Homing rockets, scales late game' },
+    { type: WeaponType.RAILGUN, name: 'Railgun', icon: 'fa-bolt', description: 'Pierces all enemies. Charge, aim, devastate.' },
+    { type: WeaponType.FLAK_CANNON, name: 'Flak Cannon', icon: 'fa-spray-can', description: 'Shotgun spread. 8 pellets, short range destruction.' },
 ];
 
 export const WeaponSelector: React.FC = () => {
