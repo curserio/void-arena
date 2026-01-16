@@ -1,5 +1,5 @@
 
-import { ShipConfig, ShipType } from '../../types';
+import { ShipConfig, ShipType, ModuleType } from '../../types';
 
 export const SHIPS: ShipConfig[] = [
     {
@@ -25,5 +25,14 @@ export const SHIPS: ShipConfig[] = [
         baseStats: { speed: 175, maxHealth: 500, maxShield: 120, shieldRegen: 1, bulletCount: 2 },
         cost: 150000,
         color: '#facc15'
+    },
+    {
+        type: ShipType.PHANTOM,
+        name: 'Phantom',
+        description: 'Glass cannon. Phase through danger.',
+        baseStats: { speed: 320, maxHealth: 60, maxShield: 10, shieldRegen: 5, critChance: 0.20 },
+        cost: 80000,
+        color: '#818cf8',
+        intrinsicModule: ModuleType.PHASE_SHIFT
     }
 ];

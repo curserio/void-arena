@@ -92,6 +92,7 @@ const MODULE_ICONS: Record<ModuleType, string> = {
   [ModuleType.NONE]: 'fa-circle',
   [ModuleType.AFTERBURNER]: 'fa-forward-fast',
   [ModuleType.SHIELD_BURST]: 'fa-shield-heart',
+  [ModuleType.PHASE_SHIFT]: 'fa-ghost',
 };
 
 const ModuleButton: React.FC<{

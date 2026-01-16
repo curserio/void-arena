@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { ModuleType } from '../../types';
-import { META_UPGRADES, MODULE_PRICES } from '../../constants';
+import { META_UPGRADES, MODULE_PRICES, SHIPS } from '../../constants';
 import { useGarage } from './GarageContext';
 import { UpgradeCard } from './UpgradeCard';
 
@@ -24,6 +24,12 @@ const MODULES = [
         icon: 'fa-shield-heart',
         description: 'Instantly restores shield and grants brief invulnerability.'
     },
+    {
+        type: ModuleType.PHASE_SHIFT,
+        name: 'Phase Shift',
+        icon: 'fa-ghost',
+        description: 'Phase through attacks. Pure invulnerability, no healing.'
+    },
 ];
 
 export const ModuleSelector: React.FC = () => {
@@ -34,7 +40,20 @@ export const ModuleSelector: React.FC = () => {
         equippedModules[0] || null
     );
 
+    // Get intrinsic module for current ship (if any)
+    const currentShipConfig = SHIPS.find(s => s.type === data.equippedShip);
+    const intrinsicModule = currentShipConfig?.intrinsicModule;
+
+    // Collect ALL intrinsic modules from ALL ships (these are never purchasable)
+    const allIntrinsicModules = SHIPS
+        .map(s => s.intrinsicModule)
+        .filter((m): m is ModuleType => m !== undefined);
+
+    // Filter out ALL intrinsic modules from purchasable list
+    const purchasableModules = MODULES.filter(m => !allIntrinsicModules.includes(m.type));
+
     const isModuleEquipped = (module: ModuleType) => equippedModules.includes(module);
+    const isIntrinsic = (module: ModuleType) => module === intrinsicModule;
     const canEquipMore = equippedModules.length < MAX_EQUIPPED_MODULES;
 
     const handleModuleAction = (module: ModuleType) => {
@@ -84,7 +103,7 @@ export const ModuleSelector: React.FC = () => {
                 <span>Module Slots: <strong className="text-white">{equippedModules.length}/{MAX_EQUIPPED_MODULES}</strong></span>
             </div>
 
-            {MODULES.map(module => {
+            {purchasableModules.map(module => {
                 const isUnlocked = (data.unlockedModules || []).includes(module.type);
                 const isEquipped = isModuleEquipped(module.type);
                 const price = MODULE_PRICES[module.type];

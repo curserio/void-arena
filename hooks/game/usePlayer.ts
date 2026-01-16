@@ -114,6 +114,11 @@ export const usePlayer = (
                 duration = 500 + (sbDurL * 250); // +0.25s per level
                 cooldown = Math.max(15000, 20000 - (sbCdL * 200)); // -0.2s per level, min 15s
                 power = sbHealL * 5; // Bonus shield on use (+5 per level)
+            } else if (moduleType === ModuleType.PHASE_SHIFT) {
+                // Base: 2s invuln, 25s CD — pure evasion, no healing
+                duration = 2000;
+                cooldown = 25000;
+                power = 0;
             }
 
             return {
@@ -244,6 +249,9 @@ export const usePlayer = (
                 // Instantly restore shield to max
                 newStats.currentShield = newStats.maxShield;
                 // Grant invulnerability for duration
+                newStats.invulnerableUntil = now + slot.duration;
+            } else if (slot.type === ModuleType.PHASE_SHIFT) {
+                // Pure invulnerability - no shield restore
                 newStats.invulnerableUntil = now + slot.duration;
             }
 

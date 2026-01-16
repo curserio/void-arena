@@ -12,15 +12,49 @@ export const ShipSelector: React.FC = () => {
     const { data, totalCredits, sessionCredits, onUpdate, formatCredits } = useGarage();
 
     const buyShip = (ship: ShipConfig) => {
+        const currentModules = data.equippedModules || [];
+
+        // Get current ship's intrinsic (if any) to remove it when switching
+        const currentShip = SHIPS.find(s => s.type === data.equippedShip);
+        const oldIntrinsic = currentShip?.intrinsicModule;
+
+        // Calculate new module loadout with intrinsic module if ship has one
+        const getNewModules = (): typeof currentModules => {
+            // First, remove old intrinsic module (if switching from ship that had one)
+            let modules = oldIntrinsic
+                ? currentModules.filter(m => m !== oldIntrinsic)
+                : currentModules;
+
+            if (!ship.intrinsicModule) {
+                // Ship switching to one without intrinsic - return cleaned modules
+                return modules;
+            }
+
+            // Ship has intrinsic module - place in slot 0
+            const intrinsic = ship.intrinsicModule;
+
+            // Remove new intrinsic if somehow already equipped (shouldn't happen)
+            modules = modules.filter(m => m !== intrinsic);
+
+            // Place intrinsic in slot 0, keep up to 2 other modules
+            return [intrinsic, ...modules.slice(0, 2)];
+        };
+
         if (data.unlockedShips.includes(ship.type)) {
-            onUpdate({ ...data, equippedShip: ship.type }, 0);
+            onUpdate({ ...data, equippedShip: ship.type, equippedModules: getNewModules() }, 0);
             return;
         }
         if (totalCredits >= ship.cost) {
             const spentFromSession = Math.min(sessionCredits, ship.cost);
             const newPersistentCredits = data.credits - (ship.cost - spentFromSession);
             onUpdate(
-                { ...data, credits: newPersistentCredits, unlockedShips: [...data.unlockedShips, ship.type], equippedShip: ship.type },
+                {
+                    ...data,
+                    credits: newPersistentCredits,
+                    unlockedShips: [...data.unlockedShips, ship.type],
+                    equippedShip: ship.type,
+                    equippedModules: getNewModules()
+                },
                 spentFromSession
             );
         }
