@@ -3,7 +3,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, GameState, Entity, EntityType, UpgradeType, ModuleType } from '../../types';
 import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
-import { isBuffActive } from '../../core/systems/PowerUpSystem';
+import { powerUpManager } from '../../core/systems/PowerUpManager';
 
 export const usePlayer = (
     gameState: GameState,
@@ -223,7 +223,7 @@ export const usePlayer = (
         let moveSpeed = pStats.speed;
 
         // Speed Buffs
-        if (isBuffActive(pStats, 'SPEED', time)) {
+        if (powerUpManager.isBuffActive(pStats, 'SPEED', time)) {
             moveSpeed *= 1.5;
         }
         // Module Boost

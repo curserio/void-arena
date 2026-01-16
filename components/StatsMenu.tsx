@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { PlayerStats, WeaponType } from '../types';
-import { isBuffActive } from '../core/systems/PowerUpSystem';
+import { powerUpManager } from '../core/systems/PowerUpManager';
 
 interface StatsMenuProps {
   stats: PlayerStats;
@@ -27,8 +27,8 @@ const StatRow: React.FC<{ label: string; value: string | number; subValue?: stri
 const StatsMenu: React.FC<StatsMenuProps> = ({ stats, onClose, gameTime = performance.now() }) => {
 
   // Calculate Effective Stats (Including Buffs)
-  const isSpeedBuff = isBuffActive(stats, 'SPEED', gameTime);
-  const isFireRateBuff = isBuffActive(stats, 'OVERDRIVE', gameTime);
+  const isSpeedBuff = powerUpManager.isBuffActive(stats, 'SPEED', gameTime);
+  const isFireRateBuff = powerUpManager.isBuffActive(stats, 'OVERDRIVE', gameTime);
 
   const effectiveSpeed = stats.speed * (isSpeedBuff ? 1.5 : 1.0);
   const effectiveFireRate = stats.fireRate * (isFireRateBuff ? 2.5 : 1.0);

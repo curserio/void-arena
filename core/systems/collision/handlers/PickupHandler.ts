@@ -3,10 +3,10 @@
  * Handles XP gems, credits, and power-up collection
  */
 
-import { EntityType } from '../../../../types';
+import { EntityType, PowerUpId } from '../../../../types';
 import { ICollisionHandler } from './ICollisionHandler';
 import { CollisionContext } from '../CollisionContext';
-import { POWER_UPS } from '../../../systems/PowerUpSystem';
+import { powerUpManager } from '../../PowerUpManager';
 
 export class PickupHandler implements ICollisionHandler {
     private readonly COLLECTION_RANGE = 40;
@@ -26,10 +26,9 @@ export class PickupHandler implements ICollisionHandler {
                 } else if (p.type === EntityType.CREDIT) {
                     creditsGained += Math.floor((p.value || 0) * playerStats.creditMultiplier);
                 } else if (p.type === EntityType.POWERUP && p.powerUpId) {
-                    const config = POWER_UPS[p.powerUpId];
-                    if (config) {
-                        callbacks.setStats(prev => config.onPickup(prev, time));
-                    }
+                    callbacks.setStats(prev =>
+                        powerUpManager.applyPickupEffect(p.powerUpId as PowerUpId, prev, time)
+                    );
                 }
                 p.health = 0; // Mark for removal
             }

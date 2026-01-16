@@ -10,7 +10,7 @@ import { useProjectiles } from './game/useProjectiles';
 import { usePickups } from './game/usePickups';
 import { useParticles } from './game/useParticles';
 import { useCollision } from './game/useCollision';
-import { isBuffActive } from '../core/systems/PowerUpSystem';
+import { powerUpManager } from '../core/systems/PowerUpManager';
 import { UpgradeManager } from '../core/systems/UpgradeManager';
 import { CONSUMABLE_EFFECTS } from '../core/registries/ConsumableRegistry';
 
@@ -184,9 +184,9 @@ export const useGameLogic = (
         handleShieldRegen(dt, time);
 
         // 2. Firing Logic
-        const isOverdrive = isBuffActive(statsRef.current, 'OVERDRIVE', time);
-        const isOmni = isBuffActive(statsRef.current, 'OMNI', time);
-        const isPierce = isBuffActive(statsRef.current, 'PIERCE', time);
+        const isOverdrive = powerUpManager.isBuffActive(statsRef.current, 'OVERDRIVE', time);
+        const isOmni = powerUpManager.isBuffActive(statsRef.current, 'OMNI', time);
+        const isPierce = powerUpManager.isBuffActive(statsRef.current, 'PIERCE', time);
 
         // Pass aimDirRef and triggerRef to fireWeapon
         fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current, aimDirRef.current, triggerRef.current);

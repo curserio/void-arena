@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PlayerStats, ShipType, ModuleType } from '../types';
 import { SHIPS } from '../constants';
-import { POWER_UPS, isBuffActive } from '../core/systems/PowerUpSystem';
+import { POWERUP_CONFIGS } from '../data/powerups';
 
 interface HUDProps {
   stats: PlayerStats;
@@ -212,7 +212,7 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
               {Object.entries(stats.activeBuffs).map(([id, until]) => {
                 // Assert until as number to avoid unknown type error
                 if ((until as number) <= performance.now()) return null;
-                const config = POWER_UPS[id as any];
+                const config = POWERUP_CONFIGS[id as keyof typeof POWERUP_CONFIGS];
                 if (!config || config.type === 'INSTANT') return null;
 
                 return (

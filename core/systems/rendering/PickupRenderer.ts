@@ -6,7 +6,7 @@
 import { Entity, EntityType } from '../../../types';
 import { IRenderer } from './IRenderer';
 import { RenderContext } from './RenderContext';
-import { POWER_UPS } from '../PowerUpSystem';
+import { POWERUP_CONFIGS } from '../../../data/powerups';
 
 export class PickupRenderer implements IRenderer {
     readonly order = 10;
@@ -59,7 +59,7 @@ export class PickupRenderer implements IRenderer {
     }
 
     private renderPowerUp(ctx: CanvasRenderingContext2D, powerUpId: string, time: number): void {
-        const config = POWER_UPS[powerUpId];
+        const config = POWERUP_CONFIGS[powerUpId as keyof typeof POWERUP_CONFIGS];
         if (!config) return;
 
         const pulse = 1 + Math.sin(time * 0.01) * 0.15;
