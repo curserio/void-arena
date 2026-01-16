@@ -138,10 +138,18 @@ const ModuleButton: React.FC<{
   const icon = MODULE_ICONS[slot.type] || 'fa-puzzle-piece';
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center relative">
+      {/* Slot number badge - outside button to avoid overflow clipping */}
+      <div
+        className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full flex items-center justify-center shadow-md z-20"
+        style={{ fontFamily: 'system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}
+      >
+        {slotIndex + 1}
+      </div>
+
       <button
         onPointerDown={handlePress}
-        className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all overflow-hidden
+        className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all
           ${state.ready || state.active ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'}
           ${state.active
             ? 'bg-fuchsia-600 animate-pulse ring-2 ring-white'
@@ -150,14 +158,6 @@ const ModuleButton: React.FC<{
               : 'bg-slate-900 border-2 border-slate-700 text-slate-600'}`}
       >
         <i className={`fa-solid ${icon} text-xl z-10 ${state.ready || state.active ? 'text-white' : 'text-slate-600'}`} />
-
-        {/* Slot number badge */}
-        <div
-          className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full flex items-center justify-center shadow-md"
-          style={{ fontFamily: 'system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}
-        >
-          {slotIndex + 1}
-        </div>
 
         {/* Charging Progress Ring */}
         {!state.ready && !state.active && (

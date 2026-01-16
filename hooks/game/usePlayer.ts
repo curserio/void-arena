@@ -64,7 +64,7 @@ export const usePlayer = (
 
         // Module Specific Metas (Shield Burst)
         const sbDurL = data.metaLevels['meta_sb_dur'] || 0;  // +0.25s per level
-        const sbCdL = data.metaLevels['meta_sb_cd'] || 0;    // -2s per level
+        const sbCdL = data.metaLevels['meta_sb_cd'] || 0;    // -0.5s per level
         const sbHealL = data.metaLevels['meta_sb_heal'] || 0; // +5 bonus shield per level
 
         // Weapon Specific Metas
@@ -110,9 +110,9 @@ export const usePlayer = (
                 cooldown = Math.max(5000, 60000 - (abCdL * 2000));
                 power = 2.0 * (1 + abSpdL * 0.10);
             } else if (moduleType === ModuleType.SHIELD_BURST) {
-                // Base: 0.5s invuln, 20s CD, power = bonus shield amount
+                // Base: 0.5s invuln, 20s CD
                 duration = 500 + (sbDurL * 250); // +0.25s per level
-                cooldown = Math.max(4000, 20000 - (sbCdL * 2000)); // -2s per level, min 4s
+                cooldown = Math.max(10000, 20000 - (sbCdL * 500)); // -0.5s per level, min 10s
                 power = sbHealL * 5; // Bonus shield on use (+5 per level)
             }
 
@@ -241,11 +241,8 @@ export const usePlayer = (
 
             // Module-specific activation effects
             if (slot.type === ModuleType.SHIELD_BURST) {
-                // Instantly restore shield to max + bonus from Overshield Matrix
-                newStats.currentShield = Math.min(
-                    newStats.maxShield + slot.power, // Can overshield slightly
-                    newStats.maxShield + slot.power  // Overshield = max + bonus
-                );
+                // Instantly restore shield to max
+                newStats.currentShield = newStats.maxShield;
                 // Grant invulnerability for duration
                 newStats.invulnerableUntil = now + slot.duration;
             }
