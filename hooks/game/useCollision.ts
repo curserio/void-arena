@@ -76,9 +76,13 @@ export const useCollision = (
         // Process all collision types via manager
         collisionManager.processAll(ctx);
 
-        // Handle drops and score for dead enemies (not moved to handler to keep spawnDrops logic)
+        // Handle drops and score for dead enemies
+        // Track processed enemy IDs to avoid double-processing (since isAlive is a getter)
         for (const e of enemies) {
-            if (e.health <= 0 && e.isAlive) {
+            // Check health <= 0 and that we haven't processed this death yet
+            // Use a simple flag on the enemy object to track
+            if (e.health <= 0 && !(e as any).__deathProcessed) {
+                (e as any).__deathProcessed = true;
                 const scoreAdd = spawnDrops(e);
                 setScore(s => s + scoreAdd);
             }

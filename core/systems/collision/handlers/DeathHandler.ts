@@ -13,12 +13,9 @@ export class DeathHandler implements ICollisionHandler {
         const { enemies, playerPos, callbacks, time } = ctx;
 
         for (const e of enemies) {
-            if (e.health <= 0) {
+            // Check health and that we haven't processed this death yet
+            if (e.health <= 0 && !(e as any).__deathProcessed) {
                 callbacks.onEnemyKilled();
-
-                // Spawn drops and add score
-                // Note: spawnDrops returns score, but we don't have access to it here
-                // This will be handled differently - spawnDrops is called externally
 
                 // Death explosion VFX
                 callbacks.spawnExplosion(e.pos, e.radius * 2.5, e.color);
