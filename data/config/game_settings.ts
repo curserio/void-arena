@@ -50,13 +50,8 @@ export const INITIAL_STATS: PlayerStats = {
     swarmCount: 3,
     swarmAgility: 1.5,
 
-    // Module
-    moduleType: ModuleType.NONE,
-    moduleCooldownMax: 0,
-    moduleDuration: 0,
-    modulePower: 0,
-    moduleReadyTime: 0,
-    moduleActiveUntil: 0,
+    // Module Slots (initialized to empty, filled at runtime)
+    moduleSlots: [],
 
     // Refactored Buffer System
     activeBuffs: {},

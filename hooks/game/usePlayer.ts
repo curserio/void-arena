@@ -24,7 +24,7 @@ export const usePlayer = (
     const calculateStats = useCallback((data: PersistentData) => {
         const shipConfig = SHIPS.find(s => s.type === data.equippedShip) || SHIPS[0];
         const weapon = data.equippedWeapon || WeaponType.PLASMA;
-        const module = data.equippedModule || ModuleType.NONE;
+        const equippedModules = data.equippedModules || [];
         const baseWStats = WEAPON_BASE_STATS[weapon];
 
         // Meta Levels
@@ -95,21 +95,33 @@ export const usePlayer = (
             fRate *= (1 + swarmCdL * 0.05); // CD reduction
         }
 
-        // Module Stats Calculation
-        let mDur = 0;
-        let mCd = 0;
-        let mPwr = 0;
+        // Build module slots from equipped modules
+        const buildModuleSlot = (moduleType: ModuleType): import('../../types').ModuleSlot => {
+            let duration = 0, cooldown = 0, power = 0;
 
-        if (module === ModuleType.AFTERBURNER) {
-            mDur = 10000 + (abDurL * 1000); // 10s base + 1s per level
-            mCd = Math.max(5000, 60000 - (abCdL * 2000)); // 60s base - 2s per level (min 5s)
-            mPwr = 2.0 * (1 + abSpdL * 0.10); // 2x base speed * upgrades
-        } else if (module === ModuleType.SHIELD_BURST) {
-            // Shield Burst: instant shield restore + 0.5s invulnerability
-            mDur = 500; // 0.5s invulnerability
-            mCd = 20000; // 20s cooldown (no upgrades yet)
-            mPwr = 1.0; // Full shield restore (100%)
-        }
+            if (moduleType === ModuleType.AFTERBURNER) {
+                duration = 10000 + (abDurL * 1000);
+                cooldown = Math.max(5000, 60000 - (abCdL * 2000));
+                power = 2.0 * (1 + abSpdL * 0.10);
+            } else if (moduleType === ModuleType.SHIELD_BURST) {
+                duration = 500;
+                cooldown = 20000;
+                power = 1.0;
+            }
+
+            return {
+                type: moduleType,
+                cooldownMax: cooldown,
+                duration: duration,
+                power: power,
+                readyTime: 0,
+                activeUntil: 0
+            };
+        };
+
+        const moduleSlots = equippedModules
+            .filter(m => m !== ModuleType.NONE)
+            .map(buildModuleSlot);
 
         const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
         const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.15);
@@ -130,7 +142,7 @@ export const usePlayer = (
             speed: (shipConfig.baseStats.speed || 240) * (1 + spdL * 0.02),
             damage: baseWStats.damage * (1 + dmgL * 0.05) * bDamageMult,
             fireRate: fRate,
-            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.05), // Updated to 5% per level
+            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.05),
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
@@ -139,12 +151,7 @@ export const usePlayer = (
             swarmCount: sCount,
             swarmAgility: sAgility,
 
-            moduleType: module,
-            moduleCooldownMax: mCd,
-            moduleDuration: mDur,
-            modulePower: mPwr,
-            moduleReadyTime: 0,
-            moduleActiveUntil: 0,
+            moduleSlots: moduleSlots,
 
             critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
             critMultiplier: 1.5 + (critDmgL * 0.05),
@@ -199,25 +206,38 @@ export const usePlayer = (
         lastPlayerHitTimeRef.current = 0;
     }, [persistentData, calculateStats]);
 
-    const activateModule = useCallback(() => {
+    /**
+     * Activate a specific module by slot index (0, 1, or 2)
+     */
+    const activateModule = useCallback((slotIndex: number) => {
         setStats(prev => {
             const now = performance.now();
-            if (prev.moduleType === ModuleType.NONE) return prev;
-            if (now < prev.moduleReadyTime) return prev; // Cooldown not ready
-            if (now < prev.moduleActiveUntil) return prev; // Already active
+            const slot = prev.moduleSlots[slotIndex];
 
-            let newStats = {
+            // Validate slot exists
+            if (!slot || slot.type === ModuleType.NONE) return prev;
+            if (now < slot.readyTime) return prev; // Cooldown not ready
+            if (now < slot.activeUntil) return prev; // Already active
+
+            // Update the slot in the array
+            const newSlots = [...prev.moduleSlots];
+            newSlots[slotIndex] = {
+                ...slot,
+                activeUntil: now + slot.duration,
+                readyTime: now + slot.cooldownMax
+            };
+
+            let newStats: PlayerStats = {
                 ...prev,
-                moduleActiveUntil: now + prev.moduleDuration,
-                moduleReadyTime: now + prev.moduleCooldownMax
+                moduleSlots: newSlots
             };
 
             // Module-specific activation effects
-            if (prev.moduleType === ModuleType.SHIELD_BURST) {
+            if (slot.type === ModuleType.SHIELD_BURST) {
                 // Instantly restore shield to max
                 newStats.currentShield = newStats.maxShield;
                 // Grant invulnerability for duration
-                newStats.invulnerableUntil = now + prev.moduleDuration;
+                newStats.invulnerableUntil = now + slot.duration;
             }
 
             return newStats;
@@ -243,9 +263,10 @@ export const usePlayer = (
         if (powerUpManager.isBuffActive(pStats, 'SPEED', time)) {
             moveSpeed *= 1.5;
         }
-        // Afterburner Module Boost (only for Afterburner, not other modules)
-        if (pStats.moduleType === ModuleType.AFTERBURNER && time < pStats.moduleActiveUntil) {
-            moveSpeed *= pStats.modulePower;
+        // Afterburner Module Boost (check slots for active Afterburner)
+        const afterburnerSlot = pStats.moduleSlots.find(s => s.type === ModuleType.AFTERBURNER);
+        if (afterburnerSlot && time < afterburnerSlot.activeUntil) {
+            moveSpeed *= afterburnerSlot.power;
         }
 
         playerPosRef.current.x += movement.x * moveSpeed * dt;

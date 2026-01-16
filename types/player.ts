@@ -7,6 +7,18 @@ export enum ModuleType {
     SHIELD_BURST = 'SHIELD_BURST'
 }
 
+/**
+ * Individual module slot with its own cooldown state
+ */
+export interface ModuleSlot {
+    type: ModuleType;
+    cooldownMax: number;
+    duration: number;
+    power: number;
+    readyTime: number;      // Timestamp when available
+    activeUntil: number;    // Timestamp when effect ends
+}
+
 export enum ControlScheme {
     TWIN_STICK = 'TWIN_STICK',
     TAP_TO_AIM = 'TAP_TO_AIM',
@@ -60,13 +72,8 @@ export interface PlayerStats {
     swarmCount: number;
     swarmAgility: number; // Turn speed in radians per sec
 
-    // Module Stats
-    moduleType: ModuleType;
-    moduleCooldownMax: number;
-    moduleDuration: number;
-    modulePower: number; // e.g. Speed multiplier
-    moduleReadyTime: number; // Timestamp when active available
-    moduleActiveUntil: number; // Timestamp when effect ends
+    // Module Stats (up to 3 slots with independent cooldowns)
+    moduleSlots: ModuleSlot[];
 
     // Generic Active Buffs System
     // Key: PowerUpId, Value: Expiration Timestamp (ms)

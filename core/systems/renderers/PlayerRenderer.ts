@@ -79,6 +79,49 @@ const drawShield = (ctx: CanvasRenderingContext2D, stats: PlayerStats, time: num
     }
 };
 
+/**
+ * Draw invulnerability effect - golden pulsing aura with particles
+ */
+const drawInvulnerability = (ctx: CanvasRenderingContext2D, time: number) => {
+    const pulse = 0.7 + Math.sin(time * 0.03) * 0.3;
+    const radius = 70 + Math.sin(time * 0.02) * 10;
+
+    // Outer glow
+    const grad = ctx.createRadialGradient(0, 0, 30, 0, 0, radius);
+    grad.addColorStop(0, `rgba(251, 191, 36, ${0.4 * pulse})`);
+    grad.addColorStop(0.5, `rgba(251, 191, 36, ${0.2 * pulse})`);
+    grad.addColorStop(1, 'rgba(251, 191, 36, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner ring
+    ctx.strokeStyle = `rgba(251, 191, 36, ${0.8 * pulse})`;
+    ctx.lineWidth = 4;
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = '#fbbf24';
+    ctx.setLineDash([15, 10]);
+    ctx.lineDashOffset = -time * 0.1; // Spinning dashes
+    ctx.beginPath();
+    ctx.arc(0, 0, 50, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Sparkle particles
+    ctx.fillStyle = '#fbbf24';
+    for (let i = 0; i < 6; i++) {
+        const angle = (time * 0.005) + (i * Math.PI / 3);
+        const sparkleR = 55 + Math.sin(time * 0.02 + i) * 10;
+        const x = Math.cos(angle) * sparkleR;
+        const y = Math.sin(angle) * sparkleR;
+        ctx.beginPath();
+        ctx.arc(x, y, 3 + Math.sin(time * 0.03 + i) * 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+};
+
 const drawThrusters = (ctx: CanvasRenderingContext2D, isMoving: boolean, isBoostActive: boolean) => {
     if (!isMoving && !isBoostActive) return;
 
@@ -115,7 +158,8 @@ export const renderPlayer = (
 
     const hitAge = time - lastHitTime;
     const isHitActive = hitAge < 250;
-    const isBoostActive = time < stats.moduleActiveUntil;
+    const afterburnerSlot = stats.moduleSlots.find(s => s.type === 'AFTERBURNER');
+    const isBoostActive = afterburnerSlot && time < afterburnerSlot.activeUntil;
     const isMoving = Math.abs(joystickDir.x) > 0.1 || Math.abs(joystickDir.y) > 0.1;
 
     ctx.save();
@@ -136,6 +180,12 @@ export const renderPlayer = (
         if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
             ctx.rotate(Math.atan2(aimDir.y, aimDir.x) + Math.PI / 2);
         }
+    }
+
+    // 3.5 Invulnerability Effect (golden aura when invulnerable)
+    const isInvulnerable = time < stats.invulnerableUntil;
+    if (isInvulnerable) {
+        drawInvulnerability(ctx, time);
     }
 
     // 4. Shield (Around ship)

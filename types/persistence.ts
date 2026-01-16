@@ -10,8 +10,8 @@ export interface PersistentData {
     equippedWeapon: WeaponType;
     unlockedWeapons: WeaponType[];
 
-    // Modules
-    equippedModule: ModuleType;
+    // Modules (up to 3 equipped)
+    equippedModules: ModuleType[];
     unlockedModules: ModuleType[];
 
     // RPG Progression Fields
@@ -37,7 +37,7 @@ export const DEFAULT_PERSISTENT_DATA: PersistentData = {
     equippedShip: ShipType.INTERCEPTOR,
     equippedWeapon: WeaponType.PLASMA,
     unlockedWeapons: [WeaponType.PLASMA],
-    equippedModule: ModuleType.NONE,
+    equippedModules: [],
     unlockedModules: [],
     currentLevel: 1,
     currentXp: 0,

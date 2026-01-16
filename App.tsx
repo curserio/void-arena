@@ -167,7 +167,11 @@ const App: React.FC = () => {
       if (keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown')) dy += 1;
       if (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft')) dx -= 1;
       if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
-      if (keysPressed.current.has('Space') || keysPressed.current.has('Digit1')) activateModule();
+
+      // Module activation by slot (1, 2, 3 keys or Space for first slot)
+      if (keysPressed.current.has('Digit1') || keysPressed.current.has('Space')) activateModule(0);
+      if (keysPressed.current.has('Digit2')) activateModule(1);
+      if (keysPressed.current.has('Digit3')) activateModule(2);
       const len = Math.sqrt(dx * dx + dy * dy);
       inputManager.setMovement(len > 0 ? { x: dx / len, y: dy / len } : { x: 0, y: 0 });
 

@@ -49,7 +49,8 @@ export const renderGame = (
     }
 
     // Dynamic zoom (zoom out during Afterburner boost only)
-    const isAfterburnerActive = stats.moduleType === 'AFTERBURNER' && time < stats.moduleActiveUntil;
+    const afterburnerSlot = stats.moduleSlots.find(s => s.type === 'AFTERBURNER');
+    const isAfterburnerActive = afterburnerSlot && time < afterburnerSlot.activeUntil;
     const boostZoom = isAfterburnerActive ? 0.9 : 1.0;
     ctx.scale(zoomLevel * boostZoom, zoomLevel * boostZoom);
 

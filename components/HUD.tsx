@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PlayerStats, ShipType, ModuleType } from '../types';
+import { PlayerStats, ShipType, ModuleType, ModuleSlot } from '../types';
 import { SHIPS } from '../constants';
 import { POWERUP_CONFIGS } from '../data/powerups';
 
@@ -14,7 +14,7 @@ interface HUDProps {
   onShowUpgrades: () => void;
   onOpenGarage: () => void;
   onLevelClick?: () => void;
-  onActivateModule?: () => void;
+  onActivateModule?: (slotIndex: number) => void;
 }
 
 interface DamagePopup {
@@ -85,6 +85,117 @@ const PowerUpIndicator: React.FC<{
   );
 };
 
+/**
+ * Module Button with self-contained cooldown state
+ */
+const MODULE_ICONS: Record<ModuleType, string> = {
+  [ModuleType.NONE]: 'fa-circle',
+  [ModuleType.AFTERBURNER]: 'fa-forward-fast',
+  [ModuleType.SHIELD_BURST]: 'fa-shield-heart',
+};
+
+const ModuleButton: React.FC<{
+  slot: ModuleSlot;
+  slotIndex: number;
+  onActivate: (idx: number) => void;
+}> = ({ slot, slotIndex, onActivate }) => {
+  const [state, setState] = useState({ ready: false, progress: 0, active: false, timeLeft: 0 });
+
+  useEffect(() => {
+    const update = () => {
+      const now = performance.now();
+      const isActive = now < slot.activeUntil;
+      const isReady = now >= slot.readyTime;
+
+      let progress = 0;
+      let timeLeft = 0;
+
+      if (isActive) {
+        const remaining = slot.activeUntil - now;
+        progress = remaining / slot.duration;
+        timeLeft = remaining;
+      } else if (!isReady) {
+        const remaining = slot.readyTime - now;
+        progress = 1 - (remaining / slot.cooldownMax);
+      } else {
+        progress = 1;
+      }
+
+      setState({ ready: isReady, progress, active: isActive, timeLeft });
+    };
+    const interval = setInterval(update, 50);
+    update();
+    return () => clearInterval(interval);
+  }, [slot.readyTime, slot.activeUntil, slot.duration, slot.cooldownMax]);
+
+  const handlePress = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (state.ready || state.active) {
+      onActivate(slotIndex);
+    }
+  };
+
+  const icon = MODULE_ICONS[slot.type] || 'fa-puzzle-piece';
+
+  return (
+    <div className="flex flex-col items-center">
+      <button
+        onPointerDown={handlePress}
+        className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-all overflow-hidden
+          ${state.ready || state.active ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'}
+          ${state.active
+            ? 'bg-fuchsia-600 animate-pulse ring-2 ring-white'
+            : state.ready
+              ? 'bg-slate-900 border-2 border-fuchsia-500 text-fuchsia-400'
+              : 'bg-slate-900 border-2 border-slate-700 text-slate-600'}`}
+      >
+        <i className={`fa-solid ${icon} text-xl z-10 ${state.ready || state.active ? 'text-white' : 'text-slate-600'}`} />
+
+        {/* Slot number badge */}
+        <div
+          className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 text-slate-950 text-[10px] font-black rounded-full flex items-center justify-center shadow-md"
+          style={{ fontFamily: 'system-ui, sans-serif', fontVariantNumeric: 'tabular-nums' }}
+        >
+          {slotIndex + 1}
+        </div>
+
+        {/* Charging Progress Ring */}
+        {!state.ready && !state.active && (
+          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 56 56">
+            <circle cx="28" cy="28" r="25" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
+            <circle
+              cx="28" cy="28" r="25"
+              fill="none" stroke="#d946ef" strokeWidth="3"
+              strokeOpacity="0.5"
+              strokeDasharray={157}
+              strokeDashoffset={157 * (1 - state.progress)}
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+
+        {/* Active Duration Ring */}
+        {state.active && (
+          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 56 56">
+            <circle
+              cx="28" cy="28" r="25"
+              fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3"
+              strokeDasharray={157}
+              strokeDashoffset={157 * (1 - state.progress)}
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </button>
+      <span className="mt-1 bg-slate-900/80 text-[8px] font-black uppercase text-fuchsia-400 px-1.5 py-0.5 rounded border border-fuchsia-500/30 shadow-lg">
+        {state.active
+          ? `${(state.timeLeft / 1000).toFixed(1)}s`
+          : (state.ready ? 'READY' : 'WAIT')}
+      </span>
+    </div>
+  );
+};
+
 const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, totalCredits, onPause, onShowUpgrades, onOpenGarage, onLevelClick, onActivateModule }) => {
   const healthPercent = Math.max(0, (stats.currentHealth / stats.maxHealth) * 100);
   const shieldPercent = Math.max(0, (stats.currentShield / stats.maxShield) * 100);
@@ -123,39 +234,7 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
     }, 800);
   };
 
-  // Module Cooldown Logic
-  const [moduleState, setModuleState] = useState({ ready: false, progress: 0, active: false, timeLeft: 0 });
-  useEffect(() => {
-    const update = () => {
-      const now = performance.now();
-      if (stats.moduleType === ModuleType.NONE) {
-        setModuleState({ ready: false, progress: 0, active: false, timeLeft: 0 });
-        return;
-      }
-
-      const isActive = now < stats.moduleActiveUntil;
-      const isReady = now >= stats.moduleReadyTime;
-
-      let progress = 0;
-      let timeLeft = 0;
-
-      if (isActive) {
-        const remaining = stats.moduleActiveUntil - now;
-        progress = remaining / stats.moduleDuration;
-        timeLeft = remaining;
-      } else if (!isReady) {
-        const remaining = stats.moduleReadyTime - now;
-        progress = 1 - (remaining / stats.moduleCooldownMax);
-      } else {
-        progress = 1;
-      }
-
-      setModuleState({ ready: isReady, progress, active: isActive, timeLeft });
-    };
-    const interval = setInterval(update, 50);
-    update();
-    return () => clearInterval(interval);
-  }, [stats.moduleType, stats.moduleReadyTime, stats.moduleActiveUntil, stats.moduleDuration, stats.moduleCooldownMax]);
+  // Module cooldown is now handled by ModuleButton component per-slot
 
 
   // Helper to handle touch/mouse presses without ghosting issues
@@ -252,63 +331,17 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
           </div>
         </div>
 
-        {/* MODULE BUTTON (Left Side, above Joystick area) */}
-        {stats.moduleType !== ModuleType.NONE && (
-          <div className="fixed bottom-32 left-6 pointer-events-auto z-[60]">
-            <button
-              onPointerDown={(e) => {
-                if (moduleState.ready || moduleState.active) {
-                  handlePress(e, () => onActivateModule && onActivateModule());
-                }
-              }}
-              className={`relative w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all overflow-hidden
-                      ${moduleState.ready || moduleState.active ? 'active:scale-95 cursor-pointer' : 'cursor-not-allowed opacity-80'}
-                      ${moduleState.active
-                  ? 'bg-fuchsia-600 animate-pulse ring-2 ring-white'
-                  : moduleState.ready
-                    ? 'bg-slate-900 border-2 border-fuchsia-500 text-fuchsia-400'
-                    : 'bg-slate-900 border-2 border-slate-700 text-slate-600'}`}
-            >
-              <i className={`fa-solid fa-forward-fast text-2xl z-10 ${moduleState.ready || moduleState.active ? 'text-white' : 'text-slate-600'}`} />
-
-              {/* Charging Progress Ring */}
-              {!moduleState.ready && !moduleState.active && (
-                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
-                  {/* Track */}
-                  <circle cx="32" cy="32" r="29" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="3" />
-
-                  {/* Fill */}
-                  <circle
-                    cx="32" cy="32" r="29"
-                    fill="none" stroke="#d946ef" strokeWidth="3"
-                    strokeOpacity="0.5"
-                    strokeDasharray={182.2}
-                    strokeDashoffset={182.2 * (1 - moduleState.progress)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
-
-              {/* Active Duration Ring */}
-              {moduleState.active && (
-                <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 64 64">
-                  <circle
-                    cx="32" cy="32" r="29"
-                    fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="3"
-                    strokeDasharray={182.2} // 2 * PI * 29
-                    strokeDashoffset={182.2 * (1 - moduleState.progress)}
-                    strokeLinecap="round"
-                  />
-                </svg>
-              )}
-            </button>
-            <div className="mt-1 text-center">
-              <span className="bg-slate-900/80 text-[9px] font-black uppercase text-fuchsia-400 px-2 py-0.5 rounded border border-fuchsia-500/30 shadow-lg">
-                {moduleState.active
-                  ? `${(moduleState.timeLeft / 1000).toFixed(1)}s`
-                  : (moduleState.ready ? 'READY' : 'CHARGING')}
-              </span>
-            </div>
+        {/* MODULE BUTTONS (Left Side, above Joystick area) - Up to 3 slots */}
+        {stats.moduleSlots.length > 0 && (
+          <div className="fixed bottom-32 left-6 pointer-events-auto z-[60] flex gap-3">
+            {stats.moduleSlots.map((slot, idx) => (
+              <ModuleButton
+                key={`module-${idx}-${slot.type}`}
+                slot={slot}
+                slotIndex={idx}
+                onActivate={(slotIdx) => onActivateModule && onActivateModule(slotIdx)}
+              />
+            ))}
           </div>
         )}
 
