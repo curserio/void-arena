@@ -1,18 +1,25 @@
 /**
  * Scout Enemy
  * Fast, weak enemy that orbits the player and shoots periodically
+ * 
+ * Uses: OrbitBehavior, ProjectileAttack
  */
 
 import { BaseEnemy } from './BaseEnemy';
 import { Vector2D, UpdateContext, EnemyUpdateResult } from '../../../types/entities';
 import { EnemyType, EnemyTier, EnemyDefinition } from '../../../types/enemies';
 import { getEnemyDefinition } from '../../../data/enemies/definitions';
+import { OrbitBehavior, ProjectileAttack, AIContext } from '../../systems/ai';
 
 export class Scout extends BaseEnemy {
     readonly enemyType = EnemyType.SCOUT;
 
     private readonly definition: EnemyDefinition;
     private readonly baseSpeed: number;
+
+    // AI Behaviors
+    private readonly movement: OrbitBehavior;
+    private readonly attack: ProjectileAttack;
 
     constructor(
         id: string,
@@ -30,78 +37,59 @@ export class Scout extends BaseEnemy {
         super(id, pos, definition, tier, finalHealth, finalRadius, shield, color, level, damageMult);
         this.definition = definition;
         this.baseSpeed = baseSpeed;
+
+        // Initialize behaviors
+        this.movement = new OrbitBehavior({
+            baseRadius: 320,
+            radiusVariance: 100,
+            orbitSpeed: 0.0003,
+        });
+
+        this.attack = new ProjectileAttack({
+            cooldown: definition.attackCooldown,
+            cooldownVariance: 500,
+            range: 600,
+            projectileSpeed: definition.projectileSpeed ?? 320,
+            projectileRadius: definition.projectileRadius ?? 7,
+            projectileColor: definition.projectileColor ?? '#f97316',
+            baseDamage: definition.attacks?.projectile ?? 10,
+            aimSpread: 0.25,
+        });
     }
 
     update(context: UpdateContext): EnemyUpdateResult {
         const result = this.emptyResult();
         const { dt, time, playerPos, gameTime } = context;
 
+        // Build AI context
+        const aiCtx: AIContext = {
+            enemy: this,
+            playerPos,
+            dt,
+            time,
+            gameTime,
+        };
+
+        // Calculate speed
         const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.5; // Gradual speed increase
+        const speedScale = 1 + (gameTime / 600) * 0.5;
         let speed = this.baseSpeed * speedScale * speedMult;
 
         if (this.isMiniboss) speed *= 0.65;
         if (this.isElite) speed *= 0.8;
 
-        // Calculate movement - orbit around player
-        const orbitRadius = 320 + this.aiSeed * 100;
-        const idealAngle = this.aiSeed * Math.PI * 2 + (time * 0.0003);
-
-        const targetX = playerPos.x + Math.cos(idealAngle) * orbitRadius;
-        const targetY = playerPos.y + Math.sin(idealAngle) * orbitRadius;
-
-        const toTargetX = targetX - this.pos.x;
-        const toTargetY = targetY - this.pos.y;
-        const distToTarget = Math.hypot(toTargetX, toTargetY);
-
-        // Separation from other enemies would need enemy list - handled externally
-        this.vel.x = (toTargetX / distToTarget) * speed;
-        this.vel.y = (toTargetY / distToTarget) * speed;
+        // Movement via behavior
+        const direction = this.movement.calculateVelocity(aiCtx);
+        this.vel.x = direction.x * speed;
+        this.vel.y = direction.y * speed;
 
         // Apply velocity
         this.pos.x += this.vel.x * dt;
         this.pos.y += this.vel.y * dt;
 
-        // Attack logic
-        const dx = playerPos.x - this.pos.x;
-        const dy = playerPos.y - this.pos.y;
-        const distToPlayer = Math.hypot(dx, dy);
-
-        if (distToPlayer < 600) {
-            const cooldown = this.definition.attackCooldown + this.aiSeed * 500;
-
-            if (time - this.lastShotTime > cooldown) {
-                this.lastShotTime = time;
-
-                let bulletRadius = this.definition.projectileRadius ?? 7;
-                let bulletColor = this.definition.projectileColor ?? '#f97316';
-                let bulletSpeed = this.definition.projectileSpeed ?? 320;
-
-                if (this.isMiniboss) {
-                    bulletRadius = 14;
-                    bulletColor = '#ef4444';
-                    bulletSpeed = 400;
-                } else if (this.isLegendary) {
-                    bulletRadius = 12;
-                    bulletColor = '#fbbf24'; // Gold
-                    bulletSpeed = 380;
-                } else if (this.isElite) {
-                    bulletRadius = 9;
-                    bulletColor = '#d946ef';
-                    bulletSpeed = 350;
-                }
-
-                const aimAngle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.25;
-                const baseDamage = this.definition.attacks?.projectile ?? 10;
-
-                result.bulletsToSpawn.push(this.createProjectile(
-                    aimAngle,
-                    bulletSpeed,
-                    bulletRadius,
-                    bulletColor,
-                    baseDamage
-                ));
-            }
+        // Attack via behavior
+        if (this.attack.shouldAttack(aiCtx)) {
+            result.bulletsToSpawn.push(...this.attack.execute(aiCtx));
         }
 
         return result;

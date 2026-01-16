@@ -1,22 +1,27 @@
 /**
  * Kamikaze Enemy
  * Fast suicide bomber that charges at the player with inertial movement
+ * 
+ * Uses: RushBehavior
  */
 
 import { BaseEnemy } from './BaseEnemy';
 import { Vector2D, UpdateContext, EnemyUpdateResult } from '../../../types/entities';
-import { EnemyType, EnemyTier, IEnemy, EnemyDefinition } from '../../../types/enemies';
+import { EnemyType, EnemyTier, EnemyDefinition } from '../../../types/enemies';
 import { getEnemyDefinition } from '../../../data/enemies/definitions';
+import { RushBehavior, AIContext } from '../../systems/ai';
 
 export class Kamikaze extends BaseEnemy {
     readonly enemyType = EnemyType.KAMIKAZE;
 
     private readonly definition: EnemyDefinition;
     private readonly baseSpeed: number;
-    private readonly turnRate: number = 2.5;
 
     // Elite ability
     public hasDeathDefiance: boolean;
+
+    // AI Behaviors
+    private readonly movement: RushBehavior;
 
     constructor(
         id: string,
@@ -37,64 +42,57 @@ export class Kamikaze extends BaseEnemy {
 
         // Special ability: Death Defiance for all tiers above Normal
         this.hasDeathDefiance = tier !== EnemyTier.NORMAL;
+
+        // Initialize behaviors
+        this.movement = new RushBehavior({
+            turnRate: 2.5,
+            acceleration: 250,
+            minSpeed: 100,
+        });
     }
 
     update(context: UpdateContext): EnemyUpdateResult {
         const result = this.emptyResult();
         const { dt, time, playerPos, gameTime } = context;
 
+        // Build AI context
+        const aiCtx: AIContext = {
+            enemy: this,
+            playerPos,
+            dt,
+            time,
+            gameTime,
+        };
+
+        // Calculate speed
         const speedMult = this.getSpeedMultiplier(time);
         const speedScale = 1 + (gameTime / 600) * 0.5;
-        let maxSpeed = this.baseSpeed * speedScale * speedMult;
-
+        const maxSpeed = this.baseSpeed * speedScale * speedMult;
         // Kamikaze: No miniboss/elite speed penalty - they stay fast
 
-        const dx = playerPos.x - this.pos.x;
-        const dy = playerPos.y - this.pos.y;
-        const distToPlayer = Math.hypot(dx, dy);
-        const targetDirX = dx / distToPlayer;
-        const targetDirY = dy / distToPlayer;
+        // Get direction from rush behavior
+        const direction = this.movement.calculateVelocity(aiCtx);
 
-        // Inertial steering
+        // Apply speed with acceleration logic
         const currentSpeed = Math.hypot(this.vel.x, this.vel.y);
-
-        let newDirX = targetDirX;
-        let newDirY = targetDirY;
+        let newSpeed = maxSpeed;
 
         if (currentSpeed > 50) {
-            // Gradually turn towards target
-            const normVelX = this.vel.x / currentSpeed;
-            const normVelY = this.vel.y / currentSpeed;
-
-            const turnAmount = this.turnRate * dt;
-            newDirX = normVelX + (targetDirX - normVelX) * turnAmount;
-            newDirY = normVelY + (targetDirY - normVelY) * turnAmount;
-
-            // Normalize
-            const len = Math.hypot(newDirX, newDirY);
-            newDirX /= len;
-            newDirY /= len;
-        }
-
-        // Speed adjustment based on alignment
-        const alignment = newDirX * targetDirX + newDirY * targetDirY;
-        let newSpeed = currentSpeed;
-
-        if (currentSpeed < 50) {
-            // Initial acceleration
-            newSpeed = maxSpeed;
-        } else if (alignment > 0.9) {
-            // Accelerate when aligned
-            const acceleration = 250 * dt;
-            newSpeed = Math.min(maxSpeed, currentSpeed + acceleration);
-        } else {
-            // Slow down when turning
-            newSpeed = Math.max(100, currentSpeed * 0.97);
+            // Calculate alignment for speed adjustment
+            const speedMult = this.movement.calculateSpeedMultiplier(aiCtx);
+            if (speedMult > 0.9) {
+                // Accelerate when aligned
+                const acceleration = 250 * dt;
+                newSpeed = Math.min(maxSpeed, currentSpeed + acceleration);
+            } else {
+                // Slow down when turning
+                newSpeed = Math.max(100, currentSpeed * 0.97);
+            }
         }
 
         // Apply movement
-        this.vel.x = newDirX * newSpeed;
-        this.vel.y = newDirY * newSpeed;
+        this.vel.x = direction.x * newSpeed;
+        this.vel.y = direction.y * newSpeed;
 
         this.pos.x += this.vel.x * dt;
         this.pos.y += this.vel.y * dt;
