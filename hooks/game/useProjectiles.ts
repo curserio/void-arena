@@ -2,10 +2,10 @@
 import React, { useRef, useCallback, useState } from 'react';
 import { Entity, EntityType, Vector2D, WeaponType, PlayerStats } from '../../types';
 import { TARGETING_RADIUS } from '../../constants';
-// import { ObjectPool, createEntity } from '../../core/utils/ObjectPool'; // Pooling temporarily removed for Class-based refactor
 import { IProjectile, ProjectileType, WeaponEffect } from '../../types/projectiles';
 import { ProjectileFactory } from '../../core/factories/ProjectileFactory';
 import { BaseProjectile } from '../../core/entities/projectiles/BaseProjectile';
+import { projectileBehaviorManager, ProjectileBehaviorContext } from '../../core/systems/projectiles';
 
 export const useProjectiles = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -211,153 +211,27 @@ export const useProjectiles = (
             }
         }
 
-        // Iterate BACKWARDS
-        const projs = projectilesRef.current;
+        // --- PROJECTILE UPDATE VIA BEHAVIOR MANAGER ---
+        const behaviorCtx: ProjectileBehaviorContext = {
+            dt,
+            time,
+            playerPos: playerPosRef.current,
+            targets,
+            aimDir,
+            autoAttack,
+            playerStats: {
+                laserDuration: pStats.laserDuration,
+            },
+        };
 
-        for (let i = projs.length - 1; i >= 0; i--) {
-            const p = projs[i];
+        const { alive, explosions } = projectileBehaviorManager.updateAll(
+            projectilesRef.current,
+            behaviorCtx
+        );
 
-            // 1. Base Update (Movement, Lifetime)
-            p.update(dt, time);
+        projectilesRef.current = alive;
 
-            // 2. Specific Logic overrides/extensions
-            if (p.isAlive) {
-
-                // --- LASER LOGIC ---
-                if (p.weaponEffect === WeaponEffect.LASER) {
-                    p.pos.x = playerPosRef.current.x;
-                    p.pos.y = playerPosRef.current.y;
-
-                    let targetAngle = p.angle || 0;
-                    if (Math.abs(aimDir.x) > 0.1 || Math.abs(aimDir.y) > 0.1) {
-                        targetAngle = Math.atan2(aimDir.y, aimDir.x);
-                    } else if (targets.length > 0 && autoAttack) {
-                        let nearest: Entity | null = null;
-                        let minDist = TARGETING_RADIUS;
-                        targets.forEach(t => {
-                            const d = Math.hypot(t.pos.x - playerPosRef.current.x, t.pos.y - playerPosRef.current.y);
-                            if (d < minDist) { minDist = d; nearest = t; }
-                        });
-                        if (nearest) {
-                            targetAngle = Math.atan2(nearest.pos.y - playerPosRef.current.y, nearest.pos.x - playerPosRef.current.x);
-                        }
-                    }
-
-                    // Smooth Turn
-                    let currentAngle = p.angle || 0;
-                    let angleDiff = targetAngle - currentAngle;
-                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-
-                    const turnSpeed = p.isFiring ? 3.0 : 8.0;
-                    const step = turnSpeed * dt;
-                    if (Math.abs(angleDiff) < step) {
-                        p.angle = targetAngle;
-                    } else {
-                        p.angle = currentAngle + Math.sign(angleDiff) * step;
-                    }
-
-                    if (p.isCharging) {
-                        p.chargeProgress = (p.chargeProgress || 0) + dt * 1.0;
-                        if (p.chargeProgress >= 1.0) {
-                            p.isCharging = false;
-                            p.isFiring = true;
-                            // Update duration to be current time + actual laser duration
-                            // This ensures BaseProjectile.update handles the death correctly
-                            p.duration = p.elapsedTime + (pStats.laserDuration || 0.3) * 1000;
-                        }
-                    } else if (p.isFiring) {
-                        // BaseProjectile.update handles timeout based on the updated p.duration
-                    }
-                }
-
-                // --- HOMING LOGIC (Swarm & Enemy Missiles) ---
-                else if (p.weaponEffect === WeaponEffect.HOMING) {
-                    if (p.isAlive) {
-                        // Find Target
-                        let target: Entity | undefined;
-                        if (p.targetId) {
-                            target = targets.find(t => t.id === p.targetId && t.health > 0); // Must be alive
-                            // note: targets list might be just Enemies, or Player?
-                            // For Player Projectiles, targets = Enemies.
-                            // For Enemy Projectiles, we need Player? 
-                            // The 'targets' arg passed to updateProjectiles usually is 'enemies'.
-                            // If this is an Enemy Bullet, it's homing on PLAYER.
-                            if (p.type === ProjectileType.ENEMY_BULLET) {
-                                // For enemy missile, target is always player (implicit)
-                                // We fake a target entity for logic reuse
-                                target = { id: 'player', pos: playerPosRef.current, health: 1 } as any;
-                            }
-                        }
-
-                        // Retargetting for Player Missiles
-                        if ((!target) && p.type === ProjectileType.PLAYER_BULLET) {
-                            let nearest: Entity | null = null;
-                            let minDist = 600;
-                            targets.forEach(t => {
-                                const d = Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y);
-                                if (d < minDist) { minDist = d; nearest = t; }
-                            });
-                            if (nearest) {
-                                p.targetId = nearest.id;
-                                target = nearest;
-                            }
-                        }
-
-                        // Steer
-                        if (target) {
-                            const dx = target.pos.x - p.pos.x;
-                            const dy = target.pos.y - p.pos.y;
-                            const targetAngle = Math.atan2(dy, dx);
-
-                            let currentAngle = Math.atan2(p.vel.y, p.vel.x);
-                            let diff = targetAngle - currentAngle;
-                            while (diff > Math.PI) diff -= Math.PI * 2;
-                            while (diff < -Math.PI) diff += Math.PI * 2;
-
-                            const turnStep = (p.turnRate || 1.5) * dt;
-                            if (Math.abs(diff) < turnStep) {
-                                currentAngle = targetAngle;
-                            } else {
-                                currentAngle += Math.sign(diff) * turnStep;
-                            }
-
-                            // Missiles accelerate
-                            const speed = Math.hypot(p.vel.x, p.vel.y);
-                            // const finalSpeed = speed < 350 ? speed * 1.01 : speed; // Cap acceleration?
-                            // Base speed is in p.speed.
-                            // Let's just use constant speed for now to be safe
-
-                            p.vel.x = Math.cos(currentAngle) * speed;
-                            p.vel.y = Math.sin(currentAngle) * speed;
-                        }
-                    }
-                }
-            }
-
-            // Check for timeout explosion (Moved outside isAlive check because p.update() might have just killed it)
-            // If it died naturally (elapsedTime > duration) AND it's a type that explodes
-            if (!p.isAlive && (p.elapsedTime > p.duration)) {
-                if (p.weaponEffect === WeaponEffect.HOMING || p.weaponEffect === WeaponEffect.EXPLOSIVE) {
-                    // Check if we already exploded? BaseProjectile doesn't track 'hasExploded'.
-                    // But we are in the loop where we remove it.
-                    // The loop checks !p.isAlive at the end and removes it.
-                    // So this is the ONE frame where we catch it dead before removal.
-                    if (p.type === ProjectileType.PLAYER_BULLET) {
-                        newExplosions.push({ pos: p.pos, radius: 150, color: p.color });
-                    } else if (p.type === ProjectileType.ENEMY_BULLET) {
-                        newExplosions.push({ pos: p.pos, radius: 80, color: p.color });
-                    }
-                }
-            }
-
-            if (!p.isAlive) {
-                projs[i] = projs[projs.length - 1];
-                projs.pop();
-            }
-        }
-
-        return { newExplosions };
+        return { newExplosions: explosions };
     }, [playerPosRef, statsRef, autoAttack, onShotFired]);
 
     const addProjectiles = useCallback((newProjs: any[]) => {
