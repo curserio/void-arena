@@ -2,6 +2,7 @@
 import { useRef, useCallback } from 'react';
 import { Entity, EntityType, Vector2D } from '../../types';
 import { ObjectPool, createEntity } from '../../core/utils/ObjectPool';
+import { particleIdGen } from '../../core/utils/IdGenerator';
 import { damageAggregator, explosionBatcher } from '../../core/systems/particles';
 
 export const useParticles = () => {
@@ -42,7 +43,7 @@ export const useParticles = () => {
         const pool = poolRef.current;
         const p = pool.get();
 
-        p.id = Math.random().toString(36);
+        p.id = particleIdGen.next();
         p.type = EntityType.SPAWN_FLASH;
         p.pos.x = pos.x;
         p.pos.y = pos.y;
@@ -72,7 +73,7 @@ export const useParticles = () => {
         const pool = poolRef.current;
         const p = pool.get();
 
-        p.id = Math.random().toString(36);
+        p.id = particleIdGen.next();
         p.type = EntityType.DAMAGE_NUMBER;
         p.pos.x = pos.x + (Math.random() - 0.5) * 30;
         p.pos.y = pos.y - 15;
@@ -95,7 +96,7 @@ export const useParticles = () => {
         const pool = poolRef.current;
         const p = pool.get();
 
-        p.id = Math.random().toString(36);
+        p.id = particleIdGen.next();
         p.type = EntityType.EXPLOSION;
         p.pos.x = pos.x;
         p.pos.y = pos.y;

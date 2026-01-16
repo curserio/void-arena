@@ -4,6 +4,7 @@
  */
 
 import { Entity, EntityType, PlayerStats, PowerUpId, DifficultyConfig } from '../../types';
+import { pickupIdGen } from '../utils/IdGenerator';
 import { EnemyType, IEnemy } from '../../types/enemies';
 import { XP_PER_GEM } from '../../constants';
 import {
@@ -226,7 +227,7 @@ export class PowerUpManager {
 
     private createXpGem(pos: { x: number; y: number }, value: number): Entity {
         return {
-            id: Math.random().toString(36),
+            id: pickupIdGen.next(),
             type: EntityType.XP_GEM,
             pos: { ...pos },
             vel: { x: 0, y: 0 },
@@ -241,7 +242,7 @@ export class PowerUpManager {
 
     private createCredit(pos: { x: number; y: number }, value: number, radius = 15): Entity {
         return {
-            id: Math.random().toString(36),
+            id: pickupIdGen.next(),
             type: EntityType.CREDIT,
             pos: { ...pos },
             vel: { x: 0, y: 0 },
@@ -257,7 +258,7 @@ export class PowerUpManager {
     private createPowerUp(pos: { x: number; y: number }, powerUpId: PowerUpId): Entity {
         const config = POWERUP_CONFIGS[powerUpId];
         return {
-            id: Math.random().toString(36),
+            id: pickupIdGen.next(),
             type: EntityType.POWERUP,
             pos: { ...pos },
             vel: { x: 0, y: 0 },

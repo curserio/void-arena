@@ -13,6 +13,7 @@ import { WORLD_SIZE } from '../../constants';
 import { EnemyType, EnemyTier, IEnemy } from '../../types/enemies';
 import { UpdateContext, IProjectileSpawn, IEnemySpawn } from '../../types/entities';
 import { enemyFactory } from '../../core/factories/EnemyFactory';
+import { projectileIdGen } from '../../core/utils/IdGenerator';
 import { BaseEnemy } from '../../core/entities/enemies/BaseEnemy';
 import { WaveManager, SpawnDecision } from '../../core/systems/WaveManager';
 import { DEFAULT_WAVE_CONFIG } from '../../data/spawning/waveConfig';
@@ -265,7 +266,7 @@ export const useEnemies = (
             // Collect bullets to spawn
             for (const bullet of result.bulletsToSpawn) {
                 enemyBulletsToSpawn.push({
-                    id: Math.random().toString(36),
+                    id: projectileIdGen.next(),
                     type: EntityType.ENEMY_BULLET,
                     pos: { ...bullet.pos },
                     vel: { ...bullet.vel },

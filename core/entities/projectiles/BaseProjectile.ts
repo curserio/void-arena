@@ -1,6 +1,7 @@
 
 import { IProjectile, ProjectileType, WeaponEffect, ProjectileConfig } from '../../../types/projectiles';
 import { Vector2D, WeaponType, EntityType } from '../../../types';
+import { projectileIdGen } from '../../utils/IdGenerator';
 
 export class BaseProjectile implements IProjectile {
     id: string;
@@ -46,7 +47,7 @@ export class BaseProjectile implements IProjectile {
     isLegendary?: boolean;
 
     constructor(config: ProjectileConfig, time: number) {
-        this.id = Math.random().toString(36).substr(2, 9);
+        this.id = projectileIdGen.next();
         this.pos = { ...config.pos };
         this.direction = { ...config.dir };
         this.speed = config.speed ?? 0;

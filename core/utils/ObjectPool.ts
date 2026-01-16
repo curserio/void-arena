@@ -1,5 +1,5 @@
-
 import { Entity, EntityType } from '../../types';
+import { generalIdGen } from './IdGenerator';
 
 type Factory<T> = () => T;
 type Reset<T> = (item: T) => void;
@@ -31,7 +31,7 @@ export class ObjectPool<T> {
 // Specific factories to keep code clean
 export const createEntity = (type: EntityType = EntityType.BULLET): Entity => {
   return {
-    id: Math.random().toString(36),
+    id: generalIdGen.next(),
     type,
     pos: { x: 0, y: 0 },
     vel: { x: 0, y: 0 },

@@ -34,16 +34,15 @@ import { Asteroid } from '../entities/enemies/Asteroid';
 import { Dreadnought } from '../entities/enemies/bosses/Dreadnought';
 import { Destroyer } from '../entities/enemies/bosses/Destroyer';
 import { BaseEnemy } from '../entities/enemies/BaseEnemy';
+import { enemyIdGen } from '../utils/IdGenerator';
 
 export class EnemyFactory {
-    private idCounter: number = 0;
 
     /**
      * Generate unique ID for enemy
      */
     private generateId(type: EnemyType): string {
-        this.idCounter++;
-        return `${type}-${this.idCounter}-${Math.random().toString(36).substr(2, 6)}`;
+        return `${type}-${enemyIdGen.next()}`;
     }
 
     /**
@@ -209,8 +208,8 @@ export class EnemyFactory {
         const color = tierMod.colorOverride ?? (definition.color as string);
 
         const id = type === EnemyType.BOSS_DESTROYER
-            ? `BOSS-DEST-${bossTier}-${this.idCounter++}`
-            : `BOSS-${bossTier}-${this.idCounter++}`;
+            ? `BOSS-DEST-${bossTier}-${enemyIdGen.next()}`
+            : `BOSS-${bossTier}-${enemyIdGen.next()}`;
 
         // Already using EnemyTier from determineBossTier
         const tierEquiv = bossTier;

@@ -22,7 +22,8 @@ import GameOverScreen from './screens/GameOverScreen';
 
 // Core Systems
 import { useGameLogic } from './hooks/useGameLogic';
-import { generateStars, drawBackground, BackgroundStar } from './core/systems/BackgroundManager';
+import { generateStars, BackgroundStar } from './core/systems/BackgroundManager';
+import { cachedBackgroundRenderer } from './core/systems/rendering/CachedBackgroundRenderer';
 import { renderGame } from './core/systems/GameRenderer';
 import { inputManager } from './core/systems/input';
 
@@ -65,6 +66,14 @@ const App: React.FC = () => {
 
   const [offeredUpgrades, setOfferedUpgrades] = useState<any[]>([]);
   const stars = useMemo<BackgroundStar[]>(() => generateStars(400), []);
+
+  // Initialize cached background renderer once
+  useEffect(() => {
+    if (stars.length > 0) {
+      cachedBackgroundRenderer.initialize(stars, window.innerWidth, window.innerHeight);
+    }
+  }, [stars]);
+
   const isGamePaused = isPaused || showGarage || showUpgradesList || showSettings || showGuide || showCheats || showLeaderboard || showStats || showDebugMenu;
 
   // --- GAME LOGIC HOOK ---
@@ -176,7 +185,7 @@ const App: React.FC = () => {
     try { updateRef.current(time, dt); } catch (e) { console.error("Game Loop Error:", e); }
 
     ctx.fillStyle = '#0a0a10'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawBackground(ctx, canvas.width, canvas.height, canvas.width / 2 - cameraPosRef.current.x, canvas.height / 2 - cameraPosRef.current.y, stars);
+    cachedBackgroundRenderer.draw(ctx, canvas.width, canvas.height, canvas.width / 2 - cameraPosRef.current.x, canvas.height / 2 - cameraPosRef.current.y);
     renderGame(ctx, canvas, enemiesRef.current, projectilesRef.current, pickupsRef.current, particlesRef.current, playerPosRef.current, cameraPosRef.current, statsRef.current, inputManager.getMovement(), inputManager.getAim(), time, lastPlayerHitTime.current, currentZoom, currentState);
 
     requestRef.current = requestAnimationFrame(frame);
