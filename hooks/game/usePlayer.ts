@@ -50,6 +50,7 @@ export const usePlayer = (
 
         const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
         const lsrDurL = data.metaLevels['meta_lsr_duration'] || 0;
+        const lsrRchgL = data.metaLevels['meta_lsr_recharge'] || 0;
 
         const swarmCountL = data.metaLevels['meta_swarm_count'] || 0;
         const swarmAgilityL = data.metaLevels['meta_swarm_agility'] || 0;
@@ -60,6 +61,11 @@ export const usePlayer = (
         const abDurL = data.metaLevels['meta_ab_dur'] || 0;
         const abCdL = data.metaLevels['meta_ab_cd'] || 0;
         const abSpdL = data.metaLevels['meta_ab_spd'] || 0;
+
+        // Module Specific Metas (Shield Burst)
+        const sbDurL = data.metaLevels['meta_sb_dur'] || 0;  // +0.25s per level
+        const sbCdL = data.metaLevels['meta_sb_cd'] || 0;    // -2s per level
+        const sbHealL = data.metaLevels['meta_sb_heal'] || 0; // +5 bonus shield per level
 
         // Weapon Specific Metas
         let bCount = (shipConfig.baseStats.bulletCount || 1);
@@ -77,15 +83,15 @@ export const usePlayer = (
         if (weapon === WeaponType.PLASMA) {
             bDamageMult *= (1 + plasDmgL * 0.05);
             bSpeed *= (1 + plasSpdL * 0.08);
-            bCount += plasCountL;
+            bCount += plasCountL; // +1 per level (max 2)
             fRate *= (1 + plasRateL * 0.05); // +5% per level, max level 10 = +50% (4.0 -> 6.0)
         } else if (weapon === WeaponType.MISSILE) {
             bDamageMult *= (1 + mslDmgL * 0.05);
             fRate *= (1 + mslRelL * 0.05);
-            mRadius = 195 * (1 + mslRadL * 0.10); // 150 -> 195
+            mRadius = 195 * (1 + mslRadL * 0.10) + mslRadL * 10; // 150 -> 195
         } else if (weapon === WeaponType.LASER) {
             bDamageMult *= (1 + lsrDmgL * 0.05);
-            fRate *= (1 + (data.metaLevels['meta_lsr_recharge'] || 0) * 0.1);
+            fRate *= (1 + lsrRchgL * 0.08); // Recharge Speed
             lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
             bPierce = 999;
         } else if (weapon === WeaponType.SWARM_LAUNCHER) {
@@ -104,9 +110,10 @@ export const usePlayer = (
                 cooldown = Math.max(5000, 60000 - (abCdL * 2000));
                 power = 2.0 * (1 + abSpdL * 0.10);
             } else if (moduleType === ModuleType.SHIELD_BURST) {
-                duration = 500;
-                cooldown = 20000;
-                power = 1.0;
+                // Base: 0.5s invuln, 20s CD, power = bonus shield amount
+                duration = 500 + (sbDurL * 250); // +0.25s per level
+                cooldown = Math.max(4000, 20000 - (sbCdL * 2000)); // -2s per level, min 4s
+                power = sbHealL * 5; // Bonus shield on use (+5 per level)
             }
 
             return {
@@ -234,8 +241,11 @@ export const usePlayer = (
 
             // Module-specific activation effects
             if (slot.type === ModuleType.SHIELD_BURST) {
-                // Instantly restore shield to max
-                newStats.currentShield = newStats.maxShield;
+                // Instantly restore shield to max + bonus from Overshield Matrix
+                newStats.currentShield = Math.min(
+                    newStats.maxShield + slot.power, // Can overshield slightly
+                    newStats.maxShield + slot.power  // Overshield = max + bonus
+                );
                 // Grant invulnerability for duration
                 newStats.invulnerableUntil = now + slot.duration;
             }

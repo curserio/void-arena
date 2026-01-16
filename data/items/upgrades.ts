@@ -280,4 +280,9 @@ export const META_UPGRADES: MetaUpgrade[] = [
     { id: 'meta_ab_dur', name: 'Fuel Injectors', description: '+1s Duration.', icon: 'fa-stopwatch', maxLevel: 10, costBase: 2000, costFactor: 1.3, moduleType: ModuleType.AFTERBURNER },
     { id: 'meta_ab_cd', name: 'Coolant Flush', description: '-2s Cooldown.', icon: 'fa-snowflake', maxLevel: 15, costBase: 3000, costFactor: 1.35, moduleType: ModuleType.AFTERBURNER },
     { id: 'meta_ab_spd', name: 'Turbine Overclock', description: '+10% Speed Boost.', icon: 'fa-forward', maxLevel: 10, costBase: 2500, costFactor: 1.4, moduleType: ModuleType.AFTERBURNER },
+
+    // --- MODULE: SHIELD BURST ---
+    { id: 'meta_sb_dur', name: 'Extended Barrier', description: '+0.25s Invulnerability.', icon: 'fa-hourglass-half', maxLevel: 6, costBase: 2500, costFactor: 1.35, moduleType: ModuleType.SHIELD_BURST },
+    { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST },
+    { id: 'meta_sb_heal', name: 'Overshield Matrix', description: '+5 Bonus Shield on use.', icon: 'fa-heart-pulse', maxLevel: 10, costBase: 2000, costFactor: 1.25, moduleType: ModuleType.SHIELD_BURST },
 ];
