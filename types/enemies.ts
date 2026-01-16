@@ -23,24 +23,15 @@ export enum EnemyType {
 }
 
 /**
- * Enemy tier modifiers for regular enemies
+ * Enemy tier modifiers for all enemies including bosses
  * Rarity: Normal > Elite > Legendary > Miniboss
+ * Note: Bosses use NORMAL/ELITE/LEGENDARY only (not MINIBOSS)
  */
 export enum EnemyTier {
     NORMAL = 'NORMAL',
     ELITE = 'ELITE',
     LEGENDARY = 'LEGENDARY',
     MINIBOSS = 'MINIBOSS',
-}
-
-/**
- * Boss tier modifiers (bosses cannot be miniboss)
- * Rarity: Normal > Elite > Legendary
- */
-export enum BossTier {
-    NORMAL = 'NORMAL',
-    ELITE = 'ELITE',
-    LEGENDARY = 'LEGENDARY',
 }
 
 /**
@@ -194,7 +185,7 @@ export interface EnemySpawnOptions {
 export interface BossSpawnOptions {
     x: number;
     y: number;
-    tier?: BossTier;
+    tier?: EnemyTier;
     difficultyMult: number;
     levelBonus: number;
     waveIndex?: number;

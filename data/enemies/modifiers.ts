@@ -4,7 +4,7 @@
  * Also includes Boss tier modifiers
  */
 
-import { EnemyTier, BossTier, TierModifier, TierSpawnChances } from '../../types/enemies';
+import { EnemyTier, TierModifier, TierSpawnChances } from '../../types/enemies';
 
 // ============================================================================
 // Enemy Tier Modifiers (for regular enemies)
@@ -67,8 +67,8 @@ export const ENEMY_MODIFIERS: Record<EnemyTier, TierModifier> = {
 // Boss Tier Modifiers (bosses cannot be miniboss)
 // ============================================================================
 
-export const BOSS_MODIFIERS: Record<BossTier, TierModifier> = {
-    [BossTier.NORMAL]: {
+export const BOSS_MODIFIERS: Record<EnemyTier, TierModifier> = {
+    [EnemyTier.NORMAL]: {
         healthMult: 1.0,
         radiusMult: 1.0,
         speedMult: 1.0,
@@ -77,7 +77,7 @@ export const BOSS_MODIFIERS: Record<BossTier, TierModifier> = {
         creditMult: 1.0,
     },
 
-    [BossTier.ELITE]: {
+    [EnemyTier.ELITE]: {
         healthMult: 2.0,
         radiusMult: 1.15,
         speedMult: 1.1,
@@ -91,7 +91,7 @@ export const BOSS_MODIFIERS: Record<BossTier, TierModifier> = {
         specialAbilities: ['enrage'],
     },
 
-    [BossTier.LEGENDARY]: {
+    [EnemyTier.LEGENDARY]: {
         healthMult: 4.0,
         radiusMult: 1.25,
         speedMult: 1.2,
@@ -103,6 +103,16 @@ export const BOSS_MODIFIERS: Record<BossTier, TierModifier> = {
         hasShield: true,
         shieldPercent: 0.8,
         specialAbilities: ['enrage', 'summon', 'berserk'],
+    },
+
+    // Bosses don't spawn as MINIBOSS, but we need this for type completeness
+    [EnemyTier.MINIBOSS]: {
+        healthMult: 1.0,
+        radiusMult: 1.0,
+        speedMult: 1.0,
+        damageMult: 1.0,
+        xpMult: 1.0,
+        creditMult: 1.0,
     },
 };
 
@@ -142,7 +152,7 @@ export function getTierModifier(tier: EnemyTier): TierModifier {
 /**
  * Get modifier for boss tier
  */
-export function getBossTierModifier(tier: BossTier): TierModifier {
+export function getBossTierModifier(tier: EnemyTier): TierModifier {
     return BOSS_MODIFIERS[tier];
 }
 
@@ -180,7 +190,7 @@ export function determineEnemyTier(gameMinutes: number): EnemyTier {
 /**
  * Determine boss tier based on wave number and random roll
  */
-export function determineBossTier(waveIndex: number): BossTier {
+export function determineBossTier(waveIndex: number): EnemyTier {
     // Later waves have higher chances for special bosses
     const waveScale = 1 + waveIndex * 0.3;
 
@@ -190,16 +200,16 @@ export function determineBossTier(waveIndex: number): BossTier {
     // Legendary check (rarest)
     cumulative += BOSS_TIER_SPAWN_CHANCES.legendary * waveScale;
     if (roll < cumulative && waveIndex >= 2) {
-        return BossTier.LEGENDARY;
+        return EnemyTier.LEGENDARY;
     }
 
     // Elite check
     cumulative += BOSS_TIER_SPAWN_CHANCES.elite * waveScale;
     if (roll < cumulative && waveIndex >= 1) {
-        return BossTier.ELITE;
+        return EnemyTier.ELITE;
     }
 
-    return BossTier.NORMAL;
+    return EnemyTier.NORMAL;
 }
 
 /**

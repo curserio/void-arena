@@ -7,7 +7,6 @@ import { Vector2D } from '../../types/entities';
 import {
     EnemyType,
     EnemyTier,
-    BossTier,
     EnemySpawnOptions,
     IEnemy
 } from '../../types/enemies';
@@ -189,7 +188,7 @@ export class EnemyFactory {
         // Determine boss tier based on wave or override
         let bossTier = determineBossTier(waveIndex);
         if (bossTierOverride) {
-            bossTier = BossTier[bossTierOverride];
+            bossTier = EnemyTier[bossTierOverride];
         }
         const tierMod = getBossTierModifier(bossTier);
 
@@ -213,8 +212,8 @@ export class EnemyFactory {
             ? `BOSS-DEST-${bossTier}-${this.idCounter++}`
             : `BOSS-${bossTier}-${this.idCounter++}`;
 
-        // Convert BossTier to EnemyTier equivalent for rendering
-        const tierEquiv = EnemyTier[bossTier as keyof typeof EnemyTier] ?? EnemyTier.NORMAL;
+        // Already using EnemyTier from determineBossTier
+        const tierEquiv = bossTier;
 
         if (type === EnemyType.BOSS_DESTROYER) {
             return new Destroyer(

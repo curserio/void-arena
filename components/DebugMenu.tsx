@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { DebugConfig } from '../types';
-import { EnemyType, EnemyTier, BossTier } from '../types/enemies';
+import { EnemyType, EnemyTier } from '../types/enemies';
 
 interface DebugMenuProps {
   onStart: (config: DebugConfig) => void;
