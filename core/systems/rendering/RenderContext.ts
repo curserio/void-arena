@@ -14,6 +14,12 @@ export interface RenderContext {
     // Timing
     time: number;
 
+    // Camera / Viewport
+    cameraPos: Vector2D;
+    screenWidth: number;
+    screenHeight: number;
+    zoom: number;
+
     // Player state
     playerPos: Vector2D;
     playerStats: PlayerStats;

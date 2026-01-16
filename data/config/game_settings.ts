@@ -2,7 +2,7 @@
 import { PlayerStats, WeaponType, ModuleType } from '../../types';
 import { WEAPON_BASE_STATS } from '../weapons/stats';
 
-export const WORLD_SIZE = 4000;
+export const WORLD_SIZE = 8000;
 export const CAMERA_LERP = 0.08;
 export const TARGETING_RADIUS = 450;
 export const BULLET_MAX_DIST = 1200;

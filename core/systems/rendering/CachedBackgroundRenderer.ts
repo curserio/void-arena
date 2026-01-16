@@ -88,15 +88,19 @@ export class CachedBackgroundRenderer {
             const cache = this.cache[i];
             if (!cache) continue;
 
-            // Calculate parallax offset
-            const offsetX = (vOX * this.speeds[i]) % width;
-            const offsetY = (vOY * this.speeds[i]) % height;
+            // Calculate parallax offset - ensure positive modulo for wrapping
+            let offsetX = (vOX * this.speeds[i]) % width;
+            let offsetY = (vOY * this.speeds[i]) % height;
+
+            // Handle negative values (when moving left/up)
+            if (offsetX < 0) offsetX += width;
+            if (offsetY < 0) offsetY += height;
 
             // Use integer coordinates for performance
             const ox = offsetX | 0;
             const oy = offsetY | 0;
 
-            // Draw tiled to handle wrapping
+            // Draw 2x2 tiled grid to handle all scroll directions
             ctx.drawImage(cache, ox, oy);
             ctx.drawImage(cache, ox - width, oy);
             ctx.drawImage(cache, ox, oy - height);

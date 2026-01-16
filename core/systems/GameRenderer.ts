@@ -61,6 +61,10 @@ export const renderGame = (
     const rCtx: RenderContext = {
         ctx,
         time,
+        cameraPos,
+        screenWidth: canvas.width,
+        screenHeight: canvas.height,
+        zoom: zoomLevel * boostZoom,
         playerPos,
         playerStats: stats,
         joystickDir,

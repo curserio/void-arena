@@ -1,19 +1,26 @@
 /**
  * Particle Renderer
  * Renders damage numbers, explosions, and spawn flashes
+ * Includes viewport culling for performance
  */
 
 import { Entity, EntityType } from '../../../types';
 import { IRenderer } from './IRenderer';
 import { RenderContext } from './RenderContext';
+import { isInViewport } from '../../utils/renderUtils';
 
 export class ParticleRenderer implements IRenderer {
     readonly order = 40;
 
     render(rCtx: RenderContext): void {
-        const { ctx, particles } = rCtx;
+        const { ctx, particles, cameraPos, screenWidth, screenHeight, zoom } = rCtx;
 
         for (const e of particles) {
+            // Skip offscreen particles
+            if (!isInViewport(e.pos, cameraPos.x, cameraPos.y, screenWidth, screenHeight, 250, zoom)) {
+                continue;
+            }
+
             ctx.save();
             ctx.translate(e.pos.x, e.pos.y);
 
