@@ -11,6 +11,7 @@ import { usePickups } from './game/usePickups';
 import { useParticles } from './game/useParticles';
 import { useCollision } from './game/useCollision';
 import { powerUpManager } from '../core/systems/PowerUpManager';
+import { inputManager } from '../core/systems/input';
 import { UpgradeManager } from '../core/systems/UpgradeManager';
 import { CONSUMABLE_EFFECTS } from '../core/registries/ConsumableRegistry';
 
@@ -37,13 +38,8 @@ export const useGameLogic = (
 
     const difficultyConfig = DIFFICULTY_CONFIGS[selectedDifficulty];
 
-    // New: Aim Direction Ref for left joystick / mouse
-    const aimDirRef = useRef({ x: 0, y: 0 });
-    // New: Trigger Ref (Is player pressing fire button?)
-    const triggerRef = useRef(false);
-
     const {
-        stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef,
+        stats, setStats, statsRef, playerPosRef, cameraPosRef,
         lastPlayerHitTimeRef, initPlayer, updatePlayer, handleShieldRegen,
         addUpgrade, triggerPlayerHit, syncWithPersistentData, activateModule
     } = usePlayer(gameState, persistentData, isPaused);
@@ -188,15 +184,17 @@ export const useGameLogic = (
         const isOmni = powerUpManager.isBuffActive(statsRef.current, 'OMNI', time);
         const isPierce = powerUpManager.isBuffActive(statsRef.current, 'PIERCE', time);
 
-        // Pass aimDirRef and triggerRef to fireWeapon
-        fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current, aimDirRef.current, triggerRef.current);
+        // Pass aim and trigger from inputManager
+        const aimDir = inputManager.getAim();
+        const isFiring = inputManager.isFiring();
+        fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current, aimDir, isFiring);
 
         // 3. Update Sub-systems
         const { enemyBulletsToSpawn } = updateEnemies(dt, time, gameTimeRef.current);
         if (enemyBulletsToSpawn.length > 0) addProjectiles(enemyBulletsToSpawn);
 
-        // Pass aimDirRef to updateProjectiles so lasers can rotate while charging
-        const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDirRef.current);
+        // Pass aim to updateProjectiles so lasers can rotate while charging
+        const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDir);
         // Handle expirations/timeouts from projectiles (e.g. Swarm Missiles timing out)
         if (newExplosions && newExplosions.length > 0) {
             newExplosions.forEach(exp => spawnExplosion(exp.pos, exp.radius, exp.color));
@@ -211,7 +209,7 @@ export const useGameLogic = (
     }, [gameState, isPaused, updatePlayer, handleShieldRegen, fireWeapon, updateEnemies, addProjectiles, updateProjectiles, updatePickups, updateParticles, checkCollisions, spawnExplosion]);
 
     return {
-        stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
+        stats, score, playerPosRef, cameraPosRef,
         initGame, update, setStats, addUpgrade, statsRef, lastPlayerHitTime: lastPlayerHitTimeRef,
         syncWithPersistentData, autoAttack, setAutoAttack,
         // Expose split refs for the renderer

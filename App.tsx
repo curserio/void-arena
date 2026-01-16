@@ -24,6 +24,7 @@ import GameOverScreen from './screens/GameOverScreen';
 import { useGameLogic } from './hooks/useGameLogic';
 import { generateStars, drawBackground, BackgroundStar } from './core/systems/BackgroundManager';
 import { renderGame } from './core/systems/GameRenderer';
+import { inputManager } from './core/systems/input';
 
 const isTouchDevice = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
@@ -68,7 +69,7 @@ const App: React.FC = () => {
 
   // --- GAME LOGIC HOOK ---
   const {
-    stats, score, playerPosRef, cameraPosRef, joystickDirRef, aimDirRef, triggerRef,
+    stats, score, playerPosRef, cameraPosRef,
     initGame, update, setStats, statsRef, lastPlayerHitTime, syncWithPersistentData,
     autoAttack, setAutoAttack, enemiesRef, projectilesRef, pickupsRef, particlesRef, runMetricsRef,
     triggerManualLevelUp, onUpgradeSelected, activateModule, gameTime
@@ -159,24 +160,24 @@ const App: React.FC = () => {
       if (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight')) dx += 1;
       if (keysPressed.current.has('Space') || keysPressed.current.has('Digit1')) activateModule();
       const len = Math.sqrt(dx * dx + dy * dy);
-      joystickDirRef.current = len > 0 ? { x: dx / len, y: dy / len } : { x: 0, y: 0 };
+      inputManager.setMovement(len > 0 ? { x: dx / len, y: dy / len } : { x: 0, y: 0 });
 
       const screenCX = window.innerWidth / 2, screenCY = window.innerHeight / 2;
       const playerScreenX = screenCX + (playerPosRef.current.x - cameraPosRef.current.x) * currentZoom;
       const playerScreenY = screenCY + (playerPosRef.current.y - cameraPosRef.current.y) * currentZoom;
       const vx = mousePos.current.x - playerScreenX, vy = mousePos.current.y - playerScreenY;
       const dist = Math.sqrt(vx * vx + vy * vy);
-      if (dist > 0) aimDirRef.current = { x: vx / dist, y: vy / dist };
-      triggerRef.current = isMouseDown.current || isAutoAttack;
+      if (dist > 0) inputManager.setAim({ x: vx / dist, y: vy / dist });
+      inputManager.setFire(isMouseDown.current || isAutoAttack);
     } else if ((currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && !isPausedNow) {
-      triggerRef.current = true;
+      inputManager.setFire(true);
     }
 
     try { updateRef.current(time, dt); } catch (e) { console.error("Game Loop Error:", e); }
 
     ctx.fillStyle = '#0a0a10'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawBackground(ctx, canvas.width, canvas.height, canvas.width / 2 - cameraPosRef.current.x, canvas.height / 2 - cameraPosRef.current.y, stars);
-    renderGame(ctx, canvas, enemiesRef.current, projectilesRef.current, pickupsRef.current, particlesRef.current, playerPosRef.current, cameraPosRef.current, statsRef.current, joystickDirRef.current, aimDirRef.current, time, lastPlayerHitTime.current, currentZoom, currentState);
+    renderGame(ctx, canvas, enemiesRef.current, projectilesRef.current, pickupsRef.current, particlesRef.current, playerPosRef.current, cameraPosRef.current, statsRef.current, inputManager.getMovement(), inputManager.getAim(), time, lastPlayerHitTime.current, currentZoom, currentState);
 
     requestRef.current = requestAnimationFrame(frame);
   }, [stars, activateModule]);
@@ -204,13 +205,13 @@ const App: React.FC = () => {
 
   // --- TOUCH AIM HANDLERS ---
   const aimTouchIdRef = useRef<number | null>(null);
-  const handleTapAimInput = useCallback((clientX: number, clientY: number) => { const dx = clientX - window.innerWidth / 2, dy = clientY - window.innerHeight / 2; const dist = Math.sqrt(dx * dx + dy * dy); if (dist > 0) aimDirRef.current = { x: dx / dist, y: dy / dist }; }, [aimDirRef]);
+  const handleTapAimInput = useCallback((clientX: number, clientY: number) => { const dx = clientX - window.innerWidth / 2, dy = clientY - window.innerHeight / 2; const dist = Math.sqrt(dx * dx + dy * dy); if (dist > 0) inputManager.setAim({ x: dx / dist, y: dy / dist }); }, []);
   const handleAimLayerTouchStart = useCallback((e: React.TouchEvent) => { if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return; aimTouchIdRef.current = e.changedTouches[0].identifier; handleTapAimInput(e.changedTouches[0].clientX, e.changedTouches[0].clientY); }, [persistentData.settings, handleTapAimInput]);
   const handleAimLayerTouchMove = useCallback((e: React.TouchEvent) => { if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return; for (let i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === aimTouchIdRef.current) { handleTapAimInput(e.changedTouches[i].clientX, e.changedTouches[i].clientY); break; } }, [persistentData.settings, handleTapAimInput]);
-  const handleAimLayerTouchEnd = useCallback((e: React.TouchEvent) => { if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return; for (let i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === aimTouchIdRef.current) { aimTouchIdRef.current = null; aimDirRef.current = { x: 0, y: 0 }; break; } }, [persistentData.settings, aimDirRef]);
+  const handleAimLayerTouchEnd = useCallback((e: React.TouchEvent) => { if (persistentData.settings?.controlScheme === ControlScheme.TWIN_STICK) return; for (let i = 0; i < e.changedTouches.length; i++) if (e.changedTouches[i].identifier === aimTouchIdRef.current) { aimTouchIdRef.current = null; inputManager.setAim({ x: 0, y: 0 }); break; } }, [persistentData.settings]);
   const handleAimLayerMouseDown = useCallback((e: React.MouseEvent) => { if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return; aimTouchIdRef.current = 999; handleTapAimInput(e.clientX, e.clientY); }, [persistentData.settings, handleTapAimInput]);
   const handleAimLayerMouseMove = useCallback((e: React.MouseEvent) => { if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return; if (aimTouchIdRef.current === 999) handleTapAimInput(e.clientX, e.clientY); }, [persistentData.settings, handleTapAimInput]);
-  const handleAimLayerMouseUp = useCallback(() => { if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return; if (aimTouchIdRef.current === 999) { aimTouchIdRef.current = null; aimDirRef.current = { x: 0, y: 0 }; } }, [persistentData.settings, aimDirRef]);
+  const handleAimLayerMouseUp = useCallback(() => { if (persistentData.settings?.controlScheme !== ControlScheme.TAP_TO_AIM) return; if (aimTouchIdRef.current === 999) { aimTouchIdRef.current = null; inputManager.setAim({ x: 0, y: 0 }); } }, [persistentData.settings]);
 
   const currentScheme = persistentData.settings?.controlScheme || ControlScheme.TWIN_STICK;
   const totalCredits = persistentData.credits + (gameState === GameState.PLAYING ? stats.credits : 0);
@@ -282,8 +283,8 @@ const App: React.FC = () => {
       {(gameState === GameState.PLAYING || gameState === GameState.LEVELING || gameState === GameState.DYING) && !isGamePaused && (
         <>
           {currentScheme === ControlScheme.TAP_TO_AIM && <div className="absolute inset-0 z-30 touch-none cursor-crosshair" onTouchStart={handleAimLayerTouchStart} onTouchMove={handleAimLayerTouchMove} onTouchEnd={handleAimLayerTouchEnd} onMouseDown={handleAimLayerMouseDown} onMouseMove={handleAimLayerMouseMove} onMouseUp={handleAimLayerMouseUp} />}
-          {currentScheme === ControlScheme.TWIN_STICK && <Joystick className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { aimDirRef.current = dir; }} />}
-          {(currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && <Joystick className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { joystickDirRef.current = dir; }} />}
+          {currentScheme === ControlScheme.TWIN_STICK && <Joystick className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { inputManager.setAim(dir); }} />}
+          {(currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && <Joystick className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { inputManager.setMovement(dir); }} />}
           {gameState !== GameState.DYING && <HUD stats={stats} score={score} autoAttack={autoAttack} setAutoAttack={setAutoAttack} totalCredits={totalCredits} onPause={() => setIsPaused(true)} onShowUpgrades={() => setShowUpgradesList(true)} onOpenGarage={() => setShowGarage(true)} onLevelClick={triggerManualLevelUp} onActivateModule={activateModule} />}
           {gameState === GameState.LEVELING && <UpgradeMenu upgrades={offeredUpgrades} onSelect={onUpgradeSelected} />}
         </>

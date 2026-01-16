@@ -4,6 +4,7 @@ import { PlayerStats, Vector2D, Upgrade, PersistentData, WeaponType, ShipType, G
 import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { powerUpManager } from '../../core/systems/PowerUpManager';
+import { inputManager } from '../../core/systems/input';
 
 export const usePlayer = (
     gameState: GameState,
@@ -14,7 +15,6 @@ export const usePlayer = (
     const playerPosRef = useRef<Vector2D>({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
     const cameraPosRef = useRef<Vector2D>({ x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 });
     const statsRef = useRef<PlayerStats>(INITIAL_STATS);
-    const joystickDirRef = useRef<Vector2D>({ x: 0, y: 0 });
     const lastPlayerHitTimeRef = useRef(0);
 
     useEffect(() => { statsRef.current = stats; }, [stats]);
@@ -210,11 +210,13 @@ export const usePlayer = (
     }, []);
 
     const updatePlayer = useCallback((dt: number, time: number) => {
+        const movement = inputManager.getMovement();
+
         if (gameState !== GameState.PLAYING || isPaused) {
             // Drifting when dying or paused (no input control)
             if (gameState === GameState.DYING) {
-                playerPosRef.current.x += joystickDirRef.current.x * 20 * dt;
-                playerPosRef.current.y += joystickDirRef.current.y * 20 * dt;
+                playerPosRef.current.x += movement.x * 20 * dt;
+                playerPosRef.current.y += movement.y * 20 * dt;
             }
             return;
         }
@@ -231,8 +233,8 @@ export const usePlayer = (
             moveSpeed *= pStats.modulePower;
         }
 
-        playerPosRef.current.x += joystickDirRef.current.x * moveSpeed * dt;
-        playerPosRef.current.y += joystickDirRef.current.y * moveSpeed * dt;
+        playerPosRef.current.x += movement.x * moveSpeed * dt;
+        playerPosRef.current.y += movement.y * moveSpeed * dt;
         playerPosRef.current.x = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.x));
         playerPosRef.current.y = Math.max(30, Math.min(WORLD_SIZE - 30, playerPosRef.current.y));
         cameraPosRef.current.x += (playerPosRef.current.x - cameraPosRef.current.x) * CAMERA_LERP;
@@ -378,7 +380,7 @@ export const usePlayer = (
     }, [calculateStats]);
 
     return {
-        stats, setStats, statsRef, playerPosRef, cameraPosRef, joystickDirRef, lastPlayerHitTimeRef,
+        stats, setStats, statsRef, playerPosRef, cameraPosRef, lastPlayerHitTimeRef,
         initPlayer, updatePlayer, handleShieldRegen, addUpgrade, triggerPlayerHit, syncWithPersistentData,
         activateModule
     };
