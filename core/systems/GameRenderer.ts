@@ -87,15 +87,22 @@ export const renderGame = (
  * Render world boundary
  */
 function renderBoundary(ctx: CanvasRenderingContext2D): void {
-    // Neon wall
+    ctx.save();
+
+    // Dashed neon wall
     ctx.strokeStyle = '#22d3ee';
-    ctx.lineWidth = 12;
-    ctx.shadowBlur = 40;
+    ctx.lineWidth = 8;
+    ctx.shadowBlur = 30;
     ctx.shadowColor = '#06b6d4';
+    ctx.setLineDash([40, 20]); // Dashed pattern
     ctx.strokeRect(0, 0, WORLD_SIZE, WORLD_SIZE);
 
-    // Internal glow
-    ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
+    // Internal glow (solid, subtle)
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(34, 211, 238, 0.15)';
     ctx.lineWidth = 2;
-    ctx.strokeRect(-20, -20, WORLD_SIZE + 40, WORLD_SIZE + 40);
+    ctx.shadowBlur = 0;
+    ctx.strokeRect(-15, -15, WORLD_SIZE + 30, WORLD_SIZE + 30);
+
+    ctx.restore();
 }
