@@ -1,24 +1,25 @@
 /**
- * useEnemies Hook - Refactored for Phase 1.5
+ * useEnemies Hook - Refactored
  * 
- * Key changes:
- * - Stores IEnemy instances directly instead of legacy Entity objects
- * - Delegates update logic to enemy class methods
- * - Converts to legacy Entity only for rendering
+ * Composes:
+ * - useEnemyFactory: createEnemy, spawnBoss
+ * - useEnemySpawner: initEnemies, processSpawnDecision
+ * - Contains: updateEnemies (core update loop)
  */
 
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Entity, EntityType, Vector2D, DifficultyConfig, GameMode, DebugConfig } from '../../types';
 import { WORLD_SIZE } from '../../constants';
 import { EnemyType, EnemyTier, IEnemy } from '../../types/enemies';
-import { UpdateContext, IProjectileSpawn, IEnemySpawn } from '../../types/entities';
-import { enemyFactory } from '../../core/factories/EnemyFactory';
+import { UpdateContext } from '../../types/entities';
 import { projectileIdGen } from '../../core/utils/IdGenerator';
 import { BaseEnemy } from '../../core/entities/enemies/BaseEnemy';
 import { SHIELD_AURA_RADIUS } from '../../core/entities/enemies/Shielder';
-import { WaveManager, SpawnDecision } from '../../core/systems/WaveManager';
+import { WaveManager } from '../../core/systems/WaveManager';
 import { DEFAULT_WAVE_CONFIG } from '../../data/spawning/waveConfig';
-import { isSpawnableEnemy } from '../../data/enemies';
+
+import { useEnemyFactory } from './useEnemyFactory';
+import { useEnemySpawner } from './useEnemySpawner';
 
 export const useEnemies = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -27,180 +28,24 @@ export const useEnemies = (
     gameMode: GameMode = GameMode.STANDARD,
     debugConfig: DebugConfig | null = null
 ) => {
-    // Store actual IEnemy instances
-    const enemiesRef = useRef<IEnemy[]>([]);
-
     // Wave Manager for spawn decisions
     const waveManager = useMemo(() => new WaveManager(DEFAULT_WAVE_CONFIG, difficulty), [difficulty]);
 
-    const spawnTimerRef = useRef(0);
-    const debugRespawnTimerRef = useRef(0);
+    // Compose sub-hooks
+    const factory = useEnemyFactory(playerPosRef, spawnSpawnFlash);
+    const { createEnemy, spawnBoss } = factory;
+
+    const spawner = useEnemySpawner(
+        playerPosRef,
+        difficulty,
+        gameMode,
+        waveManager,
+        factory
+    );
+    const { enemiesRef, spawnTimerRef, debugRespawnTimerRef, initEnemies, processSpawnDecision } = spawner;
 
     // =========================================================================
-    // INITIALIZATION
-    // =========================================================================
-
-    const initEnemies = useCallback((modeOverride?: GameMode) => {
-        const currentMode = modeOverride ?? gameMode;
-        enemiesRef.current = [];
-        spawnTimerRef.current = 0;
-        debugRespawnTimerRef.current = 0;
-        waveManager.reset();
-
-        // In DEBUG mode, do not spawn initial asteroid belt
-        if (currentMode === GameMode.STANDARD) {
-            // Initial asteroid belt - using factory
-            for (let i = 0; i < 35; i++) {
-                const asteroid = enemyFactory.createAsteroid(
-                    Math.random() * WORLD_SIZE,
-                    Math.random() * WORLD_SIZE,
-                    difficulty.statMultiplier
-                );
-                enemiesRef.current.push(asteroid);
-            }
-        }
-    }, [difficulty, gameMode, waveManager]);
-
-    // =========================================================================
-    // HELPER: Sync IEnemy to Legacy Entity for rendering
-    // =========================================================================
-
-
-
-    // =========================================================================
-    // ENEMY CREATION
-    // =========================================================================
-
-    const createEnemy = useCallback((
-        enemyType: EnemyType,
-        x: number,
-        y: number,
-        gameMinutes: number,
-        difficultyMultiplier: number,
-        levelBonus: number,
-        isEliteOverride?: boolean,
-        isLegendaryOverride?: boolean,
-        isMinibossOverride?: boolean
-    ): IEnemy | null => {
-        // Validate enemy type (regular enemies only, not bosses/asteroids)
-        if (!isSpawnableEnemy(enemyType)) {
-            console.warn(`createEnemy called with invalid type: ${enemyType}. Use spawnBoss for boss types.`);
-            return null;
-        }
-
-        // Determine tier
-        let tier: EnemyTier | undefined = undefined;
-        if (isMinibossOverride) tier = EnemyTier.MINIBOSS;
-        else if (isLegendaryOverride) tier = EnemyTier.LEGENDARY;
-        else if (isEliteOverride) tier = EnemyTier.ELITE;
-
-        // Create using factory
-        const enemy = enemyFactory.create(enemyType, {
-            x,
-            y,
-            tier,
-            difficultyMult: difficultyMultiplier,
-            levelBonus,
-            isEliteOverride,
-            isLegendaryOverride,
-            isMinibossOverride,
-        });
-
-        // Spawn Flash Check
-        const distToPlayer = Math.hypot(x - playerPosRef.current.x, y - playerPosRef.current.y);
-        if (distToPlayer < 1300) {
-            spawnSpawnFlash({ x, y });
-        }
-
-        return enemy;
-    }, [playerPosRef, spawnSpawnFlash]);
-
-    // =========================================================================
-    // BOSS SPAWNING
-    // =========================================================================
-
-    const spawnBoss = useCallback((
-        bossType: EnemyType.BOSS_DREADNOUGHT | EnemyType.BOSS_DESTROYER,
-        difficultyMultiplier: number,
-        levelBonus: number,
-        currentTime: number,
-        waveIndex: number = 0,
-        bossTierOverride?: 'NORMAL' | 'ELITE' | 'LEGENDARY'
-    ) => {
-        const a = Math.random() * Math.PI * 2;
-        const d = 1100;
-        const x = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.x + Math.cos(a) * d));
-        const y = Math.max(100, Math.min(WORLD_SIZE - 100, playerPosRef.current.y + Math.sin(a) * d));
-
-        // Create boss using factory
-        const boss = enemyFactory.createBoss(
-            bossType,
-            x,
-            y,
-            difficultyMultiplier,
-            levelBonus,
-            currentTime,
-            waveIndex,
-            bossTierOverride
-        );
-
-        enemiesRef.current.push(boss);
-        spawnSpawnFlash({ x, y });
-    }, [playerPosRef, spawnSpawnFlash]);
-
-    // =========================================================================
-    // SPAWN DECISION PROCESSING (uses WaveManager)
-    // =========================================================================
-
-    const processSpawnDecision = useCallback((decision: SpawnDecision, gameTime: number, currentTime: number) => {
-        const difficultyMultiplier = waveManager.getDifficultyMultiplier(gameTime);
-        const levelBonus = difficulty.enemyLevelBonus;
-        const gameMinutes = gameTime / 60;
-
-        switch (decision.type) {
-            case 'boss':
-                if (decision.bossType && decision.waveIndex !== undefined) {
-                    waveManager.markBossSpawned(decision.waveIndex);
-                    spawnBoss(decision.bossType, difficultyMultiplier, levelBonus, currentTime, decision.waveIndex);
-                }
-                break;
-
-            case 'kamikaze_wave':
-                waveManager.markKamikazeSpawned(gameTime);
-                const angle = Math.random() * Math.PI * 2;
-                const dist = 1200 + Math.random() * 400;
-                const baseX = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(angle) * dist));
-                const baseY = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(angle) * dist));
-
-                if (decision.isEliteWave) {
-                    const e = createEnemy(EnemyType.KAMIKAZE, baseX, baseY, gameMinutes, difficultyMultiplier, levelBonus, true);
-                    if (e) enemiesRef.current.push(e);
-                } else {
-                    for (let i = 0; i < (decision.count || 3); i++) {
-                        const offsetX = (Math.random() - 0.5) * 100;
-                        const offsetY = (Math.random() - 0.5) * 100;
-                        const e = createEnemy(EnemyType.KAMIKAZE, baseX + offsetX, baseY + offsetY, gameMinutes, difficultyMultiplier, levelBonus);
-                        if (e) enemiesRef.current.push(e);
-                    }
-                }
-                break;
-
-            case 'enemy':
-            case 'lull_enemy':
-                if (decision.enemyType) {
-                    const a = Math.random() * Math.PI * 2;
-                    const d = decision.type === 'lull_enemy' ? 1200 : (1000 + Math.random() * 400);
-                    const x = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.x + Math.cos(a) * d));
-                    const y = Math.max(40, Math.min(WORLD_SIZE - 40, playerPosRef.current.y + Math.sin(a) * d));
-                    const e = createEnemy(decision.enemyType, x, y, gameMinutes, difficultyMultiplier, levelBonus);
-                    if (e) enemiesRef.current.push(e);
-                }
-                break;
-        }
-    }, [waveManager, difficulty, playerPosRef, createEnemy, spawnBoss]);
-
-    // =========================================================================
-    // UPDATE LOOP - Delegated to Enemy Classes
+    // UPDATE LOOP - Core game loop for enemies
     // =========================================================================
 
     const updateEnemies = useCallback((dt: number, time: number, gameTime: number) => {
@@ -240,8 +85,8 @@ export const useEnemies = (
 
                 if (debugConfig.enemyType === EnemyType.BOSS_DREADNOUGHT || debugConfig.enemyType === EnemyType.BOSS_DESTROYER) {
                     const bossType = debugConfig.enemyType;
-                    // TODO: Boss tier support (normal/elite/legendary) could be added to spawnBoss
-                    spawnBoss(bossType, debugConfig.level * 0.2, debugConfig.level, time, 0, debugConfig.tier !== 'MINIBOSS' ? debugConfig.tier : 'NORMAL');
+                    const boss = spawnBoss(bossType, debugConfig.level * 0.2, debugConfig.level, time, 0, debugConfig.tier !== 'MINIBOSS' ? debugConfig.tier : 'NORMAL');
+                    enemiesRef.current.push(boss);
                 } else {
                     const a = Math.random() * Math.PI * 2;
                     const d = 900;
@@ -272,16 +117,13 @@ export const useEnemies = (
         };
 
         // --- UPDATE SHIELDED STATUS (once per frame, before damage) ---
-        // Find all alive shielders
         const shielders = enemiesRef.current.filter(
             e => e.isAlive && e.enemyType === EnemyType.SHIELDER
         );
 
-        // Update isShielded for all enemies (no stacking - just boolean)
         for (const enemy of enemiesRef.current) {
             if (!enemy.isAlive) continue;
 
-            // Check if this enemy is within ANY shielder's aura (including itself if it's a shielder)
             let inAura = false;
             for (const shielder of shielders) {
                 const dx = enemy.pos.x - shielder.pos.x;
@@ -289,14 +131,13 @@ export const useEnemies = (
                 const dist = Math.hypot(dx, dy);
                 if (dist <= SHIELD_AURA_RADIUS) {
                     inAura = true;
-                    break; // No stacking - one aura is enough
+                    break;
                 }
             }
             (enemy as BaseEnemy).isShielded = inAura;
         }
 
         for (const enemy of enemiesRef.current) {
-            // Call the enemy's own update method
             const result = enemy.update(updateContext);
 
             // Collect bullets to spawn
@@ -310,7 +151,7 @@ export const useEnemies = (
                     health: 1,
                     maxHealth: 1,
                     color: bullet.color,
-                    damage: bullet.damage,  // Pass through calculated damage
+                    damage: bullet.damage,
                     level: bullet.level,
                     isElite: bullet.isElite,
                     isLegendary: bullet.isLegendary,
@@ -325,18 +166,17 @@ export const useEnemies = (
             // Collect enemies to spawn (from bosses, carriers, etc.)
             for (const spawn of result.enemiesToSpawn) {
                 const newEnemy = createEnemy(
-                    spawn.type, // Use the spawn's specified type
+                    spawn.type,
                     spawn.pos.x,
                     spawn.pos.y,
                     gameTime / 60,
                     spawn.difficultyMult ?? 1,
-                    spawn.level ?? difficulty.enemyLevelBonus, // Inherit parent's level if provided
+                    spawn.level ?? difficulty.enemyLevelBonus,
                     spawn.tier === EnemyTier.ELITE,
                     spawn.tier === EnemyTier.LEGENDARY,
                     spawn.tier === EnemyTier.MINIBOSS
                 );
                 if (newEnemy) {
-                    // Apply initial velocity if provided
                     if (spawn.vel) {
                         newEnemy.vel.x = spawn.vel.x;
                         newEnemy.vel.y = spawn.vel.y;
@@ -345,26 +185,19 @@ export const useEnemies = (
                 }
             }
 
-            // Keep alive enemies
             if (enemy.isAlive) {
                 nextEnemies.push(enemy);
             }
         }
 
-        // Add newly spawned enemies
         nextEnemies.push(...enemiesToSpawn);
-
-        // Update refs
         enemiesRef.current = nextEnemies;
 
-
-
         return { enemyBulletsToSpawn };
-    }, [processSpawnDecision, waveManager, playerPosRef, difficulty, createEnemy, spawnBoss, gameMode, debugConfig]);
+    }, [processSpawnDecision, waveManager, playerPosRef, difficulty, createEnemy, spawnBoss, gameMode, debugConfig, enemiesRef, spawnTimerRef, debugRespawnTimerRef]);
 
-    // Return both IEnemy ref and legacy ref for compatibility
     return {
-        enemiesRef: enemiesRef,  // Now returning proper IEnemy[]
+        enemiesRef,
         initEnemies,
         updateEnemies
     };
