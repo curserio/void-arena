@@ -8,5 +8,6 @@ export * from './Striker';
 export * from './LaserScout';
 export * from './Kamikaze';
 export * from './Shielder';
+export * from './Carrier';
 export * from './Asteroid';
 export * from './bosses';

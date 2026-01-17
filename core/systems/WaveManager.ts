@@ -119,9 +119,10 @@ export class WaveManager {
      * @param gameTime Current game time in seconds
      * @param spawnTimer Time since last spawn attempt
      * @param shielderCount Current number of shielders alive (for limit enforcement)
+     * @param carrierCount Current number of carriers alive (for limit enforcement)
      * @returns SpawnDecision with what to spawn (or nothing)
      */
-    getSpawnDecision(gameTime: number, spawnTimer: number, shielderCount: number = 0): SpawnDecision {
+    getSpawnDecision(gameTime: number, spawnTimer: number, shielderCount: number = 0, carrierCount: number = 0): SpawnDecision {
         const waveState = this.getWaveState(gameTime);
 
         // Check for boss spawn first
@@ -142,8 +143,8 @@ export class WaveManager {
         const kamikazeDecision = this.checkKamikazeWave(gameTime);
         if (kamikazeDecision) return kamikazeDecision;
 
-        // Normal enemy spawn (with shielder limit)
-        return this.getNormalEnemyDecision(gameTime, shielderCount);
+        // Normal enemy spawn (with shielder and carrier limits)
+        return this.getNormalEnemyDecision(gameTime, shielderCount, carrierCount);
     }
 
     /**
@@ -227,11 +228,12 @@ export class WaveManager {
         return null;
     }
 
-    private getNormalEnemyDecision(gameTime: number, shielderCount: number = 0): SpawnDecision {
+    private getNormalEnemyDecision(gameTime: number, shielderCount: number = 0, carrierCount: number = 0): SpawnDecision {
         const {
             laserScoutThreshold, laserScoutUnlockTime,
             strikerThreshold,
-            shielderThreshold, shielderUnlockTime
+            shielderThreshold, shielderUnlockTime,
+            carrierThreshold, carrierUnlockTime
         } = this.config.enemyTypeRolls;
         const roll = Math.random();
 
@@ -241,11 +243,18 @@ export class WaveManager {
         const MAX_SHIELDERS = 2;
         const canSpawnShielder = shielderCount < MAX_SHIELDERS && gameTime > shielderUnlockTime;
 
+        // Max 3 carriers at a time
+        const MAX_CARRIERS = 3;
+        const canSpawnCarrier = carrierCount < MAX_CARRIERS && gameTime > carrierUnlockTime;
+
         if (roll > laserScoutThreshold && gameTime > laserScoutUnlockTime) {
             enemyType = EnemyType.LASER_SCOUT;
         } else if (roll > shielderThreshold && canSpawnShielder) {
             // Shielder: spawns after 3 min, ~5% chance (0.80-0.85 threshold gap), max 2
             enemyType = EnemyType.SHIELDER;
+        } else if (roll > carrierThreshold && canSpawnCarrier) {
+            // Carrier: spawns after 5 min, ~2% chance (0.78-0.80 threshold gap), max 3
+            enemyType = EnemyType.CARRIER;
         } else if (roll > strikerThreshold) {
             enemyType = EnemyType.STRIKER;
         }

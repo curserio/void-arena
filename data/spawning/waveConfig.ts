@@ -22,6 +22,8 @@ export interface EnemyTypeRolls {
     strikerThreshold: number;      // Roll > this = striker (if not laser)
     shielderThreshold: number;     // Roll > this = shielder (after unlock)
     shielderUnlockTime: number;    // Seconds until shielders can spawn
+    carrierThreshold: number;      // Roll > this = carrier (after unlock)
+    carrierUnlockTime: number;     // Seconds until carriers can spawn
     kamikazeThreshold: number;     // Roll > this = kamikaze wave chance
     kamikazeUnlockTime: number;    // Seconds until kamikaze waves
     kamikazeCooldown: number;      // Minimum seconds between kamikaze waves
@@ -80,6 +82,8 @@ export const DEFAULT_WAVE_CONFIG: WaveConfig = {
         strikerThreshold: 0.65,
         shielderThreshold: 0.80,     // 80-85% = shielder
         shielderUnlockTime: 180,     // Unlocks at 3 minutes
+        carrierThreshold: 0.78,      // 78-80% = carrier
+        carrierUnlockTime: 300,      // Unlocks at 5 minutes
         kamikazeThreshold: 0.93,
         kamikazeUnlockTime: 45,
         kamikazeCooldown: 20,

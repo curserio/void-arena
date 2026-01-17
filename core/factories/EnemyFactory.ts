@@ -31,6 +31,7 @@ import { Striker } from '../entities/enemies/Striker';
 import { LaserScout } from '../entities/enemies/LaserScout';
 import { Kamikaze } from '../entities/enemies/Kamikaze';
 import { Shielder } from '../entities/enemies/Shielder';
+import { Carrier } from '../entities/enemies/Carrier';
 import { Asteroid } from '../entities/enemies/Asteroid';
 import { Dreadnought } from '../entities/enemies/bosses/Dreadnought';
 import { Destroyer } from '../entities/enemies/bosses/Destroyer';
@@ -131,6 +132,12 @@ export class EnemyFactory {
 
             case EnemyType.SHIELDER:
                 return new Shielder(
+                    id, pos, tier, finalHealth, finalRadius,
+                    shield, color, level, finalSpeed, modifier.damageMult
+                );
+
+            case EnemyType.CARRIER:
+                return new Carrier(
                     id, pos, tier, finalHealth, finalRadius,
                     shield, color, level, finalSpeed, modifier.damageMult
                 );

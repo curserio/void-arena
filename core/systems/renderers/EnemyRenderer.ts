@@ -135,6 +135,9 @@ export function renderEnemies(
             case EnemyType.SHIELDER:
                 renderShielder(ctx, e, time);
                 break;
+            case EnemyType.CARRIER:
+                renderCarrier(ctx, e);
+                break;
             case EnemyType.STRIKER:
             case EnemyType.LASER_SCOUT:
             default:
@@ -469,6 +472,36 @@ function renderShielder(ctx: CanvasRenderingContext2D, e: Entity | IEnemy, time:
     ctx.arc(0, 0, e.radius * 0.7, 0, Math.PI * 1.5);
     ctx.stroke();
     ctx.restore();
+}
+
+// Carrier - Larger hexagonal spawner with bay door visual
+function renderCarrier(ctx: CanvasRenderingContext2D, e: Entity | IEnemy): void {
+    const r = e.radius;
+
+    // Hexagonal main body
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        const x = Math.cos(angle) * r;
+        const y = Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner bay (darker hexagon)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 2;
+        const x = Math.cos(angle) * r * 0.5;
+        const y = Math.sin(angle) * r * 0.5;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
 }
 
 function renderStriker(ctx: CanvasRenderingContext2D, e: Entity | IEnemy): void {

@@ -82,7 +82,7 @@ export const useEnemies = (
         isMinibossOverride?: boolean
     ): IEnemy | null => {
         // Validate enemy type (regular enemies only, not bosses)
-        const validTypes = [EnemyType.SCOUT, EnemyType.STRIKER, EnemyType.LASER_SCOUT, EnemyType.KAMIKAZE, EnemyType.SHIELDER, EnemyType.ASTEROID];
+        const validTypes = [EnemyType.SCOUT, EnemyType.STRIKER, EnemyType.LASER_SCOUT, EnemyType.KAMIKAZE, EnemyType.SHIELDER, EnemyType.CARRIER, EnemyType.ASTEROID];
         if (!validTypes.includes(enemyType)) {
             console.warn(`createEnemy called with invalid type: ${enemyType}. Use spawnBoss for boss types.`);
             return null;
@@ -214,7 +214,12 @@ export const useEnemies = (
                 e => e.isAlive && e.enemyType === EnemyType.SHIELDER
             ).length;
 
-            const decision = waveManager.getSpawnDecision(gameTime, spawnTimerRef.current, shielderCount);
+            // Count current carriers for spawn limit
+            const carrierCount = enemiesRef.current.filter(
+                e => e.isAlive && e.enemyType === EnemyType.CARRIER
+            ).length;
+
+            const decision = waveManager.getSpawnDecision(gameTime, spawnTimerRef.current, shielderCount, carrierCount);
 
             if (decision.shouldSpawn) {
                 processSpawnDecision(decision, gameTime, time);
@@ -317,15 +322,18 @@ export const useEnemies = (
                 } as Entity);
             }
 
-            // Collect enemies to spawn (e.g., kamikaze drones from Destroyer)
+            // Collect enemies to spawn (from bosses, carriers, etc.)
             for (const spawn of result.enemiesToSpawn) {
                 const newEnemy = createEnemy(
-                    EnemyType.KAMIKAZE, // For now only Kamikaze spawning is supported
+                    spawn.type, // Use the spawn's specified type
                     spawn.pos.x,
                     spawn.pos.y,
                     gameTime / 60,
                     spawn.difficultyMult ?? 1,
-                    difficulty.enemyLevelBonus
+                    spawn.level ?? difficulty.enemyLevelBonus, // Inherit parent's level if provided
+                    spawn.tier === EnemyTier.ELITE,
+                    spawn.tier === EnemyTier.LEGENDARY,
+                    spawn.tier === EnemyTier.MINIBOSS
                 );
                 if (newEnemy) {
                     // Apply initial velocity if provided

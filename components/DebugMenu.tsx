@@ -20,6 +20,7 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
     { type: EnemyType.LASER_SCOUT, label: 'Sniper Drone', icon: 'fa-satellite' },
     { type: EnemyType.KAMIKAZE, label: 'Kamikaze Drone', icon: 'fa-bomb' },
     { type: EnemyType.SHIELDER, label: 'Shield Drone', icon: 'fa-shield' },
+    { type: EnemyType.CARRIER, label: 'Drone Carrier', icon: 'fa-helicopter' },
     { type: EnemyType.BOSS_DREADNOUGHT, label: 'Dreadnought Boss', icon: 'fa-skull' },
     { type: EnemyType.BOSS_DESTROYER, label: 'Imperial Destroyer', icon: 'fa-shapes' },
   ];

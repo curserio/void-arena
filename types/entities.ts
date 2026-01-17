@@ -5,6 +5,7 @@
 
 import { WeaponType, PowerUpId, ModuleType } from './player';
 import { ShipType } from './ships';
+import { EnemyType, EnemyTier } from './enemies';
 
 export enum EntityType {
     PLAYER = 'PLAYER',
@@ -139,9 +140,10 @@ export interface IProjectileSpawn {
  * Data needed to spawn an enemy
  */
 export interface IEnemySpawn {
-    type: string;
+    type: EnemyType;
     pos: Vector2D;
     vel?: Vector2D;
-    tier?: string;
+    tier?: EnemyTier;
     difficultyMult?: number;
+    level?: number;  // Parent's level for inheritance
 }

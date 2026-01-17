@@ -161,6 +161,30 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         attacks: {},
     },
 
+    [EnemyType.CARRIER]: {
+        type: EnemyType.CARRIER,
+        baseHealth: 400,
+        baseRadius: 35,
+        baseSpeed: 50,
+
+        name: 'Drone Carrier',
+        role: 'Spawner',
+        guideIcon: 'fa-shuttle-space',
+        description: 'Slow, tanky unit that periodically deploys Scout drones.',
+
+        color: '#64748b', // Slate gray
+
+        movementBehavior: MovementBehavior.KITE,
+        attackPattern: AttackPattern.NONE, // Spawns enemies instead
+        attackCooldown: 8000, // Spawn cooldown
+
+        xpValue: 80,
+        creditValue: 40,
+        powerUpChance: 0.10,
+
+        attacks: {},
+    },
+
     [EnemyType.ASTEROID]: {
         type: EnemyType.ASTEROID,
         baseHealth: 120, // Base HP, scaled by radius
