@@ -43,6 +43,35 @@ function getAsteroidPoints(seed: number, radius: number): Vector2D[] {
 
 
 // ============================================================================
+// Renderer Type and Registry
+// ============================================================================
+
+/**
+ * Standard render function signature for enemy body rendering
+ */
+type EnemyRenderFn = (
+    ctx: CanvasRenderingContext2D,
+    e: Entity | IEnemy,
+    time: number,
+    isRecentlyHit: boolean
+) => void;
+
+/**
+ * Registry mapping EnemyType to render function
+ * Adding a new enemy? Add its render function here.
+ */
+const ENEMY_RENDERERS: Partial<Record<EnemyType, EnemyRenderFn>> = {
+    [EnemyType.BOSS_DESTROYER]: (ctx, e, _time, isRecentlyHit) => renderDestroyer(ctx, e, isRecentlyHit),
+    [EnemyType.BOSS_DREADNOUGHT]: (ctx, e, _time, isRecentlyHit) => renderDreadnought(ctx, e, isRecentlyHit),
+    [EnemyType.SCOUT]: (ctx, e) => renderScout(ctx, e),
+    [EnemyType.STRIKER]: (ctx, e) => renderStriker(ctx, e),
+    [EnemyType.LASER_SCOUT]: (ctx, e) => renderStriker(ctx, e), // Uses Striker shape
+    [EnemyType.KAMIKAZE]: (ctx, e) => renderKamikaze(ctx, e),
+    [EnemyType.SHIELDER]: (ctx, e, time) => renderShielder(ctx, e, time),
+    [EnemyType.CARRIER]: (ctx, e) => renderCarrier(ctx, e),
+};
+
+// ============================================================================
 // Main Render Function
 // ============================================================================
 
@@ -118,31 +147,13 @@ export function renderEnemies(
         else if (isRecentlyHit) ctx.fillStyle = '#ff0000';
         else ctx.fillStyle = e.color;
 
-        // Render body based on type
-        switch (enemyType) {
-            case EnemyType.BOSS_DESTROYER:
-                renderDestroyer(ctx, e, isRecentlyHit);
-                break;
-            case EnemyType.BOSS_DREADNOUGHT:
-                renderDreadnought(ctx, e, isRecentlyHit);
-                break;
-            case EnemyType.SCOUT:
-                renderScout(ctx, e);
-                break;
-            case EnemyType.KAMIKAZE:
-                renderKamikaze(ctx, e);
-                break;
-            case EnemyType.SHIELDER:
-                renderShielder(ctx, e, time);
-                break;
-            case EnemyType.CARRIER:
-                renderCarrier(ctx, e);
-                break;
-            case EnemyType.STRIKER:
-            case EnemyType.LASER_SCOUT:
-            default:
-                renderStriker(ctx, e);
-                break;
+        // Render body using registry
+        const renderer = ENEMY_RENDERERS[enemyType];
+        if (renderer) {
+            renderer(ctx, e, time, isRecentlyHit);
+        } else {
+            // Default fallback to Striker shape
+            renderStriker(ctx, e);
         }
 
         // Shield Aura
