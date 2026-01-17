@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { DebugConfig } from '../types';
 import { EnemyType, EnemyTier } from '../types/enemies';
+import { DEBUG_ENEMY_OPTIONS } from '../data/enemies';
 
 interface DebugMenuProps {
   onStart: (config: DebugConfig) => void;
@@ -14,16 +15,8 @@ const DebugMenu: React.FC<DebugMenuProps> = ({ onStart, onClose }) => {
   const [count, setCount] = useState(5);
   const [selectedTier, setSelectedTier] = useState<'NORMAL' | 'ELITE' | 'LEGENDARY' | 'MINIBOSS'>('NORMAL');
 
-  const ENEMY_TYPES = [
-    { type: EnemyType.SCOUT, label: 'Void Scout', icon: 'fa-shuttle-space' },
-    { type: EnemyType.STRIKER, label: 'Crimson Striker', icon: 'fa-jet-fighter' },
-    { type: EnemyType.LASER_SCOUT, label: 'Sniper Drone', icon: 'fa-satellite' },
-    { type: EnemyType.KAMIKAZE, label: 'Kamikaze Drone', icon: 'fa-bomb' },
-    { type: EnemyType.SHIELDER, label: 'Shield Drone', icon: 'fa-shield' },
-    { type: EnemyType.CARRIER, label: 'Drone Carrier', icon: 'fa-helicopter' },
-    { type: EnemyType.BOSS_DREADNOUGHT, label: 'Dreadnought Boss', icon: 'fa-skull' },
-    { type: EnemyType.BOSS_DESTROYER, label: 'Imperial Destroyer', icon: 'fa-shapes' },
-  ];
+  // Use auto-derived enemy options from registry
+  const ENEMY_TYPES = DEBUG_ENEMY_OPTIONS;
 
   const isBoss = selectedType === EnemyType.BOSS_DREADNOUGHT || selectedType === EnemyType.BOSS_DESTROYER;
 

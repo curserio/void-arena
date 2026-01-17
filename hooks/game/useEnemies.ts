@@ -18,6 +18,7 @@ import { BaseEnemy } from '../../core/entities/enemies/BaseEnemy';
 import { SHIELD_AURA_RADIUS } from '../../core/entities/enemies/Shielder';
 import { WaveManager, SpawnDecision } from '../../core/systems/WaveManager';
 import { DEFAULT_WAVE_CONFIG } from '../../data/spawning/waveConfig';
+import { isSpawnableEnemy } from '../../data/enemies';
 
 export const useEnemies = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -81,9 +82,8 @@ export const useEnemies = (
         isLegendaryOverride?: boolean,
         isMinibossOverride?: boolean
     ): IEnemy | null => {
-        // Validate enemy type (regular enemies only, not bosses)
-        const validTypes = [EnemyType.SCOUT, EnemyType.STRIKER, EnemyType.LASER_SCOUT, EnemyType.KAMIKAZE, EnemyType.SHIELDER, EnemyType.CARRIER, EnemyType.ASTEROID];
-        if (!validTypes.includes(enemyType)) {
+        // Validate enemy type (regular enemies only, not bosses/asteroids)
+        if (!isSpawnableEnemy(enemyType)) {
             console.warn(`createEnemy called with invalid type: ${enemyType}. Use spawnBoss for boss types.`);
             return null;
         }

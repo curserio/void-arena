@@ -5,3 +5,4 @@
 
 export * from './definitions';
 export * from './modifiers';
+export * from './registry';
