@@ -120,3 +120,56 @@ export function calculateModuleModifiers(
 
     return mods;
 }
+
+// ============================================================
+// General Player Modifiers (HP, Shield, Speed, Crit, etc)
+// ============================================================
+
+export interface GeneralModifiers {
+    maxHealth: number;      // Multiplier for max HP
+    maxShield: number;      // Multiplier for max shield
+    shieldRegen: number;    // Multiplier for shield regen
+    speed: number;          // Multiplier for movement speed
+    baseDamage: number;     // Multiplier for base damage (all weapons)
+    critChance: number;     // Additive crit chance bonus
+    critDamage: number;     // Multiplier for crit damage
+    magnetRange: number;    // Multiplier for pickup range
+    salvageBonus: number;   // Multiplier for credit bonus
+}
+
+const DEFAULT_GENERAL_MODS: GeneralModifiers = {
+    maxHealth: 1.0,
+    maxShield: 1.0,
+    shieldRegen: 1.0,
+    speed: 1.0,
+    baseDamage: 1.0,
+    critChance: 0,        // Additive
+    critDamage: 1.0,
+    magnetRange: 1.0,
+    salvageBonus: 1.0
+};
+
+/**
+ * Calculate general player modifiers from meta upgrade levels
+ * These are upgrades without weaponType or moduleType (general progression)
+ */
+export function calculateGeneralModifiers(
+    metaLevels: Record<string, number>
+): GeneralModifiers {
+    const mods = { ...DEFAULT_GENERAL_MODS };
+
+    // Get all general upgrades (no weaponType, no moduleType)
+    const upgrades = META_UPGRADES.filter(u => !u.weaponType && !u.moduleType && u.effects?.length);
+
+    for (const upgrade of upgrades) {
+        const level = metaLevels[upgrade.id] || 0;
+        if (level === 0 || !upgrade.effects) continue;
+
+        // Apply ALL effects for this upgrade
+        for (const effect of upgrade.effects) {
+            applyEffect(mods as Record<string, number>, effect, level);
+        }
+    }
+
+    return mods;
+}

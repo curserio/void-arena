@@ -5,7 +5,7 @@ import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { powerUpManager } from '../../core/systems/PowerUpManager';
 import { inputManager } from '../../core/systems/input';
-import { calculateWeaponModifiers, calculateModuleModifiers } from '../../core/systems/upgrades';
+import { calculateWeaponModifiers, calculateModuleModifiers, calculateGeneralModifiers } from '../../core/systems/upgrades';
 
 export const usePlayer = (
     gameState: GameState,
@@ -28,16 +28,8 @@ export const usePlayer = (
         const equippedModules = data.equippedModules || [];
         const baseWStats = WEAPON_BASE_STATS[weapon];
 
-        // Meta Levels
-        const hpL = data.metaLevels['meta_hp'] || 0;
-        const dmgL = data.metaLevels['meta_dmg'] || 0;
-        const magL = data.metaLevels['meta_magnet'] || 0;
-        const spdL = data.metaLevels['meta_speed'] || 0;
-        const shL = data.metaLevels['meta_shield'] || 0;
-        const regenL = data.metaLevels['meta_regen'] || 0;
-        const critChL = data.metaLevels['meta_crit_chance'] || 0;
-        const critDmgL = data.metaLevels['meta_crit_dmg'] || 0;
-        const salvageL = data.metaLevels['meta_salvage'] || 0;
+        // Use UpgradeCalculator for general player modifiers
+        const generalMods = calculateGeneralModifiers(data.metaLevels);
 
         // Use UpgradeCalculator for weapon modifiers
         const weaponMods = calculateWeaponModifiers(weapon, data.metaLevels);
@@ -102,9 +94,10 @@ export const usePlayer = (
             .filter(m => m !== ModuleType.NONE)
             .map(buildModuleSlot);
 
-        const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * (1 + hpL * 0.10);
-        const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * (1 + shL * 0.15);
-        const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * (1 + regenL * 0.10);
+        // Apply general modifiers using calculator
+        const finalMaxHP = (shipConfig.baseStats.maxHealth || 100) * generalMods.maxHealth;
+        const finalMaxShield = (shipConfig.baseStats.maxShield || 20) * generalMods.maxShield;
+        const finalShieldRegen = (shipConfig.baseStats.shieldRegen || 3) * generalMods.shieldRegen;
 
         // Base stats from ship config + Meta scaling
         let metaStats: PlayerStats = {
@@ -118,10 +111,10 @@ export const usePlayer = (
             currentShield: finalMaxShield,
             shieldRegen: finalShieldRegen,
 
-            speed: (shipConfig.baseStats.speed || 240) * (1 + spdL * 0.02),
-            damage: baseWStats.damage * (1 + dmgL * 0.05) * bDamageMult,
+            speed: (shipConfig.baseStats.speed || 240) * generalMods.speed,
+            damage: baseWStats.damage * generalMods.baseDamage * bDamageMult,
             fireRate: fRate,
-            magnetRange: INITIAL_STATS.magnetRange * (1 + magL * 0.05),
+            magnetRange: INITIAL_STATS.magnetRange * generalMods.magnetRange,
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
@@ -132,9 +125,9 @@ export const usePlayer = (
 
             moduleSlots: moduleSlots,
 
-            critChance: (shipConfig.baseStats.critChance || 0.05) + (critChL * 0.01),
-            critMultiplier: 1.5 + (critDmgL * 0.05),
-            creditMultiplier: 1.0 + (salvageL * 0.05),
+            critChance: (shipConfig.baseStats.critChance || 0.05) + generalMods.critChance,
+            critMultiplier: 1.5 * generalMods.critDamage,
+            creditMultiplier: generalMods.salvageBonus,
 
             // RPG Persistence Loading (Just basics, upgrade reconstruction happens in sync)
             level: data.currentLevel || 1,

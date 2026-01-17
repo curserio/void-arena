@@ -9,22 +9,32 @@ import { WeaponType, ModuleType } from './player';
  * Stats that can be modified by upgrades
  */
 export type UpgradeStatKey =
+    // General player stats
+    | 'maxHealth'        // Max HP multiplier
+    | 'maxShield'        // Max shield multiplier
+    | 'shieldRegen'      // Shield regen multiplier
+    | 'speed'            // Movement speed multiplier
+    | 'baseDamage'       // Base damage multiplier (applies to all weapons)
+    | 'critChance'       // Critical chance additive
+    | 'critDamage'       // Critical damage multiplier
+    | 'magnetRange'      // Pickup range multiplier
+    | 'salvageBonus'     // Credit bonus multiplier
     // Weapon stats
-    | 'damageMult'       // Multiplier for damage
+    | 'damageMult'       // Weapon-specific damage multiplier
     | 'fireRate'         // Fire rate multiplier
     | 'bulletSpeed'      // Projectile speed multiplier
     | 'bulletCount'      // Additional projectiles (additive)
     | 'pierceCount'      // Pierce through enemies (additive)
-    | 'explosionRadius'  // AOE radius (additive or multiplier)
+    | 'explosionRadius'  // AOE radius multiplier
     // Swarm-specific
     | 'swarmCount'       // Rockets per salvo (additive)
-    | 'swarmAgility'     // Homing turn rate (multiplier)
+    | 'swarmAgility'     // Homing turn rate multiplier
     // Laser-specific
-    | 'laserDuration'    // Beam duration (multiplier)
+    | 'laserDuration'    // Beam duration multiplier
     // Module stats
     | 'duration'         // Module effect duration (additive ms)
-    | 'cooldown'         // Module cooldown reduction (additive ms)
-    | 'power';           // Module power/intensity (multiplier)
+    | 'cooldown'         // Module cooldown change (additive ms)
+    | 'power';           // Module power/intensity multiplier
 
 /**
  * How the upgrade value is applied

@@ -163,9 +163,10 @@ export const useProjectiles = (
                             );
                             projectilesRef.current.push(p);
                         } else if (pStats.weaponType === WeaponType.FLAK_CANNON) {
-                            // FLAK CANNON: pellets in 45° spread (base 8, upgradeable via Scattershot)
-                            const pelletCount = pStats.bulletCount; // Uses bulletCount from stats
-                            const spreadAngle = Math.PI / 4; // 45 degrees
+                            // FLAK CANNON: pellets in spread (~7° per pellet, scales with count)
+                            const pelletCount = pStats.bulletCount;
+                            // Spread scales: ~6.9° per pellet (8 = 55°, 16 = 110°)
+                            const spreadAngle = pelletCount * (Math.PI / 26);
                             const startAngle = currentAngle - spreadAngle / 2;
                             const angleStep = pelletCount > 1 ? spreadAngle / (pelletCount - 1) : 0;
 
@@ -175,7 +176,7 @@ export const useProjectiles = (
                                 const p = ProjectileFactory.createPlayerProjectile(
                                     { x: playerPosRef.current.x, y: playerPosRef.current.y },
                                     dir,
-                                    { ...baseStats, color: '#fbbf24', radius: 5, duration: 800 }, // Medium range, golden
+                                    { ...baseStats, color: '#fbbf24', radius: 5, duration: 560 }, // Reduced range -30%
                                     time
                                 );
                                 projectilesRef.current.push(p);

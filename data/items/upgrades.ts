@@ -170,58 +170,64 @@ export const META_UPGRADES: MetaUpgrade[] = [
     {
         id: 'meta_hp',
         name: 'Titanium Hull',
-        description: 'Increases hull integrity by +10% per level.',
+        description: '+10% Max HP per level.',
         icon: 'fa-shield-heart',
         maxLevel: 50,
         costBase: 100,
-        costFactor: 1.3
+        costFactor: 1.3,
+        effects: [{ stat: 'maxHealth', perLevel: 0.10, operation: 'addPercent' }]
     },
     {
         id: 'meta_shield',
         name: 'Shield Generator',
-        description: 'Boosts shield capacity by +15% per level.',
+        description: '+15% Shield Capacity per level.',
         icon: 'fa-shield-halved',
         maxLevel: 30,
         costBase: 150,
-        costFactor: 1.35
+        costFactor: 1.35,
+        effects: [{ stat: 'maxShield', perLevel: 0.15, operation: 'addPercent' }]
     },
     {
         id: 'meta_regen',
         name: 'Auto-Repair',
-        description: 'Shield recharges +10% faster per level.',
+        description: '+10% Shield Regen per level.',
         icon: 'fa-rotate',
         maxLevel: 20,
         costBase: 300,
-        costFactor: 1.4
+        costFactor: 1.4,
+        effects: [{ stat: 'shieldRegen', perLevel: 0.10, operation: 'addPercent' }]
     },
 
     // --- OFFENSE ---
     {
         id: 'meta_dmg',
         name: 'Weapon Overclock',
-        description: 'Global +5% Damage multiplier per level.',
+        description: '+5% Base Damage per level.',
         icon: 'fa-fire',
         maxLevel: 100,
         costBase: 200,
-        costFactor: 1.25
+        costFactor: 1.25,
+        effects: [{ stat: 'baseDamage', perLevel: 0.05, operation: 'addPercent' }]
     },
     {
         id: 'meta_crit_chance',
         name: 'Predictive Algo',
-        description: '+1% Critical Hit Chance per level.',
+        description: '+1% Crit Chance per level.',
         icon: 'fa-crosshairs',
         maxLevel: 25,
         costBase: 500,
-        costFactor: 1.5
+        costFactor: 1.5,
+        effects: [{ stat: 'critChance', perLevel: 0.01, operation: 'add' }]
     },
     {
         id: 'meta_crit_dmg',
         name: 'Lethal Frequency',
-        description: '+5% Critical Hit Damage per level.',
+        description: '+5% Crit Damage per level.',
         icon: 'fa-skull-crossbones',
         maxLevel: 50,
         costBase: 400,
-        costFactor: 1.3
+        costFactor: 1.3,
+        effects: [{ stat: 'critDamage', perLevel: 0.05, operation: 'addPercent' }]
     },
 
     // --- UTILITY ---
@@ -232,7 +238,8 @@ export const META_UPGRADES: MetaUpgrade[] = [
         icon: 'fa-magnet',
         maxLevel: 20,
         costBase: 100,
-        costFactor: 1.25
+        costFactor: 1.25,
+        effects: [{ stat: 'magnetRange', perLevel: 0.05, operation: 'addPercent' }]
     },
     {
         id: 'meta_speed',
@@ -241,16 +248,18 @@ export const META_UPGRADES: MetaUpgrade[] = [
         icon: 'fa-forward-fast',
         maxLevel: 20,
         costBase: 800,
-        costFactor: 1.4
+        costFactor: 1.4,
+        effects: [{ stat: 'speed', perLevel: 0.02, operation: 'addPercent' }]
     },
     {
         id: 'meta_salvage',
         name: 'Salvage Protocols',
-        description: '+5% Credits earned per level.',
+        description: '+5% Credits per level.',
         icon: 'fa-coins',
         maxLevel: 50,
         costBase: 500,
-        costFactor: 1.2
+        costFactor: 1.2,
+        effects: [{ stat: 'salvageBonus', perLevel: 0.05, operation: 'addPercent' }]
     },
 
     // --- WEAPON SPECIFIC: PLASMA ---
@@ -294,4 +303,5 @@ export const META_UPGRADES: MetaUpgrade[] = [
     { id: 'meta_flak_dmg', name: 'Frag Rounds', description: '+5% Damage per level.', icon: 'fa-spray-can', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
     { id: 'meta_flak_pellets', name: 'Scattershot', description: '+2 Pellets per shot.', icon: 'fa-ellipsis', maxLevel: 4, costBase: 8000, costFactor: 2.0, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletCount', perLevel: 2, operation: 'add' }] },
     { id: 'meta_flak_range', name: 'Barrel Extension', description: '+8% Range per level.', icon: 'fa-ruler-horizontal', maxLevel: 20, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletSpeed', perLevel: 0.08, operation: 'addPercent' }] },
+    { id: 'meta_flak_rate', name: 'Rapid Pump', description: '+3% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 10, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'fireRate', perLevel: 0.03, operation: 'addPercent' }] },
 ];

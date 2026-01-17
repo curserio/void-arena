@@ -6,6 +6,8 @@
 export {
     calculateWeaponModifiers,
     calculateModuleModifiers,
+    calculateGeneralModifiers,
     type WeaponModifiers,
-    type ModuleModifiers
+    type ModuleModifiers,
+    type GeneralModifiers
 } from './UpgradeCalculator';
