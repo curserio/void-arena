@@ -40,8 +40,10 @@ export const usePlayer = (
         let bDamageMult = weaponMods.damageMult;
         let bPierce = weaponMods.pierceCount;
         let fRate = baseWStats.fireRate * weaponMods.fireRate;
-        let mRadius = 195 * weaponMods.explosionRadius; // Base 195, multiplied by upgrade
+        let aSize = baseWStats.areaSize * weaponMods.explosionRadius; // Generic Area Size
+        let pDuration = (baseWStats.duration || 2000) * weaponMods.duration; // Generic Duration
         let lDuration = 0.3 * weaponMods.laserDuration;
+        const cRange = 250 * weaponMods.chainRange; // Base 250
 
         // Swarm defaults + calculator
         let sCount = 3 + weaponMods.swarmCount;
@@ -118,7 +120,9 @@ export const usePlayer = (
             bulletCount: bCount,
             bulletSpeed: bSpeed,
             pierceCount: bPierce,
-            missileRadius: mRadius,
+            chainRange: cRange,
+            areaSize: aSize,
+            duration: pDuration,
             laserDuration: lDuration,
             swarmCount: sCount,
             swarmAgility: sAgility,

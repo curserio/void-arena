@@ -181,13 +181,13 @@ export abstract class BaseEnemy implements IEnemy {
      * @param baseSpeed - The enemy's base movement speed
      * @param time - Current game time (for slow effect)
      * @param gameTime - Total elapsed game time in seconds
-     * @param scaleFactor - How much speed increases per 10 minutes (default 0.5 = +50%)
+     * @param scaleFactor - How much speed increases per 10 minutes (default 0.2 = +20%)
      */
     protected calculateEffectiveSpeed(
         baseSpeed: number,
         time: number,
         gameTime: number,
-        scaleFactor: number = 0.5
+        scaleFactor: number = 0.2
     ): number {
         const slowMult = this.getSpeedMultiplier(time);
         const timeScale = 1 + (gameTime / 600) * scaleFactor;

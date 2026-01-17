@@ -21,6 +21,7 @@ export const useCollision = (
     spawnDrops: (enemy: IEnemy) => number,
     spawnDamageText: (pos: Vector2D, dmg: number, color: string) => void,
     spawnExplosion: (pos: Vector2D, radius: number, color: string) => void,
+    spawnLightning: (start: Vector2D, end: Vector2D, color: string) => void,
     addParticles: (p: Entity[]) => void,
     setScore: React.Dispatch<React.SetStateAction<number>>,
     setStats: React.Dispatch<React.SetStateAction<PlayerStats>>,
@@ -55,6 +56,7 @@ export const useCollision = (
             triggerPlayerHit,
             spawnDamageText,
             spawnExplosion,
+            spawnLightning,
             setStats,
             setScore,
         };

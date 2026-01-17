@@ -2,6 +2,7 @@
 import { IProjectile, ProjectileType, WeaponEffect, ProjectileConfig } from '../../../types/projectiles';
 import { Vector2D, WeaponType, EntityType } from '../../../types';
 import { projectileIdGen } from '../../utils/IdGenerator';
+import { IProjectileEffect } from '../../systems/weapons/effects/IProjectileEffect';
 
 export class BaseProjectile implements IProjectile {
     id: string;
@@ -39,6 +40,18 @@ export class BaseProjectile implements IProjectile {
     // Homing
     targetId?: string;
     turnRate?: number;
+
+    // Pulsing Projectile
+    pulseRadius?: number;
+    pulseInterval?: number;
+    lastPulseTime?: number;
+
+    // Chain Projectile
+    chainCount?: number;
+    chainRange?: number;
+
+    // Effect Strategy Pattern
+    effects: IProjectileEffect[] = [];
 
     // Variant Info
     level?: number;
@@ -101,6 +114,15 @@ export class BaseProjectile implements IProjectile {
         this.isElite = config.isElite;
         this.isMiniboss = config.isMiniboss;
         this.isLegendary = config.isLegendary;
+        this.isLegendary = config.isLegendary;
+
+        // Pulse
+        this.pulseRadius = config.pulseRadius;
+        this.pulseInterval = config.pulseInterval;
+
+        // Chain
+        this.chainCount = config.chainCount;
+        this.chainRange = config.chainRange;
     }
 
     update(dt: number, time: number): void {

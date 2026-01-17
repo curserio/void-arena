@@ -15,6 +15,7 @@ export interface CollisionCallbacks {
     triggerPlayerHit: (time: number, damage: number, source: Entity | string) => void;
     spawnDamageText: (pos: Vector2D, damage: number, color: string) => void;
     spawnExplosion: (pos: Vector2D, radius: number, color: string) => void;
+    spawnLightning: (start: Vector2D, end: Vector2D, color: string) => void;
     setStats: (fn: (prev: PlayerStats) => PlayerStats) => void;
     setScore: (fn: (prev: number) => number) => void;
 }

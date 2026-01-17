@@ -62,10 +62,23 @@ export class PlayerBulletHandler implements ICollisionHandler {
 
         const candidates = grid.retrieve(p.pos);
 
+        // --- Execute Update Effects ---
+        // (Strategy Pattern: Effects handle frame-by-frame logic)
+        for (const effect of p.effects) {
+            effect.update(p, ctx);
+        }
+
         for (const e of candidates) {
             if (e.health <= 0) continue;
 
             if (checkCircleCollision(p, e)) {
+
+                // --- Execute Hit Effects ---
+                // (Strategy Pattern: Effects handle specific impact types)
+                for (const effect of p.effects) {
+                    effect.onHit(p, e, ctx);
+                }
+
                 callbacks.onEnemyHit();
 
                 let damage = playerStats.damage;
@@ -74,10 +87,28 @@ export class PlayerBulletHandler implements ICollisionHandler {
 
                 if (p.weaponType === WeaponType.MISSILE || p.weaponType === WeaponType.SWARM_LAUNCHER) {
                     this.handleMissileImpact(p, e, damage, isCrit, ctx);
-                } else {
+                } else if (p.effects.length === 0) {
+                    // Default impact only if no effects handled "onHit" completely?
+                    // Currently effects like Chain also kill the projectile.
+                    // It is safe to also apply standard damage for non-effect weapons (Plasma/Flak).
                     this.handlePlasmaImpact(p, e, damage, isCrit, ctx);
                 }
-                break; // One hit per projectile per frame
+
+                // If projectile is still alive (no effect killed it), we assume standard pierce logic for defaults
+                // OR we let handlePlasmaImpact handle pierce.
+                // NOTE: ChainEffect kills projectile. PulsingEffect hits direct damage.
+                // We should break loop if projectile died.
+                if (!p.isAlive) break;
+
+                // Standard logic for others
+                if (p.weaponType !== WeaponType.MISSILE && p.weaponType !== WeaponType.SWARM_LAUNCHER && p.effects.length === 0) {
+                    break; // One hit per projectile
+                }
+                // If we have effects, we might want to allow multi-hit or break?
+                // Usually break unless it's a piercing projectile.
+                // Pulsing Orb: Strategy handles crash. 
+                // We can break here to be safe and consistent.
+                break;
             }
         }
     }
@@ -86,7 +117,7 @@ export class PlayerBulletHandler implements ICollisionHandler {
         const { enemies, playerStats, callbacks } = ctx;
 
         const isSwarm = p.weaponType === WeaponType.SWARM_LAUNCHER;
-        const explosionRad = isSwarm ? 150 : playerStats.missileRadius;
+        const explosionRad = isSwarm ? 150 : playerStats.areaSize;
         const boomColor = isSwarm ? '#e879f9' : '#fb923c';
 
         callbacks.spawnExplosion(p.pos, explosionRad, boomColor);

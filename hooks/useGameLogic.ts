@@ -44,7 +44,7 @@ export const useGameLogic = (
         addUpgrade, triggerPlayerHit, syncWithPersistentData, activateModule
     } = usePlayer(gameState, persistentData, isPaused);
 
-    const { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles } = useParticles();
+    const { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, spawnLightning, updateParticles, addParticles } = useParticles();
 
     const { enemiesRef, initEnemies, updateEnemies } = useEnemies(
         playerPosRef,
@@ -75,7 +75,7 @@ export const useGameLogic = (
 
     const { checkCollisions } = useCollision(
         enemiesRef, projectilesRef, pickupsRef, playerPosRef, statsRef,
-        triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, addParticles,
+        triggerPlayerHit, spawnDrops, spawnDamageText, spawnExplosion, spawnLightning, addParticles,
         setScore, setStats, setOfferedUpgrades, persistentData,
         handleEnemyHit, handleEnemyKilled, handleCreditCollected
     );

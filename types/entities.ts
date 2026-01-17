@@ -55,6 +55,7 @@ export interface IEntity {
     maxShield?: number;
     lastHitTime?: number;
     lastShieldHitTime?: number;
+    targetPos?: Vector2D; // For visual effects like Lightning
 }
 
 export type Entity = IEntity;

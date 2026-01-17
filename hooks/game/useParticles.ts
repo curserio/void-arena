@@ -109,6 +109,22 @@ export const useParticles = () => {
         particlesRef.current.push(p);
     }, []);
 
+    const spawnLightning = useCallback((start: Vector2D, end: Vector2D, color: string) => {
+        particlesRef.current.push({
+            id: `LIGHTNING_${Date.now()}_${Math.random()}`,
+            type: EntityType.LIGHTNING, // Cast to any if strict typing complains, but we added it to enum
+            pos: { ...start },
+            vel: { x: 0, y: 0 },
+            targetPos: { ...end },
+            radius: 2,
+            color,
+            health: 1,
+            maxHealth: 1,
+            duration: 0,
+            maxDuration: 0.5
+        });
+    }, []);
+
     const updateParticles = useCallback((dt: number) => {
         const pool = poolRef.current;
         const particles = particlesRef.current;
@@ -139,6 +155,8 @@ export const useParticles = () => {
                 if (e.duration > (e.maxDuration || 0.4)) alive = false;
             } else if (e.type === EntityType.SPAWN_FLASH) {
                 if (e.duration > (e.maxDuration || 0.5)) alive = false;
+            } else if (e.type === EntityType.LIGHTNING) {
+                if (e.duration > (e.maxDuration || 0.2)) alive = false;
             } else {
                 // Failsafe for unknown particle types
                 if (e.duration > 2.0) alive = false;
@@ -152,5 +170,5 @@ export const useParticles = () => {
         }
     }, [spawnDamageTextInternal, spawnExplosionInternal]);
 
-    return { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, updateParticles, addParticles };
+    return { particlesRef, initParticles, spawnDamageText, spawnExplosion, spawnSpawnFlash, spawnLightning, updateParticles, addParticles };
 };

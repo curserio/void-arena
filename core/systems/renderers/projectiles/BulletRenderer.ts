@@ -30,13 +30,79 @@ export const renderBullet = (ctx: CanvasRenderingContext2D, p: BaseProjectile) =
             ctx.strokeStyle = '#60a5fa';
             ctx.lineWidth = 2;
             ctx.stroke();
+        } else if (p.weaponType === WeaponType.ENERGY_ORB) {
+            // Large Pulsing Orb
+            const pulseScale = 1.0 + Math.sin(Date.now() * 0.01) * 0.1; // Simple pulse effect
 
-            // Trail effect
-            ctx.globalAlpha = 0.4;
-            ctx.fillStyle = '#60a5fa';
+            // Outer Glow
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = '#c084fc';
+
+            // Core
+            ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.ellipse(0, length * 0.5, width * 0.6, length * 0.8, 0, 0, Math.PI * 2);
+            ctx.arc(0, 0, p.radius * 0.8, 0, Math.PI * 2);
             ctx.fill();
+
+            // Halo
+            ctx.strokeStyle = '#c084fc';
+            ctx.lineWidth = 4;
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.arc(0, 0, p.radius * pulseScale, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Reset
+            ctx.globalAlpha = 1.0;
+
+        } else if (p.weaponType === WeaponType.ARC_CASTER) {
+            // Jagged Bolt
+            // Flying Lightning Effect
+            // A central glowing core
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#67e8f9';
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, 0, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Surrounding chaotic sparks
+            ctx.strokeStyle = '#67e8f9';
+            ctx.lineWidth = 2;
+            const sparkCount = 4;
+            for (let i = 0; i < sparkCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 5 + Math.random() * 10;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+
+                // Jagged line out
+                const midX = Math.cos(angle) * (dist * 0.5) + (Math.random() - 0.5) * 5;
+                const midY = Math.sin(angle) * (dist * 0.5) + (Math.random() - 0.5) * 5;
+                const endX = Math.cos(angle) * dist;
+                const endY = Math.sin(angle) * dist;
+
+                ctx.lineTo(midX, midY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+            }
+
+            // Trailing tail
+            ctx.strokeStyle = 'rgba(103, 232, 249, 0.5)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, 15); // Trailing behind (since we rotated +90deg, y+ is "back"?)
+            // Actually, we rotated angle + PI/2. 
+            // Original: x+ is forward. Rotate +90 -> y+ is forward (0,-1 is up).
+            // Let's standardise: 
+            // 'angle' is velocity direction. 
+            // 'rotate(angle)' makes x+ point in velocity.
+            // 'rotate(angle + PI/2)' makes y- point in velocity (up).
+            // So y+ is backward/tail.
+            ctx.lineTo((Math.random() - 0.5) * 5, 25);
+            ctx.stroke();
+
         } else {
             // Standard Plasma/Flak bullets
             ctx.shadowBlur = 15;

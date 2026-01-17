@@ -24,7 +24,8 @@ export interface EnemyFactoryOutput {
         levelBonus: number,
         isEliteOverride?: boolean,
         isLegendaryOverride?: boolean,
-        isMinibossOverride?: boolean
+        isMinibossOverride?: boolean,
+        generation?: number
     ) => IEnemy | null;
 
     spawnBoss: (

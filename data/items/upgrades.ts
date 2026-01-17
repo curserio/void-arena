@@ -309,4 +309,16 @@ export const META_UPGRADES: MetaUpgrade[] = [
     { id: 'meta_flak_pellets', name: 'Scattershot', description: '+2 Pellets per shot.', icon: 'fa-ellipsis', maxLevel: 4, costBase: 8000, costFactor: 2.0, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletCount', perLevel: 2, operation: 'add' }] },
     { id: 'meta_flak_range', name: 'Barrel Extension', description: '+8% Range per level.', icon: 'fa-ruler-horizontal', maxLevel: 20, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletSpeed', perLevel: 0.08, operation: 'addPercent' }] },
     { id: 'meta_flak_rate', name: 'Rapid Pump', description: '+3% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 10, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'fireRate', perLevel: 0.03, operation: 'addPercent' }] },
+
+    // --- WEAPON SPECIFIC: ENERGY ORB ---
+    { id: 'meta_orb_dmg', name: 'Core Instability', description: '+5% Damage per level.', icon: 'fa-atom', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.ENERGY_ORB, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_orb_rad', name: 'Event Horizon', description: '+10% Area Size per level.', icon: 'fa-circle-dot', maxLevel: 20, costBase: 2500, costFactor: 1.35, weaponType: WeaponType.ENERGY_ORB, effects: [{ stat: 'explosionRadius', perLevel: 0.10, operation: 'addPercent' }] },
+    { id: 'meta_orb_cd', name: 'Gravitic Cycler', description: '+5% Fire Rate per level.', icon: 'fa-clock', maxLevel: 30, costBase: 2000, costFactor: 1.25, weaponType: WeaponType.ENERGY_ORB, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_orb_dur', name: 'Stable Field', description: '+15% Flight Duration.', icon: 'fa-hourglass-half', maxLevel: 10, costBase: 3000, costFactor: 1.4, weaponType: WeaponType.ENERGY_ORB, effects: [{ stat: 'duration', perLevel: 0.15, operation: 'addPercent' }] },
+
+    // --- WEAPON SPECIFIC: ARC CASTER ---
+    { id: 'meta_arc_dmg', name: 'Voltage Step-Up', description: '+5% Damage per level.', icon: 'fa-bolt-lightning', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_arc_jumps', name: 'Conductive Nodes', description: '+1 Chain Jump count.', icon: 'fa-share-nodes', maxLevel: 5, costBase: 8000, costFactor: 2.2, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'pierceCount', perLevel: 1, operation: 'add' }] },
+    { id: 'meta_arc_range', name: 'High Voltage', description: '+10% Chain Range.', icon: 'fa-tower-broadcast', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'chainRange', perLevel: 0.10, operation: 'addPercent' }] },
+    { id: 'meta_arc_rate', name: 'Discharge Rate', description: '+5% Fire Rate.', icon: 'fa-stopwatch-20', maxLevel: 40, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
 ];

@@ -35,7 +35,9 @@ export enum WeaponType {
     LASER = 'LASER',
     SWARM_LAUNCHER = 'SWARM_LAUNCHER',
     RAILGUN = 'RAILGUN',
-    FLAK_CANNON = 'FLAK_CANNON'
+    FLAK_CANNON = 'FLAK_CANNON',
+    ENERGY_ORB = 'ENERGY_ORB',
+    ARC_CASTER = 'ARC_CASTER'
 }
 
 export interface PlayerStats {
@@ -57,6 +59,7 @@ export interface PlayerStats {
     pendingLevelUps: number; // Stored levels waiting to be spent
     weaponType: WeaponType;
     pierceCount: number;
+    chainRange: number;
     hasShield: boolean;
     credits: number;
     shipType: ShipType;
@@ -70,7 +73,8 @@ export interface PlayerStats {
     creditMultiplier: number;
 
     // Weapon specific calculated stats
-    missileRadius: number;
+    areaSize: number;
+    duration: number; // Generic projectile duration (ms)
     laserDuration: number;
     swarmCount: number;
     swarmAgility: number; // Turn speed in radians per sec

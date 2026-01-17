@@ -15,7 +15,9 @@ export enum WeaponEffect {
     PIERCING = 'PIERCING',
     HOMING = 'HOMING',
     SPLIT = 'SPLIT',
-    LASER = 'LASER' // Instant hit
+    LASER = 'LASER', // Instant hit
+    PULSING = 'PULSING',
+    CHAIN = 'CHAIN'
 }
 
 export interface IProjectile extends IEntity, IRenderable {
@@ -48,6 +50,15 @@ export interface IProjectile extends IEntity, IRenderable {
     chargeProgress?: number;
     isFiring?: boolean;
     width?: number;
+
+    // Pulsing Projectile
+    pulseRadius?: number;
+    pulseInterval?: number;
+    lastPulseTime?: number;
+
+    // Chain Projectile
+    chainCount?: number;
+    chainRange?: number;
 
     // Variant Info (Enemy Projectiles)
     level?: number;
@@ -84,6 +95,14 @@ export interface ProjectileConfig {
     // Special
     targetId?: string; // For homing
     turnRate?: number;
+
+    // Pulsing
+    pulseRadius?: number;
+    pulseInterval?: number;
+
+    // Chain
+    chainCount?: number;
+    chainRange?: number;
 
     // Variant Info
     level?: number;

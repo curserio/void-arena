@@ -25,6 +25,7 @@ export type UpgradeStatKey =
     | 'bulletSpeed'      // Projectile speed multiplier
     | 'bulletCount'      // Additional projectiles (additive)
     | 'pierceCount'      // Pierce through enemies (additive)
+    | 'chainRange'       // Chain lightning range multiplier
     | 'explosionRadius'  // AOE radius multiplier
     // Swarm-specific
     | 'swarmCount'       // Rockets per salvo (additive)

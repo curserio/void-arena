@@ -30,6 +30,8 @@ export class ParticleRenderer implements IRenderer {
                 this.renderExplosion(ctx, e);
             } else if (e.type === EntityType.SPAWN_FLASH) {
                 this.renderSpawnFlash(ctx, e);
+            } else if (e.type === EntityType.LIGHTNING) {
+                this.renderLightning(ctx, e);
             }
 
             ctx.restore();
@@ -117,6 +119,66 @@ export class ParticleRenderer implements IRenderer {
         ctx.beginPath();
         ctx.arc(0, 0, e.radius * 1.5 * prog, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.stroke();
+    }
+
+    private renderLightning(ctx: CanvasRenderingContext2D, e: Entity): void {
+        if (!e.targetPos) return;
+
+        const prog = (e.duration || 0) / (e.maxDuration || 0.4);
+        const fade = Math.max(0, 1 - prog);
+
+        // We are translated to e.pos (0,0). Target is relative.
+        const tx = e.targetPos.x - e.pos.x;
+        const ty = e.targetPos.y - e.pos.y;
+        const dist = Math.sqrt(tx * tx + ty * ty);
+
+        // Jagged line parameters
+        const segments = Math.max(4, Math.floor(dist / 20));
+        const amp = 30 * fade;
+
+        // Generate points
+        const points: { x: number, y: number }[] = [{ x: 0, y: 0 }];
+        for (let i = 1; i < segments; i++) {
+            const t = i / segments;
+            const px = tx * t;
+            const py = ty * t;
+            const nx = -ty / dist;
+            const ny = tx / dist;
+            // Use random for jitter to make it "alive" every frame
+            const jitter = (Math.random() - 0.5) * amp;
+            points.push({ x: px + nx * jitter, y: py + ny * jitter });
+        }
+        points.push({ x: tx, y: ty });
+
+        // 1. Draw Outer Glow (Thick, colored, blurred)
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = e.color || '#67e8f9';
+        ctx.strokeStyle = e.color || '#67e8f9';
+        ctx.lineWidth = 6 * fade;
+        ctx.globalAlpha = fade * 0.5;
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.stroke();
+
+        // 2. Draw Core (Thin, white, sharp)
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = '#fff';
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2 * fade;
+        ctx.globalAlpha = fade;
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
     }
 }
 

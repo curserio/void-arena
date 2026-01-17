@@ -20,3 +20,5 @@ import './behaviors/MissileBehavior';
 import './behaviors/RailgunBehavior';
 import './behaviors/FlakBehavior';
 import './behaviors/SwarmBehavior';
+import './behaviors/EnergyOrbBehavior';
+import './behaviors/ArcCasterBehavior';

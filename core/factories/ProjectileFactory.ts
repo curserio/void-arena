@@ -2,6 +2,8 @@
 import { BaseProjectile } from '../entities/projectiles/BaseProjectile';
 import { ProjectileConfig, ProjectileType, WeaponEffect } from '../../types/projectiles';
 import { Vector2D, EntityType, WeaponType } from '../../types';
+import { PulsingEffect } from '../systems/weapons/effects/PulsingEffect';
+import { ChainEffect } from '../systems/weapons/effects/ChainEffect';
 
 export class ProjectileFactory {
 
@@ -40,7 +42,16 @@ export class ProjectileFactory {
             weaponType: stats.weaponType
         };
 
-        return new BaseProjectile(config, time);
+        const proj = new BaseProjectile(config, time);
+
+        // Attach Strategies
+        if (effect === WeaponEffect.PULSING) {
+            proj.effects.push(new PulsingEffect());
+        } else if (effect === WeaponEffect.CHAIN) {
+            proj.effects.push(new ChainEffect());
+        }
+
+        return proj;
     }
 
     static createEnemyProjectile(

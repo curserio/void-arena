@@ -23,6 +23,8 @@ export interface WeaponModifiers {
     swarmCount: number;      // Additional rockets per salvo
     swarmAgility: number;    // Multiplier for homing turn rate
     laserDuration: number;   // Multiplier for beam duration
+    chainRange: number;      // Multiplier for chain range
+    duration: number;        // Multiplier for projectile duration (Orb, etc)
 }
 
 const DEFAULT_WEAPON_MODS: WeaponModifiers = {
@@ -34,7 +36,9 @@ const DEFAULT_WEAPON_MODS: WeaponModifiers = {
     explosionRadius: 1.0, // Multiplier
     swarmCount: 0,        // Added to base 3
     swarmAgility: 1.0,    // Multiplier
-    laserDuration: 1.0    // Multiplier
+    laserDuration: 1.0,   // Multiplier
+    chainRange: 1.0,      // Multiplier
+    duration: 1.0         // Multiplier
 };
 
 /**
