@@ -70,7 +70,7 @@ const DpsMeter: React.FC<DpsMeterProps> = ({ enabled }) => {
     if (!enabled) return null;
 
     return (
-        <div className="fixed top-40 right-6 z-50 pointer-events-none">
+        <div className="fixed top-40 right-2 z-50 pointer-events-none">
             <div className="bg-slate-950/80 backdrop-blur-sm border border-slate-800 rounded-xl px-4 py-2 min-w-[100px]">
                 <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">DPS</div>
                 <div className="text-2xl font-black text-cyan-400 tabular-nums">
