@@ -165,16 +165,17 @@ export const useEnemies = (
 
             // Collect enemies to spawn (from bosses, carriers, etc.)
             for (const spawn of result.enemiesToSpawn) {
+                const stats = spawn.parentStats;
                 const newEnemy = createEnemy(
                     spawn.type,
                     spawn.pos.x,
                     spawn.pos.y,
                     gameTime / 60,
-                    spawn.difficultyMult ?? 1,
-                    spawn.level ?? difficulty.enemyLevelBonus,
-                    spawn.tier === EnemyTier.ELITE,
-                    spawn.tier === EnemyTier.LEGENDARY,
-                    spawn.tier === EnemyTier.MINIBOSS
+                    stats?.difficultyMult ?? 1,
+                    stats?.level ?? difficulty.enemyLevelBonus,
+                    stats?.tier === EnemyTier.ELITE,
+                    stats?.tier === EnemyTier.LEGENDARY,
+                    stats?.tier === EnemyTier.MINIBOSS
                 );
                 if (newEnemy) {
                     if (spawn.vel) {

@@ -59,8 +59,11 @@ export class DroneSpawnPhase implements IBossPhase {
                     x: Math.cos(ejectAngle) * this.config.ejectSpeed,
                     y: Math.sin(ejectAngle) * this.config.ejectSpeed,
                 },
-                difficultyMult: Math.max(0.5, boss.level * 0.2),
-                level: boss.level,  // Inherit boss level
+                parentStats: {
+                    tier: boss.tier,
+                    level: boss.level,
+                    difficultyMult: Math.max(0.5, boss.level * 0.2),
+                },
             });
         }
 

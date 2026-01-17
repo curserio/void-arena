@@ -143,7 +143,15 @@ export interface IEnemySpawn {
     type: EnemyType;
     pos: Vector2D;
     vel?: Vector2D;
-    tier?: EnemyTier;
-    difficultyMult?: number;
-    level?: number;  // Parent's level for inheritance
+    /** Inherited stats from parent spawner (Carrier, Boss, etc.) */
+    parentStats?: ParentSpawnStats;
+}
+
+/**
+ * Stats inherited from parent when spawning enemies
+ */
+export interface ParentSpawnStats {
+    tier: EnemyTier;
+    level: number;
+    difficultyMult: number;
 }

@@ -106,9 +106,11 @@ export class Carrier extends BaseEnemy {
                         x: this.pos.x + Math.cos(spawnAngle) * spawnDist,
                         y: this.pos.y + Math.sin(spawnAngle) * spawnDist,
                     },
-                    // Inherit tier from parent (elite carrier spawns elite scouts)
-                    tier: this.tier === EnemyTier.MINIBOSS ? EnemyTier.ELITE : this.tier,
-                    level: this.level,  // Inherit parent's level
+                    parentStats: {
+                        tier: this.tier === EnemyTier.MINIBOSS ? EnemyTier.ELITE : this.tier,
+                        level: this.level,
+                        difficultyMult: 1,
+                    },
                 };
 
                 result.enemiesToSpawn.push(spawn);
