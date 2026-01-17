@@ -11,3 +11,4 @@ export * from './player';
 export * from './ships';
 export * from './items';
 export * from './persistence';
+export * from './upgrades';

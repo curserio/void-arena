@@ -254,44 +254,44 @@ export const META_UPGRADES: MetaUpgrade[] = [
     },
 
     // --- WEAPON SPECIFIC: PLASMA ---
-    { id: 'meta_plas_rate', name: 'Plasma Cycler', description: '+5% Fire Rate per level.', icon: 'fa-bolt', maxLevel: 10, costBase: 500, costFactor: 1.2, weaponType: WeaponType.PLASMA },
-    { id: 'meta_plas_area', name: 'Cryo-Plasma', description: 'Plasma slows enemies effectively (Chill).', icon: 'fa-snowflake', maxLevel: 10, costBase: 1000, costFactor: 1.6, weaponType: WeaponType.PLASMA },
-    { id: 'meta_plas_dmg', name: 'Plasma Intensity', description: '+5% Damage per level.', icon: 'fa-fire-burner', maxLevel: 100, costBase: 200, costFactor: 1.12, weaponType: WeaponType.PLASMA },
-    { id: 'meta_plas_speed', name: 'Velocity Coil', description: '+8% Projectile Speed per level.', icon: 'fa-wind', maxLevel: 30, costBase: 400, costFactor: 1.2, weaponType: WeaponType.PLASMA },
-    { id: 'meta_plas_count', name: 'Split Chamber', description: '+1 Projectile count.', icon: 'fa-clone', maxLevel: 2, costBase: 5000, costFactor: 2.5, weaponType: WeaponType.PLASMA },
+    { id: 'meta_plas_rate', name: 'Plasma Cycler', description: '+5% Fire Rate per level.', icon: 'fa-bolt', maxLevel: 10, costBase: 500, costFactor: 1.2, weaponType: WeaponType.PLASMA, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_plas_area', name: 'Cryo-Plasma', description: 'Plasma slows enemies effectively (Chill).', icon: 'fa-snowflake', maxLevel: 10, costBase: 1000, costFactor: 1.6, weaponType: WeaponType.PLASMA }, // No numeric effect
+    { id: 'meta_plas_dmg', name: 'Plasma Intensity', description: '+5% Damage per level.', icon: 'fa-fire-burner', maxLevel: 100, costBase: 200, costFactor: 1.12, weaponType: WeaponType.PLASMA, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_plas_speed', name: 'Velocity Coil', description: '+8% Projectile Speed per level.', icon: 'fa-wind', maxLevel: 30, costBase: 400, costFactor: 1.2, weaponType: WeaponType.PLASMA, effects: [{ stat: 'bulletSpeed', perLevel: 0.08, operation: 'addPercent' }] },
+    { id: 'meta_plas_count', name: 'Split Chamber', description: '+1 Projectile count.', icon: 'fa-clone', maxLevel: 2, costBase: 5000, costFactor: 2.5, weaponType: WeaponType.PLASMA, effects: [{ stat: 'bulletCount', perLevel: 1, operation: 'add' }] },
 
     // --- WEAPON SPECIFIC: MISSILE ---
-    { id: 'meta_msl_rad', name: 'Warhead Yield', description: 'Increases missile explosion radius.', icon: 'fa-bomb', maxLevel: 20, costBase: 4000, costFactor: 1.6, weaponType: WeaponType.MISSILE },
-    { id: 'meta_msl_dmg', name: 'Payload Potency', description: '+5% Damage per level.', icon: 'fa-explosion', maxLevel: 100, costBase: 500, costFactor: 1.12, weaponType: WeaponType.MISSILE },
-    { id: 'meta_msl_reload', name: 'Auto-Loader', description: '+5% Fire Rate per level.', icon: 'fa-repeat', maxLevel: 40, costBase: 1000, costFactor: 1.25, weaponType: WeaponType.MISSILE },
+    { id: 'meta_msl_rad', name: 'Warhead Yield', description: '+10% explosion radius per level.', icon: 'fa-bomb', maxLevel: 20, costBase: 4000, costFactor: 1.6, weaponType: WeaponType.MISSILE, effects: [{ stat: 'explosionRadius', perLevel: 0.10, operation: 'addPercent' }] },
+    { id: 'meta_msl_dmg', name: 'Payload Potency', description: '+5% Damage per level.', icon: 'fa-explosion', maxLevel: 100, costBase: 500, costFactor: 1.12, weaponType: WeaponType.MISSILE, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_msl_reload', name: 'Auto-Loader', description: '+5% Fire Rate per level.', icon: 'fa-repeat', maxLevel: 40, costBase: 1000, costFactor: 1.25, weaponType: WeaponType.MISSILE, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
 
     // --- WEAPON SPECIFIC: LASER ---
-    { id: 'meta_lsr_recharge', name: 'Capacitor Banks', description: 'Reduces Laser recharge time.', icon: 'fa-battery-full', maxLevel: 20, costBase: 2000, costFactor: 1.45, weaponType: WeaponType.LASER },
-    { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER },
-    { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER },
+    { id: 'meta_lsr_recharge', name: 'Capacitor Banks', description: '+8% Fire Rate per level.', icon: 'fa-battery-full', maxLevel: 20, costBase: 2000, costFactor: 1.45, weaponType: WeaponType.LASER, effects: [{ stat: 'fireRate', perLevel: 0.08, operation: 'addPercent' }] },
+    { id: 'meta_lsr_dmg', name: 'Beam Focus', description: '+5% Damage per level.', icon: 'fa-sun', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.LASER, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_lsr_duration', name: 'Heat Sinks', description: '+10% Beam Duration per level.', icon: 'fa-hourglass-start', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.LASER, effects: [{ stat: 'laserDuration', perLevel: 0.10, operation: 'addPercent' }] },
 
     // --- WEAPON SPECIFIC: SWARM LAUNCHER ---
-    { id: 'meta_swarm_count', name: 'Extended Magazines', description: '+1 Rocket per salvo.', icon: 'fa-layer-group', maxLevel: 17, costBase: 10000, costFactor: 1.55, weaponType: WeaponType.SWARM_LAUNCHER },
-    { id: 'meta_swarm_agility', name: 'Thrust Vectoring', description: 'Improves rocket homing turn rate.', icon: 'fa-paper-plane', maxLevel: 20, costBase: 2000, costFactor: 1.3, weaponType: WeaponType.SWARM_LAUNCHER },
-    { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 100, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER },
-    { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: 'Reduces cooldown between salvos.', icon: 'fa-clock', maxLevel: 50, costBase: 3000, costFactor: 1.25, weaponType: WeaponType.SWARM_LAUNCHER },
+    { id: 'meta_swarm_count', name: 'Extended Magazines', description: '+1 Rocket per salvo.', icon: 'fa-layer-group', maxLevel: 17, costBase: 10000, costFactor: 1.55, weaponType: WeaponType.SWARM_LAUNCHER, effects: [{ stat: 'swarmCount', perLevel: 1, operation: 'add' }] },
+    { id: 'meta_swarm_agility', name: 'Thrust Vectoring', description: '+15% homing turn rate.', icon: 'fa-paper-plane', maxLevel: 20, costBase: 2000, costFactor: 1.3, weaponType: WeaponType.SWARM_LAUNCHER, effects: [{ stat: 'swarmAgility', perLevel: 0.15, operation: 'addPercent' }] },
+    { id: 'meta_swarm_dmg', name: 'Micro-Warheads', description: '+5% Damage per level.', icon: 'fa-burst', maxLevel: 100, costBase: 600, costFactor: 1.15, weaponType: WeaponType.SWARM_LAUNCHER, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_swarm_cd', name: 'Reloader Mechanism', description: '+5% Fire Rate per level.', icon: 'fa-clock', maxLevel: 50, costBase: 3000, costFactor: 1.25, weaponType: WeaponType.SWARM_LAUNCHER, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
 
     // --- MODULE: AFTERBURNER ---
-    { id: 'meta_ab_dur', name: 'Fuel Injectors', description: '+1s Duration.', icon: 'fa-stopwatch', maxLevel: 10, costBase: 2000, costFactor: 1.3, moduleType: ModuleType.AFTERBURNER },
-    { id: 'meta_ab_cd', name: 'Coolant Flush', description: '-2s Cooldown.', icon: 'fa-snowflake', maxLevel: 15, costBase: 3000, costFactor: 1.35, moduleType: ModuleType.AFTERBURNER },
-    { id: 'meta_ab_spd', name: 'Turbine Overclock', description: '+10% Speed Boost.', icon: 'fa-forward', maxLevel: 10, costBase: 2500, costFactor: 1.4, moduleType: ModuleType.AFTERBURNER },
+    { id: 'meta_ab_dur', name: 'Fuel Injectors', description: '+1s Duration.', icon: 'fa-stopwatch', maxLevel: 10, costBase: 2000, costFactor: 1.3, moduleType: ModuleType.AFTERBURNER, effects: [{ stat: 'duration', perLevel: 1000, operation: 'add' }] },
+    { id: 'meta_ab_cd', name: 'Coolant Flush', description: '-2s Cooldown.', icon: 'fa-snowflake', maxLevel: 15, costBase: 3000, costFactor: 1.35, moduleType: ModuleType.AFTERBURNER, effects: [{ stat: 'cooldown', perLevel: -2000, operation: 'add' }] },
+    { id: 'meta_ab_spd', name: 'Turbine Overclock', description: '+10% Speed Boost.', icon: 'fa-forward', maxLevel: 10, costBase: 2500, costFactor: 1.4, moduleType: ModuleType.AFTERBURNER, effects: [{ stat: 'power', perLevel: 0.10, operation: 'addPercent' }] },
 
     // --- MODULE: SHIELD BURST ---
-    { id: 'meta_sb_dur', name: 'Extended Barrier', description: '+0.25s Invulnerability.', icon: 'fa-hourglass-half', maxLevel: 6, costBase: 2500, costFactor: 1.35, moduleType: ModuleType.SHIELD_BURST },
-    { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-0.2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST },
+    { id: 'meta_sb_dur', name: 'Extended Barrier', description: '+0.25s Invulnerability.', icon: 'fa-hourglass-half', maxLevel: 6, costBase: 2500, costFactor: 1.35, moduleType: ModuleType.SHIELD_BURST, effects: [{ stat: 'duration', perLevel: 250, operation: 'add' }] },
+    { id: 'meta_sb_cd', name: 'Rapid Recharge', description: '-0.2s Cooldown.', icon: 'fa-bolt', maxLevel: 8, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.SHIELD_BURST, effects: [{ stat: 'cooldown', perLevel: -200, operation: 'add' }] },
 
     // --- WEAPON SPECIFIC: RAILGUN ---
-    { id: 'meta_rail_dmg', name: 'Core Penetrator', description: '+5% Damage per level.', icon: 'fa-bolt', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.RAILGUN },
-    { id: 'meta_rail_rate', name: 'Capacitor Array', description: '+5% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.RAILGUN },
-    { id: 'meta_rail_speed', name: 'Hypervelocity', description: '+10% Projectile Speed, +2% Damage per level.', icon: 'fa-fighter-jet', maxLevel: 20, costBase: 1000, costFactor: 1.3, weaponType: WeaponType.RAILGUN },
+    { id: 'meta_rail_dmg', name: 'Core Penetrator', description: '+5% Damage per level.', icon: 'fa-bolt', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.RAILGUN, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_rail_rate', name: 'Capacitor Array', description: '+5% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.RAILGUN, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_rail_speed', name: 'Hypervelocity', description: '+10% Speed, +2% Damage.', icon: 'fa-fighter-jet', maxLevel: 20, costBase: 1000, costFactor: 1.3, weaponType: WeaponType.RAILGUN, effects: [{ stat: 'bulletSpeed', perLevel: 0.10, operation: 'addPercent' }, { stat: 'damageMult', perLevel: 0.02, operation: 'addPercent' }] },
 
     // --- WEAPON SPECIFIC: FLAK CANNON ---
-    { id: 'meta_flak_dmg', name: 'Frag Rounds', description: '+5% Damage per pellet per level.', icon: 'fa-spray-can', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAK_CANNON },
-    { id: 'meta_flak_pellets', name: 'Scattershot', description: '+2 Pellets per shot.', icon: 'fa-ellipsis', maxLevel: 4, costBase: 8000, costFactor: 2.0, weaponType: WeaponType.FLAK_CANNON },
-    { id: 'meta_flak_range', name: 'Barrel Extension', description: '+15% Range per level.', icon: 'fa-ruler-horizontal', maxLevel: 20, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.FLAK_CANNON },
+    { id: 'meta_flak_dmg', name: 'Frag Rounds', description: '+5% Damage per level.', icon: 'fa-spray-can', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_flak_pellets', name: 'Scattershot', description: '+2 Pellets per shot.', icon: 'fa-ellipsis', maxLevel: 4, costBase: 8000, costFactor: 2.0, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletCount', perLevel: 2, operation: 'add' }] },
+    { id: 'meta_flak_range', name: 'Barrel Extension', description: '+8% Range per level.', icon: 'fa-ruler-horizontal', maxLevel: 20, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.FLAK_CANNON, effects: [{ stat: 'bulletSpeed', perLevel: 0.08, operation: 'addPercent' }] },
 ];

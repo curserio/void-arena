@@ -1,4 +1,7 @@
-import { PlayerStats, ModuleType, WeaponType } from './player';
+import { PlayerStats } from './player';
+
+// Re-export MetaUpgrade from upgrades.ts
+export type { MetaUpgrade, UpgradeEffect, UpgradeStatKey, UpgradeOperation } from './upgrades';
 
 export enum UpgradeType {
     STAT = 'STAT',
@@ -16,16 +19,4 @@ export interface Upgrade {
     weight: number; // Relative chance to appear in pool
     // For STAT upgrades: The function to modify stats permanently
     effect?: (stats: PlayerStats) => PlayerStats;
-}
-
-export interface MetaUpgrade {
-    id: string;
-    name: string;
-    description: string;
-    icon: string;
-    maxLevel: number;
-    costBase: number;
-    costFactor: number;
-    weaponType?: WeaponType;
-    moduleType?: ModuleType;
 }

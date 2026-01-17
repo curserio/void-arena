@@ -5,6 +5,7 @@ import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { powerUpManager } from '../../core/systems/PowerUpManager';
 import { inputManager } from '../../core/systems/input';
+import { calculateWeaponModifiers, calculateModuleModifiers } from '../../core/systems/upgrades';
 
 export const usePlayer = (
     gameState: GameState,
@@ -38,101 +39,50 @@ export const usePlayer = (
         const critDmgL = data.metaLevels['meta_crit_dmg'] || 0;
         const salvageL = data.metaLevels['meta_salvage'] || 0;
 
-        // Weapon Specific Meta Levels
-        const plasDmgL = data.metaLevels['meta_plas_dmg'] || 0;
-        const plasSpdL = data.metaLevels['meta_plas_speed'] || 0;
-        const plasCountL = data.metaLevels['meta_plas_count'] || 0;
-        const plasRateL = data.metaLevels['meta_plas_rate'] || 0;
+        // Use UpgradeCalculator for weapon modifiers
+        const weaponMods = calculateWeaponModifiers(weapon, data.metaLevels);
 
-        const mslDmgL = data.metaLevels['meta_msl_dmg'] || 0;
-        const mslRelL = data.metaLevels['meta_msl_reload'] || 0;
-        const mslRadL = data.metaLevels['meta_msl_rad'] || 0;
+        // Base weapon stats with calculator modifiers applied
+        let bCount = (shipConfig.baseStats.bulletCount || 1) + weaponMods.bulletCount;
+        let bSpeed = baseWStats.bulletSpeed * weaponMods.bulletSpeed;
+        let bDamageMult = weaponMods.damageMult;
+        let bPierce = weaponMods.pierceCount;
+        let fRate = baseWStats.fireRate * weaponMods.fireRate;
+        let mRadius = 195 * weaponMods.explosionRadius; // Base 195, multiplied by upgrade
+        let lDuration = 0.3 * weaponMods.laserDuration;
 
-        const lsrDmgL = data.metaLevels['meta_lsr_dmg'] || 0;
-        const lsrDurL = data.metaLevels['meta_lsr_duration'] || 0;
-        const lsrRchgL = data.metaLevels['meta_lsr_recharge'] || 0;
+        // Swarm defaults + calculator
+        let sCount = 3 + weaponMods.swarmCount;
+        let sAgility = 1.5 * weaponMods.swarmAgility;
 
-        const swarmCountL = data.metaLevels['meta_swarm_count'] || 0;
-        const swarmAgilityL = data.metaLevels['meta_swarm_agility'] || 0;
-        const swarmDmgL = data.metaLevels['meta_swarm_dmg'] || 0;
-        const swarmCdL = data.metaLevels['meta_swarm_cd'] || 0;
-
-        // Module Specific Metas (Afterburner)
-        const abDurL = data.metaLevels['meta_ab_dur'] || 0;
-        const abCdL = data.metaLevels['meta_ab_cd'] || 0;
-        const abSpdL = data.metaLevels['meta_ab_spd'] || 0;
-
-        // Module Specific Metas (Shield Burst)
-        const sbDurL = data.metaLevels['meta_sb_dur'] || 0;  // +0.25s per level
-        const sbCdL = data.metaLevels['meta_sb_cd'] || 0;    // -0.5s per level
-        const sbHealL = data.metaLevels['meta_sb_heal'] || 0; // +5 bonus shield per level
-
-        // Weapon Specific Metas
-        let bCount = (shipConfig.baseStats.bulletCount || 1);
-        let bSpeed = baseWStats.bulletSpeed;
-        let bDamageMult = 1.0;
-        let bPierce = 1;
-        let fRate = baseWStats.fireRate;
-        let mRadius = 195; // Updated Base Radius (was 150)
-        let lDuration = 0.3;
-
-        // Swarm defaults
-        let sCount = 3; // Base 3
-        let sAgility = 1.5; // Reduced Base Agility
-
-        if (weapon === WeaponType.PLASMA) {
-            bDamageMult *= (1 + plasDmgL * 0.05);
-            bSpeed *= (1 + plasSpdL * 0.08);
-            bCount += plasCountL; // +1 per level (max 2)
-            fRate *= (1 + plasRateL * 0.05); // +5% per level, max level 10 = +50% (4.0 -> 6.0)
-        } else if (weapon === WeaponType.MISSILE) {
-            bDamageMult *= (1 + mslDmgL * 0.05);
-            fRate *= (1 + mslRelL * 0.05);
-            mRadius = 195 * (1 + mslRadL * 0.10) + mslRadL * 10; // 150 -> 195
-        } else if (weapon === WeaponType.LASER) {
-            bDamageMult *= (1 + lsrDmgL * 0.05);
-            fRate *= (1 + lsrRchgL * 0.08); // Recharge Speed
-            lDuration = 0.3 * (1 + lsrDurL * 0.10); // +10% duration per level
-            bPierce = 999;
-        } else if (weapon === WeaponType.SWARM_LAUNCHER) {
-            bDamageMult *= (1 + swarmDmgL * 0.05);
-            sCount = 3 + swarmCountL; // 3 base + upgrades (up to 20 total)
-            sAgility = 1.5 * (1 + swarmAgilityL * 0.15); // +15% per level to catch up to old values
-            fRate *= (1 + swarmCdL * 0.05); // CD reduction
+        // Weapon-specific defaults and special handling
+        if (weapon === WeaponType.LASER) {
+            bPierce = 999; // Always infinite pierce for laser
         } else if (weapon === WeaponType.RAILGUN) {
-            const railDmgL = data.metaLevels['meta_rail_dmg'] || 0;
-            const railRateL = data.metaLevels['meta_rail_rate'] || 0;
-            const railSpeedL = data.metaLevels['meta_rail_speed'] || 0;
-            bDamageMult *= (1 + railDmgL * 0.05); // +5% per level
-            fRate *= (1 + railRateL * 0.05); // +5% per level
-            bSpeed *= (1 + railSpeedL * 0.10); // +10% per level
-            bDamageMult *= (1 + railSpeedL * 0.02); // Speed upgrade also gives +2% damage per level
-            bPierce = 999; // Always infinite pierce
+            bPierce = 999; // Always infinite pierce for railgun
+            // Note: Hypervelocity +2% damage is now handled declaratively via effects[]
         } else if (weapon === WeaponType.FLAK_CANNON) {
-            const flakDmgL = data.metaLevels['meta_flak_dmg'] || 0;
-            const flakPelletsL = data.metaLevels['meta_flak_pellets'] || 0;
-            const flakRangeL = data.metaLevels['meta_flak_range'] || 0;
-            bDamageMult *= (1 + flakDmgL * 0.05); // +5% per pellet per level
-            bCount = 8 + (flakPelletsL * 2); // 8 base + 2 per level
-            // flakRangeL affects duration in fireWeapon, store it in bulletSpeed as multiplier workaround
-            bSpeed *= (1 + flakRangeL * 0.08); // +8% effective range per level (nerfed from 15%)
+            // Base pellet count is 8, not ship bulletCount
+            bCount = 8 + weaponMods.bulletCount;
         }
 
-        // Build module slots from equipped modules
+        // Build module slots from equipped modules using calculator
         const buildModuleSlot = (moduleType: ModuleType): import('../../types').ModuleSlot => {
+            const moduleMods = calculateModuleModifiers(moduleType, data.metaLevels);
             let duration = 0, cooldown = 0, power = 0;
 
             if (moduleType === ModuleType.AFTERBURNER) {
-                duration = 10000 + (abDurL * 1000);
-                cooldown = Math.max(5000, 60000 - (abCdL * 2000));
-                power = 2.0 * (1 + abSpdL * 0.10);
+                // Base: 10s duration, 60s CD, 2.0 power
+                duration = 10000 + moduleMods.duration;
+                cooldown = Math.max(5000, 60000 + moduleMods.cooldown);
+                power = 2.0 * moduleMods.power;
             } else if (moduleType === ModuleType.SHIELD_BURST) {
                 // Base: 0.5s invuln, 20s CD
-                duration = 500 + (sbDurL * 250); // +0.25s per level
-                cooldown = Math.max(15000, 20000 - (sbCdL * 200)); // -0.2s per level, min 15s
-                power = sbHealL * 5; // Bonus shield on use (+5 per level)
+                duration = 500 + moduleMods.duration;
+                cooldown = Math.max(15000, 20000 + moduleMods.cooldown);
+                power = 0; // Shield Burst doesn't use power for heal anymore
             } else if (moduleType === ModuleType.PHASE_SHIFT) {
-                // Base: 2s invuln, 25s CD — pure evasion, no healing
+                // Base: 2s invuln, 25s CD — pure evasion, no upgrades yet
                 duration = 2000;
                 cooldown = 25000;
                 power = 0;
