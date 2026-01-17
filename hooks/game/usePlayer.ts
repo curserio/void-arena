@@ -5,7 +5,7 @@ import { EnemyType } from '../../types/enemies';
 import { INITIAL_STATS, WORLD_SIZE, SHIPS, WEAPON_BASE_STATS, CAMERA_LERP, UPGRADES } from '../../constants';
 import { powerUpManager } from '../../core/systems/PowerUpManager';
 import { inputManager } from '../../core/systems/input';
-import { calculateWeaponModifiers, calculateModuleModifiers, calculateGeneralModifiers } from '../../core/systems/upgrades';
+import { calculateWeaponModifiers, calculateModuleModifiers, calculateGeneralModifiers, applyInGameUpgrade } from '../../core/systems/upgrades';
 
 export const usePlayer = (
     gameState: GameState,
@@ -156,9 +156,9 @@ export const usePlayer = (
 
         savedIds.forEach(id => {
             const upg = UPGRADES.find(u => u.id === id);
-            // Only apply STAT upgrades (Consumables are instant and shouldn't persist in stats via this list)
-            if (upg && upg.type === UpgradeType.STAT && upg.effect) {
-                newStats = upg.effect(newStats);
+            // Only apply STAT upgrades with declarative effects
+            if (upg && upg.type === UpgradeType.STAT && upg.effects) {
+                newStats = applyInGameUpgrade(newStats, upg);
                 hydratedUpgrades.push(upg);
             }
         });
@@ -264,9 +264,9 @@ export const usePlayer = (
         setStats(p => {
             let newStats = { ...p };
 
-            // Only apply effect if it's a STAT upgrade and has an effect function
-            if (upgrade.type === UpgradeType.STAT && upgrade.effect) {
-                newStats = upgrade.effect(newStats);
+            // Only apply declarative effects for STAT upgrades
+            if (upgrade.type === UpgradeType.STAT && upgrade.effects) {
+                newStats = applyInGameUpgrade(newStats, upgrade);
                 newStats.acquiredUpgrades = [...p.acquiredUpgrades, upgrade];
             }
 

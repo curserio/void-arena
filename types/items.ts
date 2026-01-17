@@ -1,7 +1,7 @@
 import { PlayerStats } from './player';
 
-// Re-export MetaUpgrade from upgrades.ts
-export type { MetaUpgrade, UpgradeEffect, UpgradeStatKey, UpgradeOperation } from './upgrades';
+// Re-export types from upgrades.ts
+export type { MetaUpgrade, UpgradeEffect, UpgradeStatKey, UpgradeOperation, InGameEffect, InGameStatKey, InGameOperation } from './upgrades';
 
 export enum UpgradeType {
     STAT = 'STAT',
@@ -15,8 +15,7 @@ export interface Upgrade {
     description: string;
     icon: string;
     rarity: 'COMMON' | 'RARE' | 'LEGENDARY';
-    maxStacks: number; // 1 for Unique, Infinity for stackable/consumable
-    weight: number; // Relative chance to appear in pool
-    // For STAT upgrades: The function to modify stats permanently
-    effect?: (stats: PlayerStats) => PlayerStats;
+    maxStacks: number;
+    weight: number;
+    effects?: import('./upgrades').InGameEffect[];  // Declarative effects (replaces callback)
 }

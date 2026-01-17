@@ -7,39 +7,41 @@ export const UPGRADES: Upgrade[] = [
         id: 'titan_gen',
         type: UpgradeType.STAT,
         name: 'Titan Generator',
-        description: 'Significantly increases Max Shield capacity.',
+        description: '+50 Max Shield (instant recharge).',
         icon: 'fa-shield-halved',
         rarity: 'LEGENDARY',
         maxStacks: 1,
         weight: 3,
-        effect: (s) => ({ ...s, maxShield: s.maxShield + 50, currentShield: s.currentShield + 50 })
+        effects: [
+            { stat: 'maxShield', value: 50, operation: 'addFlat' },
+            { stat: 'currentShield', value: 50, operation: 'addFlat' }
+        ]
     },
     {
         id: 'berserker_mod',
         type: UpgradeType.STAT,
         name: 'Berserker Module',
-        description: '+35% Damage, but -20% Max Integrity.',
+        description: '+35% Damage, -20% Max HP.',
         icon: 'fa-skull',
         rarity: 'LEGENDARY',
         maxStacks: 1,
         weight: 3,
-        effect: (s) => ({
-            ...s,
-            damage: s.damage * 1.35,
-            maxHealth: s.maxHealth * 0.8,
-            currentHealth: Math.min(s.currentHealth, s.maxHealth * 0.8)
-        })
+        effects: [
+            { stat: 'damage', value: 0.35, operation: 'addPercent' },
+            { stat: 'maxHealth', value: 0.8, operation: 'setMultiply' },
+            { stat: 'currentHealth', value: 0.8, operation: 'setMultiply' }
+        ]
     },
     {
         id: 'nano_repair',
         type: UpgradeType.STAT,
         name: 'Nanite Weaver',
-        description: 'Triples Shield Regeneration rate.',
+        description: 'Triples Shield Regen.',
         icon: 'fa-rotate',
         rarity: 'RARE',
         maxStacks: 1,
         weight: 5,
-        effect: (s) => ({ ...s, shieldRegen: s.shieldRegen * 3.0 })
+        effects: [{ stat: 'shieldRegen', value: 3.0, operation: 'setMultiply' }]
     },
 
     // --- STACKABLE UPGRADES (Small boosts, unlimited or high limit) ---
@@ -47,23 +49,26 @@ export const UPGRADES: Upgrade[] = [
         id: 'hull_plate',
         type: UpgradeType.STAT,
         name: 'Hull Plating',
-        description: '+10 Max Hull Integrity (Repairs 10 HP).',
+        description: '+10 Max HP (heals 10).',
         icon: 'fa-heart',
         rarity: 'COMMON',
         maxStacks: 20,
         weight: 15,
-        effect: (s) => ({ ...s, maxHealth: s.maxHealth + 10, currentHealth: s.currentHealth + 10 })
+        effects: [
+            { stat: 'maxHealth', value: 10, operation: 'addFlat' },
+            { stat: 'currentHealth', value: 10, operation: 'addFlat' }
+        ]
     },
     {
         id: 'dmg_boost',
         type: UpgradeType.STAT,
         name: 'Core Reactor',
-        description: '+10% Damage Output.',
+        description: '+10% Damage.',
         icon: 'fa-burst',
         rarity: 'COMMON',
         maxStacks: 99,
         weight: 12,
-        effect: (s) => ({ ...s, damage: s.damage * 1.10 })
+        effects: [{ stat: 'damage', value: 0.10, operation: 'addPercent' }]
     },
     {
         id: 'fire_rate',
@@ -74,7 +79,7 @@ export const UPGRADES: Upgrade[] = [
         rarity: 'COMMON',
         maxStacks: 99,
         weight: 12,
-        effect: (s) => ({ ...s, fireRate: s.fireRate * 1.05 })
+        effects: [{ stat: 'fireRate', value: 0.05, operation: 'addPercent' }]
     },
     {
         id: 'speed_boost',
@@ -85,7 +90,7 @@ export const UPGRADES: Upgrade[] = [
         rarity: 'COMMON',
         maxStacks: 10,
         weight: 12,
-        effect: (s) => ({ ...s, speed: s.speed * 1.05 })
+        effects: [{ stat: 'speed', value: 0.05, operation: 'addPercent' }]
     },
     {
         id: 'crit_mod',
@@ -96,7 +101,7 @@ export const UPGRADES: Upgrade[] = [
         rarity: 'RARE',
         maxStacks: 10,
         weight: 8,
-        effect: (s) => ({ ...s, critChance: Math.min(1.0, s.critChance + 0.05) })
+        effects: [{ stat: 'critChance', value: 0.05, operation: 'addFlat', cap: 1.0 }]
     },
     {
         id: 'magnet_boost',
@@ -107,7 +112,7 @@ export const UPGRADES: Upgrade[] = [
         rarity: 'COMMON',
         maxStacks: 5,
         weight: 10,
-        effect: (s) => ({ ...s, magnetRange: s.magnetRange * 1.15 })
+        effects: [{ stat: 'magnetRange', value: 0.15, operation: 'addPercent' }]
     },
 
     // --- CONSUMABLES (Infinite, Instant Effects, No Stats stored) ---

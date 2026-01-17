@@ -11,3 +11,5 @@ export {
     type ModuleModifiers,
     type GeneralModifiers
 } from './UpgradeCalculator';
+
+export { applyInGameUpgrade } from './InGameUpgradeCalculator';

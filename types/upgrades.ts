@@ -68,3 +68,40 @@ export interface MetaUpgrade {
     moduleType?: ModuleType;
     effects?: UpgradeEffect[];  // Array of effects - supports multi-stat upgrades
 }
+
+// ============================================================
+// In-Game Upgrade Effects (one-time pickups during runs)
+// ============================================================
+
+/**
+ * Stats modifiable by in-game upgrades
+ */
+export type InGameStatKey =
+    | 'maxHealth'
+    | 'currentHealth'
+    | 'maxShield'
+    | 'currentShield'
+    | 'shieldRegen'
+    | 'speed'
+    | 'damage'
+    | 'fireRate'
+    | 'critChance'
+    | 'magnetRange';
+
+/**
+ * Operations for in-game upgrades
+ */
+export type InGameOperation =
+    | 'addFlat'       // stat += value
+    | 'addPercent'    // stat *= (1 + value) e.g. value=0.1 = +10%
+    | 'setMultiply';  // stat *= value e.g. value=3.0 = triple
+
+/**
+ * Single effect for an in-game upgrade
+ */
+export interface InGameEffect {
+    stat: InGameStatKey;
+    value: number;
+    operation: InGameOperation;
+    cap?: number;  // Optional cap (e.g., critChance max 1.0)
+}
