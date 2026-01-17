@@ -26,7 +26,8 @@ export interface PersistentData {
     settings: {
         controlScheme: ControlScheme.KEYBOARD_MOUSE,
         zoomLevel: 1,
-        autoShowLevelUp: true
+        autoShowLevelUp: true,
+        showDpsMeter: false
     };
 }
 
@@ -47,6 +48,7 @@ export const DEFAULT_PERSISTENT_DATA: PersistentData = {
     settings: {
         controlScheme: ControlScheme.KEYBOARD_MOUSE,
         zoomLevel: 1,
-        autoShowLevelUp: true
+        autoShowLevelUp: true,
+        showDpsMeter: false
     }
 };

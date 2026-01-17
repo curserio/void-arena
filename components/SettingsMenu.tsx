@@ -15,6 +15,7 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
   const currentScheme = data.settings?.controlScheme || ControlScheme.TWIN_STICK;
   const currentZoom = data.settings?.zoomLevel || DEFAULT_ZOOM;
   const autoShowLevelUp = data.settings?.autoShowLevelUp ?? true;
+  const showDpsMeter = data.settings?.showDpsMeter ?? false;
 
   const setScheme = (scheme: ControlScheme) => {
     onUpdate({
@@ -37,13 +38,13 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
   };
 
   const toggleAutoLevel = () => {
-      onUpdate({
-          ...data,
-          settings: {
-              ...data.settings,
-              autoShowLevelUp: !autoShowLevelUp
-          }
-      });
+    onUpdate({
+      ...data,
+      settings: {
+        ...data.settings,
+        autoShowLevelUp: !autoShowLevelUp
+      }
+    });
   };
 
   const handleResetClick = () => {
@@ -65,113 +66,133 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({ data, onUpdate, onReset, on
 
         <div className="flex flex-col gap-4">
           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Fire Control Systems</h3>
-          
+
           <div className="grid grid-cols-1 gap-4">
-            <button 
+            <button
               onClick={() => setScheme(ControlScheme.TWIN_STICK)}
               className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.TWIN_STICK ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
             >
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TWIN_STICK ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
-                 <i className="fa-solid fa-gamepad text-xl" />
-               </div>
-               <div className="text-left">
-                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TWIN_STICK ? 'text-white' : 'text-slate-400'}`}>Twin Stick</div>
-                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
-                   Left Stick: Aim & Fire<br/>Right Stick: Movement
-                 </div>
-               </div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TWIN_STICK ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                <i className="fa-solid fa-gamepad text-xl" />
+              </div>
+              <div className="text-left">
+                <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TWIN_STICK ? 'text-white' : 'text-slate-400'}`}>Twin Stick</div>
+                <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                  Left Stick: Aim & Fire<br />Right Stick: Movement
+                </div>
+              </div>
             </button>
 
-            <button 
+            <button
               onClick={() => setScheme(ControlScheme.TAP_TO_AIM)}
               className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.TAP_TO_AIM ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
             >
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TAP_TO_AIM ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
-                 <i className="fa-solid fa-fingerprint text-xl" />
-               </div>
-               <div className="text-left">
-                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TAP_TO_AIM ? 'text-white' : 'text-slate-400'}`}>Touch Targeting</div>
-                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
-                   Tap/Hold Screen: Aim & Fire<br/>Right Stick: Movement
-                 </div>
-               </div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.TAP_TO_AIM ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                <i className="fa-solid fa-fingerprint text-xl" />
+              </div>
+              <div className="text-left">
+                <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.TAP_TO_AIM ? 'text-white' : 'text-slate-400'}`}>Touch Targeting</div>
+                <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                  Tap/Hold Screen: Aim & Fire<br />Right Stick: Movement
+                </div>
+              </div>
             </button>
 
-            <button 
+            <button
               onClick={() => setScheme(ControlScheme.KEYBOARD_MOUSE)}
               className={`p-4 rounded-xl border-2 flex items-center gap-4 transition-all ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
             >
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
-                 <i className="fa-solid fa-computer-mouse text-xl" />
-               </div>
-               <div className="text-left">
-                 <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'text-white' : 'text-slate-400'}`}>Keyboard & Mouse</div>
-                 <div className="text-[10px] text-slate-500 leading-tight mt-1">
-                   Mouse: Aim (Click/Toggle to Fire)<br/>WASD/Arrows: Movement
-                 </div>
-               </div>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'border-cyan-500 text-cyan-400' : 'border-slate-700 text-slate-600'}`}>
+                <i className="fa-solid fa-computer-mouse text-xl" />
+              </div>
+              <div className="text-left">
+                <div className={`font-black uppercase text-sm ${currentScheme === ControlScheme.KEYBOARD_MOUSE ? 'text-white' : 'text-slate-400'}`}>Keyboard & Mouse</div>
+                <div className="text-[10px] text-slate-500 leading-tight mt-1">
+                  Mouse: Aim (Click/Toggle to Fire)<br />WASD/Arrows: Movement
+                </div>
+              </div>
             </button>
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
-           <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Interface</h3>
-           
-           {/* Zoom Settings */}
-           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {ZOOM_PRESETS.map((preset) => {
-                  const isActive = Math.abs(currentZoom - preset.value) < 0.01;
-                  return (
-                      <button
-                        key={preset.value}
-                        onClick={() => setZoom(preset.value)}
-                        className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-2
-                             ${isActive ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
-                      >
-                         <i className={`fa-solid ${preset.icon} text-lg ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
-                         <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white' : 'text-slate-500'}`}>{preset.label}</span>
-                      </button>
-                  );
-              })}
-           </div>
+          <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest px-1">Interface</h3>
 
-           {/* Auto Level Up Toggle */}
-           <button 
-              onClick={toggleAutoLevel}
-              className={`p-4 rounded-xl border transition-all flex justify-between items-center
+          {/* Zoom Settings */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {ZOOM_PRESETS.map((preset) => {
+              const isActive = Math.abs(currentZoom - preset.value) < 0.01;
+              return (
+                <button
+                  key={preset.value}
+                  onClick={() => setZoom(preset.value)}
+                  className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-2
+                             ${isActive ? 'bg-cyan-900/20 border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'bg-slate-950 border-slate-800 opacity-60 hover:opacity-100'}`}
+                >
+                  <i className={`fa-solid ${preset.icon} text-lg ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                  <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white' : 'text-slate-500'}`}>{preset.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Auto Level Up Toggle */}
+          <button
+            onClick={toggleAutoLevel}
+            className={`p-4 rounded-xl border transition-all flex justify-between items-center
                   ${autoShowLevelUp ? 'bg-slate-900 border-emerald-500/50' : 'bg-slate-950 border-slate-800'}`}
-           >
-               <div className="flex items-center gap-3">
-                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${autoShowLevelUp ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400' : 'bg-slate-900 border-slate-700 text-slate-600'}`}>
-                       <i className="fa-solid fa-layer-group" />
-                   </div>
-                   <div className="text-left">
-                       <div className={`font-bold text-xs uppercase ${autoShowLevelUp ? 'text-white' : 'text-slate-400'}`}>Auto-Open Level Up</div>
-                       <div className="text-[9px] text-slate-500">Show selection menu immediately</div>
-                   </div>
-               </div>
-               <div className={`w-10 h-5 rounded-full relative transition-colors ${autoShowLevelUp ? 'bg-emerald-500' : 'bg-slate-700'}`}>
-                   <div className={`absolute top-1 bottom-1 w-3 rounded-full bg-white transition-all ${autoShowLevelUp ? 'left-6' : 'left-1'}`} />
-               </div>
-           </button>
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${autoShowLevelUp ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400' : 'bg-slate-900 border-slate-700 text-slate-600'}`}>
+                <i className="fa-solid fa-layer-group" />
+              </div>
+              <div className="text-left">
+                <div className={`font-bold text-xs uppercase ${autoShowLevelUp ? 'text-white' : 'text-slate-400'}`}>Auto-Open Level Up</div>
+                <div className="text-[9px] text-slate-500">Show selection menu immediately</div>
+              </div>
+            </div>
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${autoShowLevelUp ? 'bg-emerald-500' : 'bg-slate-700'}`}>
+              <div className={`absolute top-1 bottom-1 w-3 rounded-full bg-white transition-all ${autoShowLevelUp ? 'left-6' : 'left-1'}`} />
+            </div>
+          </button>
+
+          {/* DPS Meter Toggle */}
+          <button
+            onClick={() => onUpdate({ ...data, settings: { ...data.settings, showDpsMeter: !showDpsMeter } })}
+            className={`p-4 rounded-xl border transition-all flex justify-between items-center
+                  ${showDpsMeter ? 'bg-slate-900 border-cyan-500/50' : 'bg-slate-950 border-slate-800'}`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${showDpsMeter ? 'bg-cyan-900/30 border-cyan-500 text-cyan-400' : 'bg-slate-900 border-slate-700 text-slate-600'}`}>
+                <i className="fa-solid fa-chart-line" />
+              </div>
+              <div className="text-left">
+                <div className={`font-bold text-xs uppercase ${showDpsMeter ? 'text-white' : 'text-slate-400'}`}>DPS Meter</div>
+                <div className="text-[9px] text-slate-500">Show damage per second overlay</div>
+              </div>
+            </div>
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${showDpsMeter ? 'bg-cyan-500' : 'bg-slate-700'}`}>
+              <div className={`absolute top-1 bottom-1 w-3 rounded-full bg-white transition-all ${showDpsMeter ? 'left-6' : 'left-1'}`} />
+            </div>
+          </button>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-slate-800 pt-6">
-           <h3 className="text-red-500 text-xs font-bold uppercase tracking-widest px-1">Danger Zone</h3>
-           <button 
-             onClick={handleResetClick}
-             className={`p-4 rounded-xl border transition-all flex items-center justify-center gap-2 font-black uppercase text-xs 
-               ${confirmReset 
-                 ? 'bg-red-600 text-white border-red-500 scale-105 shadow-xl animate-pulse' 
-                 : 'bg-red-950/20 text-red-500 border-red-900/50 hover:bg-red-900/40 hover:border-red-500/50'
-               }`}
-           >
-             <i className={`fa-solid ${confirmReset ? 'fa-exclamation-circle' : 'fa-trash'}`} />
-             {confirmReset ? "CONFIRM RESET? (TAP AGAIN)" : "RESET PROGRESS"}
-           </button>
+          <h3 className="text-red-500 text-xs font-bold uppercase tracking-widest px-1">Danger Zone</h3>
+          <button
+            onClick={handleResetClick}
+            className={`p-4 rounded-xl border transition-all flex items-center justify-center gap-2 font-black uppercase text-xs 
+               ${confirmReset
+                ? 'bg-red-600 text-white border-red-500 scale-105 shadow-xl animate-pulse'
+                : 'bg-red-950/20 text-red-500 border-red-900/50 hover:bg-red-900/40 hover:border-red-500/50'
+              }`}
+          >
+            <i className={`fa-solid ${confirmReset ? 'fa-exclamation-circle' : 'fa-trash'}`} />
+            {confirmReset ? "CONFIRM RESET? (TAP AGAIN)" : "RESET PROGRESS"}
+          </button>
         </div>
 
-        <button 
+        <button
           onClick={onClose}
           className="w-full py-4 bg-white text-slate-950 font-black text-xl rounded-xl uppercase tracking-widest active:scale-95 transition-all shadow-lg"
         >

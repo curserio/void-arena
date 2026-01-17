@@ -14,6 +14,7 @@ import CheatsMenu from './components/CheatsMenu';
 import LeaderboardMenu from './components/LeaderboardMenu';
 import StatsMenu from './components/StatsMenu';
 import DebugMenu from './components/DebugMenu';
+import DpsMeter from './components/DpsMeter';
 
 // Screen Components
 import StartScreen from './screens/StartScreen';
@@ -299,6 +300,7 @@ const App: React.FC = () => {
           {currentScheme === ControlScheme.TWIN_STICK && <Joystick className="absolute left-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { inputManager.setAim(dir); }} />}
           {(currentScheme === ControlScheme.TWIN_STICK || currentScheme === ControlScheme.TAP_TO_AIM) && <Joystick className="absolute right-0 bottom-0 w-1/2 h-[60%] z-40" onMove={(dir) => { inputManager.setMovement(dir); }} />}
           {gameState !== GameState.DYING && <HUD stats={stats} score={score} autoAttack={autoAttack} setAutoAttack={setAutoAttack} totalCredits={totalCredits} onPause={() => setIsPaused(true)} onShowUpgrades={() => setShowUpgradesList(true)} onOpenGarage={() => setShowGarage(true)} onLevelClick={triggerManualLevelUp} onActivateModule={activateModule} />}
+          <DpsMeter enabled={persistentData.settings?.showDpsMeter ?? false} />
           {gameState === GameState.LEVELING && <UpgradeMenu upgrades={offeredUpgrades} onSelect={onUpgradeSelected} />}
         </>
       )}

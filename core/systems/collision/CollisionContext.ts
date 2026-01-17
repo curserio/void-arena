@@ -65,6 +65,9 @@ export function applyDamageToEnemy(
     // Use enemy's takeDamage() method - handles isShielded damage reduction
     const damageResult = e.takeDamage(dmg, time);
 
+    // Record damage for DPS meter (lazy import to avoid circular deps)
+    import('../../../components/DpsMeter').then(m => m.recordDamage(damageResult.actualDamage));
+
     // Display actual damage dealt (after reduction if shielded)
     const textColor = explosionColor || (isCrit ? '#facc15' : (e.isShielded ? '#67e8f9' : '#fff'));
     callbacks.spawnDamageText(e.pos, damageResult.actualDamage, textColor);
