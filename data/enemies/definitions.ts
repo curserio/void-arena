@@ -182,6 +182,13 @@ export const ENEMY_DEFINITIONS: Record<EnemyType, EnemyDefinition> = {
         creditValue: 40,
         powerUpChance: 0.10,
 
+        spawning: {
+            spawnType: EnemyType.SCOUT,
+            count: 3,
+            spread: Math.PI / 3,  // 60° spread
+            maxWaves: 9,          // 27 scouts total
+        },
+
         attacks: {},
     },
 

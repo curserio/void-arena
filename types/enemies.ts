@@ -103,8 +103,21 @@ export interface EnemyDefinition {
     isBoss?: boolean;
     phases?: BossPhase[];
 
+    // Spawner-specific (e.g., Carrier)
+    spawning?: SpawningConfig;
+
     // Attack damage values
     attacks?: AttackStats;
+}
+
+/**
+ * Configuration for enemies that spawn other enemies
+ */
+export interface SpawningConfig {
+    spawnType: EnemyType;    // Type of enemy to spawn
+    count: number;           // Enemies per spawn wave
+    spread: number;          // Angle spread in radians
+    maxWaves: number;        // Maximum spawn waves
 }
 
 /**

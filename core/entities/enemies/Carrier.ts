@@ -3,24 +3,21 @@
  * Slow, tanky spawner unit that periodically deploys Scout drones
  * 
  * Uses: KiteBehavior (maintains safe distance from player)
+ * Config: Spawning settings from definitions.ts
  */
 
 import { BaseEnemy } from './BaseEnemy';
 import { Vector2D, UpdateContext, EnemyUpdateResult, IEnemySpawn } from '../../../types/entities';
-import { EnemyType, EnemyTier, EnemyDefinition } from '../../../types/enemies';
+import { EnemyType, EnemyTier, EnemyDefinition, SpawningConfig } from '../../../types/enemies';
 import { getEnemyDefinition } from '../../../data/enemies/definitions';
 import { KiteBehavior, AIContext } from '../../systems/ai';
-
-// Spawn configuration
-const SPAWN_COUNT = 3;              // Scouts per spawn wave
-const SPAWN_SPREAD = Math.PI / 3;   // 60° spread for spawning
-const MAX_SPAWN_WAVES = 9;          // Maximum spawn waves per carrier (27 scouts total)
 
 export class Carrier extends BaseEnemy {
     readonly enemyType = EnemyType.CARRIER;
 
     private readonly definition: EnemyDefinition;
     private readonly baseSpeed: number;
+    private readonly spawning: SpawningConfig;
 
     // AI Behaviors
     private readonly movement: KiteBehavior;
@@ -28,7 +25,7 @@ export class Carrier extends BaseEnemy {
     // Spawning state
     public lastSpawnTime: number = 0;
     private readonly spawnCooldown: number;
-    private spawnWavesRemaining: number = MAX_SPAWN_WAVES;
+    private spawnWavesRemaining: number;
 
     constructor(
         id: string,
@@ -47,6 +44,10 @@ export class Carrier extends BaseEnemy {
         this.definition = definition;
         this.baseSpeed = baseSpeed;
         this.spawnCooldown = definition.attackCooldown; // 8000ms
+
+        // Get spawning config from definition
+        this.spawning = definition.spawning!;
+        this.spawnWavesRemaining = this.spawning.maxWaves;
 
         // Initialize behaviors - stay far from player
         this.movement = new KiteBehavior({
@@ -81,7 +82,9 @@ export class Carrier extends BaseEnemy {
         this.pos.x += this.vel.x * dt;
         this.pos.y += this.vel.y * dt;
 
-        // Spawn logic (limited waves)
+        // Spawn logic (limited waves) - using config from definitions
+        const { count, spread, spawnType } = this.spawning;
+
         if (this.spawnWavesRemaining > 0 && time - this.lastSpawnTime > this.spawnCooldown) {
             this.lastSpawnTime = time;
             this.spawnWavesRemaining--;
@@ -92,13 +95,13 @@ export class Carrier extends BaseEnemy {
                 playerPos.x - this.pos.x
             );
 
-            // Spawn scouts in a spread pattern
-            for (let i = 0; i < SPAWN_COUNT; i++) {
-                const spawnAngle = angleToPlayer - SPAWN_SPREAD / 2 + (SPAWN_SPREAD * i / (SPAWN_COUNT - 1 || 1));
+            // Spawn enemies in a spread pattern
+            for (let i = 0; i < count; i++) {
+                const spawnAngle = angleToPlayer - spread / 2 + (spread * i / (count - 1 || 1));
                 const spawnDist = this.radius + 30;
 
                 const spawn: IEnemySpawn = {
-                    type: EnemyType.SCOUT,
+                    type: spawnType,
                     pos: {
                         x: this.pos.x + Math.cos(spawnAngle) * spawnDist,
                         y: this.pos.y + Math.sin(spawnAngle) * spawnDist,
