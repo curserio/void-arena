@@ -62,13 +62,8 @@ export class Striker extends BaseEnemy {
             gameTime,
         };
 
-        // Calculate speed
-        const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.5;
-        let speed = this.baseSpeed * speedScale * speedMult;
-
-        // Note: Tier speed modifiers already applied in factory via modifiers.ts
-        // No additional speed reduction needed here for melee mobility
+        // Calculate speed using centralized helper
+        const speed = this.calculateEffectiveSpeed(this.baseSpeed, time, gameTime);
 
         // Distance to player for dash logic
         const dx = playerPos.x - this.pos.x;

@@ -78,11 +78,8 @@ export class Shielder extends BaseEnemy {
             gameTime,
         };
 
-        // Calculate speed
-        const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.3; // Slower scaling than scouts
-        let speed = this.baseSpeed * speedScale * speedMult;
-        // Note: Tier speed modifiers already applied in factory via modifiers.ts
+        // Calculate speed using centralized helper (slower scaling: 0.3)
+        const speed = this.calculateEffectiveSpeed(this.baseSpeed, time, gameTime, 0.3);
 
         // Movement via behavior
         const direction = this.movement.calculateVelocity(aiCtx);

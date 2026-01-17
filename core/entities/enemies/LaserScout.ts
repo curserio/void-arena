@@ -67,11 +67,8 @@ export class LaserScout extends BaseEnemy {
             gameTime,
         };
 
-        // Calculate speed
-        const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.5;
-        let speed = this.baseSpeed * speedScale * speedMult;
-        // Note: Tier speed modifiers already applied in factory via modifiers.ts
+        // Calculate speed using centralized helper
+        const speed = this.calculateEffectiveSpeed(this.baseSpeed, time, gameTime);
 
         // Movement - stop when attacking
         if (this.isFiring || this.isCharging) {

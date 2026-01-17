@@ -64,11 +64,8 @@ export class Kamikaze extends BaseEnemy {
             gameTime,
         };
 
-        // Calculate speed
-        const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.5;
-        const maxSpeed = this.baseSpeed * speedScale * speedMult;
-        // Kamikaze: No miniboss/elite speed penalty - they stay fast
+        // Calculate max speed using centralized helper
+        const maxSpeed = this.calculateEffectiveSpeed(this.baseSpeed, time, gameTime);
 
         // Get direction from rush behavior
         const direction = this.movement.calculateVelocity(aiCtx);

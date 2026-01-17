@@ -175,6 +175,26 @@ export abstract class BaseEnemy implements IEnemy {
     }
 
     /**
+     * Calculate effective speed with game scaling and slow effects
+     * Centralizes the speed formula: baseSpeed * timeScale * slowMult
+     * 
+     * @param baseSpeed - The enemy's base movement speed
+     * @param time - Current game time (for slow effect)
+     * @param gameTime - Total elapsed game time in seconds
+     * @param scaleFactor - How much speed increases per 10 minutes (default 0.5 = +50%)
+     */
+    protected calculateEffectiveSpeed(
+        baseSpeed: number,
+        time: number,
+        gameTime: number,
+        scaleFactor: number = 0.5
+    ): number {
+        const slowMult = this.getSpeedMultiplier(time);
+        const timeScale = 1 + (gameTime / 600) * scaleFactor;
+        return baseSpeed * timeScale * slowMult;
+    }
+
+    /**
      * Calculate separation force from other enemies
      */
     protected calculateSeparation(enemies: BaseEnemy[]): Vector2D {

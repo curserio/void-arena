@@ -70,11 +70,8 @@ export class Scout extends BaseEnemy {
             gameTime,
         };
 
-        // Calculate speed
-        const speedMult = this.getSpeedMultiplier(time);
-        const speedScale = 1 + (gameTime / 600) * 0.5;
-        let speed = this.baseSpeed * speedScale * speedMult;
-        // Note: Tier speed modifiers already applied in factory via modifiers.ts
+        // Calculate speed using centralized helper
+        const speed = this.calculateEffectiveSpeed(this.baseSpeed, time, gameTime);
 
         // Movement via behavior
         const direction = this.movement.calculateVelocity(aiCtx);
