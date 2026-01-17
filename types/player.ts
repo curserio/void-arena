@@ -37,7 +37,8 @@ export enum WeaponType {
     RAILGUN = 'RAILGUN',
     FLAK_CANNON = 'FLAK_CANNON',
     ENERGY_ORB = 'ENERGY_ORB',
-    ARC_CASTER = 'ARC_CASTER'
+    ARC_CASTER = 'ARC_CASTER',
+    FLAMETHROWER = 'FLAMETHROWER'
 }
 
 export interface PlayerStats {

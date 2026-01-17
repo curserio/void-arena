@@ -19,6 +19,9 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
       case WeaponType.MISSILE: return 'fa-rocket';
       case WeaponType.LASER: return 'fa-sun';
       case WeaponType.SWARM_LAUNCHER: return 'fa-hive';
+      case WeaponType.ENERGY_ORB: return 'fa-atom';
+      case WeaponType.ARC_CASTER: return 'fa-bolt-lightning';
+      case WeaponType.FLAMETHROWER: return 'fa-fire';
       default: return 'fa-gun';
     }
   };
@@ -29,6 +32,9 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
       case WeaponType.MISSILE: return 'Havoc Missile';
       case WeaponType.LASER: return 'Phase Laser';
       case WeaponType.SWARM_LAUNCHER: return 'Swarm Launcher';
+      case WeaponType.ENERGY_ORB: return 'Energy Orb';
+      case WeaponType.ARC_CASTER: return 'Arc Caster';
+      case WeaponType.FLAMETHROWER: return 'Flamethrower';
       default: return w;
     }
   };
@@ -111,6 +117,15 @@ const GuideMenu: React.FC<GuideMenuProps> = ({ onClose }) => {
                 } else if (w === WeaponType.FLAK_CANNON) {
                   extraInfo.push({ label: 'Pellets', val: '8' });
                   extraInfo.push({ label: 'Spread', val: '45°' });
+                } else if (w === WeaponType.ENERGY_ORB) {
+                  extraInfo.push({ label: 'Pierce', val: 'Infinite' });
+                  extraInfo.push({ label: 'Duration', val: '5.0s' });
+                } else if (w === WeaponType.ARC_CASTER) {
+                  extraInfo.push({ label: 'Chain', val: 'Yes' });
+                  extraInfo.push({ label: 'Range', val: '250px' });
+                } else if (w === WeaponType.FLAMETHROWER) {
+                  extraInfo.push({ label: 'Pierce', val: 'Infinite' });
+                  extraInfo.push({ label: 'Range', val: 'Short' });
                 }
 
                 return (

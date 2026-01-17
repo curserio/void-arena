@@ -17,5 +17,7 @@ export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: n
     // Energy Orb: Slow, pulsing area damage, explodes on impact
     [WeaponType.ENERGY_ORB]: { fireRate: 0.5, damage: 60, bulletSpeed: 150, areaSize: 150, duration: 5000 },
     // Arc Caster: Chain lightning, hits multiple enemies
-    [WeaponType.ARC_CASTER]: { fireRate: 1.5, damage: 35, bulletSpeed: 1200, areaSize: 0, duration: 500 }
+    [WeaponType.ARC_CASTER]: { fireRate: 1.5, damage: 35, bulletSpeed: 1200, areaSize: 0, duration: 500 },
+    // Flamethrower: High fire rate, short range cone, infinite pierce
+    [WeaponType.FLAMETHROWER]: { fireRate: 15.0, damage: 12, bulletSpeed: 450, areaSize: 45, duration: 650 }
 };

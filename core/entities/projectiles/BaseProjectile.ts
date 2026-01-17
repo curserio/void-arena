@@ -59,6 +59,9 @@ export class BaseProjectile implements IProjectile {
     isMiniboss?: boolean;
     isLegendary?: boolean;
 
+    // Pierce Tracking
+    hitEntities: Set<string> = new Set();
+
     constructor(config: ProjectileConfig, time: number) {
         this.id = projectileIdGen.next();
         this.pos = { ...config.pos };

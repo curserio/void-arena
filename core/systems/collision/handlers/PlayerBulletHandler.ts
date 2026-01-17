@@ -72,6 +72,9 @@ export class PlayerBulletHandler implements ICollisionHandler {
             if (e.health <= 0) continue;
 
             if (checkCircleCollision(p, e)) {
+                // Prevent multi-hits on the same enemy (for piercing projectiles)
+                if (p.hitEntities.has(e.id)) continue;
+                p.hitEntities.add(e.id);
 
                 // --- Execute Hit Effects ---
                 // (Strategy Pattern: Effects handle specific impact types)

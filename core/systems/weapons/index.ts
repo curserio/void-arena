@@ -22,3 +22,4 @@ import './behaviors/FlakBehavior';
 import './behaviors/SwarmBehavior';
 import './behaviors/EnergyOrbBehavior';
 import './behaviors/ArcCasterBehavior';
+import './behaviors/FlamethrowerBehavior';

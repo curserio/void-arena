@@ -321,4 +321,10 @@ export const META_UPGRADES: MetaUpgrade[] = [
     { id: 'meta_arc_jumps', name: 'Conductive Nodes', description: '+1 Chain Jump count.', icon: 'fa-share-nodes', maxLevel: 5, costBase: 8000, costFactor: 2.2, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'pierceCount', perLevel: 1, operation: 'add' }] },
     { id: 'meta_arc_range', name: 'High Voltage', description: '+10% Chain Range.', icon: 'fa-tower-broadcast', maxLevel: 20, costBase: 1500, costFactor: 1.3, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'chainRange', perLevel: 0.10, operation: 'addPercent' }] },
     { id: 'meta_arc_rate', name: 'Discharge Rate', description: '+5% Fire Rate.', icon: 'fa-stopwatch-20', maxLevel: 40, costBase: 1200, costFactor: 1.25, weaponType: WeaponType.ARC_CASTER, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
+
+    // --- WEAPON SPECIFIC: FLAMETHROWER ---
+    { id: 'meta_flame_dmg', name: 'Napalm Mix', description: '+5% Damage per level.', icon: 'fa-fire', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'damageMult', perLevel: 0.05, operation: 'addPercent' }] },
+    { id: 'meta_flame_dur', name: 'Pressure Tank', description: '+10% Flame Range (Duration).', icon: 'fa-ruler-horizontal', maxLevel: 25, costBase: 1200, costFactor: 1.3, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'duration', perLevel: 0.10, operation: 'addPercent' }] },
+    { id: 'meta_flame_area', name: 'Wide Nozzle', description: '+10% Flame Width.', icon: 'fa-vector-square', maxLevel: 20, costBase: 2000, costFactor: 1.4, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'explosionRadius', perLevel: 0.10, operation: 'addPercent' }] },
+    { id: 'meta_flame_rate', name: 'Turbo Pump', description: '+5% Fire Rate.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
 ];

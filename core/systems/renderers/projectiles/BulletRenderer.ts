@@ -30,6 +30,45 @@ export const renderBullet = (ctx: CanvasRenderingContext2D, p: BaseProjectile) =
             ctx.strokeStyle = '#60a5fa';
             ctx.lineWidth = 2;
             ctx.stroke();
+        } else if (p.weaponType === WeaponType.FLAMETHROWER) {
+            // Flamethrower Effect (Turbulent Fire Cloud)
+            const lifeRatio = p.elapsedTime / (p.duration || 600);
+            const alpha = Math.max(0, 1.0 - Math.pow(lifeRatio, 1.5)); // Non-linear fade
+            const scale = 1.0 + lifeRatio * 2.5;
+
+            ctx.globalAlpha = alpha;
+            ctx.shadowBlur = 20 * alpha;
+            ctx.shadowColor = '#ea580c'; // Burnt Orange Glow
+
+            // Create a "wobbly" organic shape using multiple overlapping circles
+            // Use projectile ID to seed a pseudo-random offset that is consistent per projectile
+            const seed = parseInt(p.id.slice(-4), 16) || 0;
+            const wobbleX = Math.sin(lifeRatio * 10 + seed) * (p.radius * 0.5);
+            const wobbleY = Math.cos(lifeRatio * 8 + seed) * (p.radius * 0.5);
+
+            // Inner Core (Hot / White-Yellow)
+            const grad = ctx.createRadialGradient(wobbleX * 0.2, wobbleY * 0.2, 0, 0, 0, p.radius * scale);
+            grad.addColorStop(0, '#fef08a'); // Bright Yellow
+            grad.addColorStop(0.3, '#f97316'); // Orange
+            grad.addColorStop(0.7, 'rgba(220, 38, 38, 0.8)'); // Red
+            grad.addColorStop(1, 'rgba(100, 100, 100, 0)'); // Smoke edge
+
+            ctx.fillStyle = grad;
+
+            // Draw main puff (distorted)
+            ctx.beginPath();
+            ctx.arc(wobbleX, wobbleY, p.radius * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Add a secondary "smoke/flame" puff for irregularity
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.3)';
+            ctx.beginPath();
+            ctx.arc(-wobbleX * 0.5, -wobbleY * 0.5, p.radius * scale * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Reset
+            ctx.globalAlpha = 1.0;
+
         } else if (p.weaponType === WeaponType.ENERGY_ORB) {
             // Large Pulsing Orb
             const pulseScale = 1.0 + Math.sin(Date.now() * 0.01) * 0.1; // Simple pulse effect

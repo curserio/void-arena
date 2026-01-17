@@ -124,7 +124,25 @@ const StatsMenu: React.FC<StatsMenuProps> = ({ stats, onClose, gameTime = perfor
                 <div className="col-span-full text-slate-500 text-[10px] font-black uppercase tracking-widest mt-4">Class Specifics ({stats.weaponType})</div>
 
                 {stats.weaponType === WeaponType.MISSILE && (
-                  <StatRow label="Blast Radius" value={`${Math.round(stats.missileRadius)}px`} icon="fa-bomb" />
+                  <StatRow label="Blast Radius" value={`${Math.round(stats.areaSize)}px`} icon="fa-bomb" />
+                )}
+                {stats.weaponType === WeaponType.ENERGY_ORB && (
+                  <>
+                    <StatRow label="Pulse Radius" value={`${Math.round(stats.areaSize)}px`} icon="fa-circle-dot" />
+                    <StatRow label="Flight Time" value={`${(stats.duration / 1000).toFixed(1)}s`} icon="fa-hourglass-half" />
+                  </>
+                )}
+                {stats.weaponType === WeaponType.FLAMETHROWER && (
+                  <>
+                    <StatRow label="Flame Width" value={`${Math.round(stats.areaSize)}px`} icon="fa-ruler-vertical" />
+                    <StatRow label="Flame Range" value={`${(stats.duration / 1000).toFixed(1)}s`} icon="fa-ruler-horizontal" />
+                  </>
+                )}
+                {stats.weaponType === WeaponType.ARC_CASTER && (
+                  <>
+                    <StatRow label="Chain Range" value={`${Math.round(stats.chainRange)}px`} icon="fa-share-nodes" />
+                    <StatRow label="Jump Count" value={stats.pierceCount} icon="fa-bolt" />
+                  </>
                 )}
                 {stats.weaponType === WeaponType.SWARM_LAUNCHER && (
                   <>

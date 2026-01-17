@@ -18,6 +18,7 @@ const WEAPONS = [
     { type: WeaponType.FLAK_CANNON, name: 'Flak Cannon', icon: 'fa-spray-can', description: 'Shotgun spread. 8 pellets, short range destruction.' },
     { type: WeaponType.ENERGY_ORB, name: 'Energy Orb', icon: 'fa-atom', description: 'Slow pulsating orb. Area damage + final explosion.' },
     { type: WeaponType.ARC_CASTER, name: 'Arc Caster', icon: 'fa-bolt-lightning', description: 'Chain lightning. Zaps multiple targets.' },
+    { type: WeaponType.FLAMETHROWER, name: 'Flamethrower', icon: 'fa-fire', description: 'Short range cone of fire. Infinite pierce, rapid damage.' },
 ];
 
 export const WeaponSelector: React.FC = () => {
