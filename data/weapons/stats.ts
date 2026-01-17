@@ -10,8 +10,8 @@ export const WEAPON_BASE_STATS: Record<WeaponType, { fireRate: number; damage: n
     [WeaponType.LASER]: { fireRate: 1.0, damage: 200, bulletSpeed: 0 },
     // Swarm Launcher: Burst fire (3-20 rockets), homing - buffed for late game
     [WeaponType.SWARM_LAUNCHER]: { fireRate: 0.6, damage: 90, bulletSpeed: 650 },
-    // Railgun: Pierces ALL enemies, high damage, slow fire, ultra-fast projectile
-    [WeaponType.RAILGUN]: { fireRate: 0.5, damage: 350, bulletSpeed: 4000 },
+    // Railgun: Pierces ALL enemies, high damage, slow fire, fast projectile
+    [WeaponType.RAILGUN]: { fireRate: 0.5, damage: 350, bulletSpeed: 2800 },
     // Flak Cannon: Shotgun spread (8 pellets), short range but devastating
     [WeaponType.FLAK_CANNON]: { fireRate: 1.2, damage: 40, bulletSpeed: 700 }
 };

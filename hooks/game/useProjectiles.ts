@@ -158,7 +158,7 @@ export const useProjectiles = (
                             const p = ProjectileFactory.createPlayerProjectile(
                                 { x: playerPosRef.current.x, y: playerPosRef.current.y },
                                 dir,
-                                { ...baseStats, color: '#60a5fa', radius: 6, pierce: 999, duration: 1500 }, // Blue, thin, infinite pierce
+                                { ...baseStats, color: '#60a5fa', radius: 6, pierce: 999, duration: 1500, weaponType: WeaponType.RAILGUN },
                                 time
                             );
                             projectilesRef.current.push(p);

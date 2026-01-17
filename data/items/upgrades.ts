@@ -288,7 +288,7 @@ export const META_UPGRADES: MetaUpgrade[] = [
     // --- WEAPON SPECIFIC: RAILGUN ---
     { id: 'meta_rail_dmg', name: 'Core Penetrator', description: '+5% Damage per level.', icon: 'fa-bolt', maxLevel: 100, costBase: 800, costFactor: 1.12, weaponType: WeaponType.RAILGUN },
     { id: 'meta_rail_rate', name: 'Capacitor Array', description: '+5% Fire Rate per level.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.RAILGUN },
-    { id: 'meta_rail_speed', name: 'Hypervelocity', description: '+10% Projectile Speed per level.', icon: 'fa-fighter-jet', maxLevel: 20, costBase: 1000, costFactor: 1.3, weaponType: WeaponType.RAILGUN },
+    { id: 'meta_rail_speed', name: 'Hypervelocity', description: '+10% Projectile Speed, +2% Damage per level.', icon: 'fa-fighter-jet', maxLevel: 20, costBase: 1000, costFactor: 1.3, weaponType: WeaponType.RAILGUN },
 
     // --- WEAPON SPECIFIC: FLAK CANNON ---
     { id: 'meta_flak_dmg', name: 'Frag Rounds', description: '+5% Damage per pellet per level.', icon: 'fa-spray-can', maxLevel: 100, costBase: 600, costFactor: 1.12, weaponType: WeaponType.FLAK_CANNON },

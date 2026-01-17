@@ -63,14 +63,15 @@ export class BaseProjectile implements IProjectile {
 
         this.type = config.type;
         this.weaponEffect = config.weaponEffect ?? WeaponEffect.NONE;
-        // Map Effect to WeaponType for collision compatibility? 
-        // Or better, pass it in config? 
-        // Let's assume Plasma if not specified, but we really want specific types.
-        // We can infer from weaponEffect or config.
-        this.weaponType = WeaponType.PLASMA; // Default
-        if (this.weaponEffect === WeaponEffect.LASER) this.weaponType = WeaponType.LASER;
-        if (this.weaponEffect === WeaponEffect.EXPLOSIVE || this.weaponEffect === WeaponEffect.HOMING) this.weaponType = WeaponType.MISSILE;
-        if (this.type === EntityType.ENEMY_BULLET) this.weaponType = WeaponType.PLASMA; // Enemy bullets default to plasma for checking?
+        // Use explicit weaponType from config if provided, otherwise infer from effect
+        if (config.weaponType) {
+            this.weaponType = config.weaponType;
+        } else {
+            this.weaponType = WeaponType.PLASMA; // Default
+            if (this.weaponEffect === WeaponEffect.LASER) this.weaponType = WeaponType.LASER;
+            if (this.weaponEffect === WeaponEffect.EXPLOSIVE || this.weaponEffect === WeaponEffect.HOMING) this.weaponType = WeaponType.MISSILE;
+            if (this.type === EntityType.ENEMY_BULLET) this.weaponType = WeaponType.PLASMA; // Enemy bullets default to plasma
+        }
 
         this.ownerId = config.ownerId;
 

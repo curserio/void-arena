@@ -16,7 +16,8 @@ export class ProjectileFactory {
             critChance: number,
             critMult: number,
             duration: number,
-            radius: number
+            radius: number,
+            weaponType?: WeaponType
         },
         time: number,
         ownerId: string = 'player',
@@ -35,7 +36,8 @@ export class ProjectileFactory {
             critChance: stats.critChance,
             critMult: stats.critMult,
             duration: stats.duration,
-            weaponEffect: effect
+            weaponEffect: effect,
+            weaponType: stats.weaponType
         };
 
         return new BaseProjectile(config, time);

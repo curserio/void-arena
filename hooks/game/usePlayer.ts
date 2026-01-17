@@ -106,6 +106,7 @@ export const usePlayer = (
             bDamageMult *= (1 + railDmgL * 0.05); // +5% per level
             fRate *= (1 + railRateL * 0.05); // +5% per level
             bSpeed *= (1 + railSpeedL * 0.10); // +10% per level
+            bDamageMult *= (1 + railSpeedL * 0.02); // Speed upgrade also gives +2% damage per level
             bPierce = 999; // Always infinite pierce
         } else if (weapon === WeaponType.FLAK_CANNON) {
             const flakDmgL = data.metaLevels['meta_flak_dmg'] || 0;
@@ -114,7 +115,7 @@ export const usePlayer = (
             bDamageMult *= (1 + flakDmgL * 0.05); // +5% per pellet per level
             bCount = 8 + (flakPelletsL * 2); // 8 base + 2 per level
             // flakRangeL affects duration in fireWeapon, store it in bulletSpeed as multiplier workaround
-            bSpeed *= (1 + flakRangeL * 0.15); // +15% effective range per level
+            bSpeed *= (1 + flakRangeL * 0.08); // +8% effective range per level (nerfed from 15%)
         }
 
         // Build module slots from equipped modules

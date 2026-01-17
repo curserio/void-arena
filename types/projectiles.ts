@@ -1,5 +1,6 @@
 
 import { IEntity, IRenderable, Vector2D, EntityType } from './entities';
+import { WeaponType } from './player';
 
 // Re-export WeaponType from root types for now, or redefine if we want to decouple
 // For now, let's redefine to keep it clean and eventually replace the root one
@@ -34,6 +35,7 @@ export interface IProjectile extends IEntity, IRenderable {
 
     // Properties
     weaponEffect: WeaponEffect;
+    weaponType?: WeaponType; // For visual rendering
     pierceCount: number; // How many enemies it can hit before dying
     isCritical: boolean;
 
@@ -76,6 +78,7 @@ export interface ProjectileConfig {
     // Type info
     type: EntityType; // Aligned
     weaponEffect?: WeaponEffect;
+    weaponType?: WeaponType; // For visual rendering
     ownerId: string;
 
     // Special
