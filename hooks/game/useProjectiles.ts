@@ -6,6 +6,7 @@ import { IProjectile, ProjectileType, WeaponEffect } from '../../types/projectil
 import { ProjectileFactory } from '../../core/factories/ProjectileFactory';
 import { BaseProjectile } from '../../core/entities/projectiles/BaseProjectile';
 import { projectileBehaviorManager, ProjectileBehaviorContext } from '../../core/systems/projectiles';
+import { getWeaponBehavior, FireContext } from '../../core/systems/weapons';
 
 export const useProjectiles = (
     playerPosRef: React.MutableRefObject<Vector2D>,
@@ -73,8 +74,16 @@ export const useProjectiles = (
             }
 
             if (hasTarget) {
-                // SWARM LAUNCHER BURST LOGIC
-                if (pStats.weaponType === WeaponType.SWARM_LAUNCHER) {
+                // Get weapon behavior from registry
+                const behavior = getWeaponBehavior(pStats.weaponType);
+
+                if (!behavior) {
+                    console.warn(`No behavior registered for weapon: ${pStats.weaponType}`);
+                    return;
+                }
+
+                // Check if behavior uses burst mode (e.g. Swarm Launcher)
+                if (behavior.usesBurstMode) {
                     if (burstQueueRef.current.count > 0) return;
 
                     burstQueueRef.current.count = pStats.swarmCount;
@@ -84,106 +93,26 @@ export const useProjectiles = (
                     return;
                 }
 
+                // Check if weapon can fire (e.g. Laser checks for existing laser)
+                const fireCtx: FireContext = {
+                    playerPos: { x: playerPosRef.current.x, y: playerPosRef.current.y },
+                    fireAngle,
+                    stats: pStats,
+                    time,
+                    isOmni,
+                    isPierce
+                };
+
+                if (behavior.canFire && !behavior.canFire(fireCtx, projectilesRef.current)) {
+                    return;
+                }
+
                 lastFireTimeRef.current = time;
                 onShotFired();
 
-                // Stats for Factory
-                const baseStats = {
-                    damage: pStats.damage,
-                    speed: pStats.bulletSpeed,
-                    color: pStats.weaponType === WeaponType.MISSILE ? '#fb923c' : (pStats.weaponType === WeaponType.PLASMA ? '#22d3ee' : '#a855f7'),
-                    pierce: isPierce ? 99 : pStats.pierceCount,
-                    critChance: pStats.critChance,
-                    critMult: pStats.critMultiplier,
-                    duration: 2000, // Default
-                    radius: 8
-                };
-
-                if (pStats.weaponType === WeaponType.LASER) {
-                    // LASER
-                    const p = ProjectileFactory.createPlayerProjectile(
-                        { x: playerPosRef.current.x, y: playerPosRef.current.y },
-                        { x: 0, y: 0 }, // Direction managed by update for laser
-                        // Duration: Give it enough time to charge (e.g. 2s) + fire. We'll truncate it when firing starts.
-                        { ...baseStats, radius: 20, pierce: 999, duration: 5000 },
-                        time,
-                        'player',
-                        WeaponEffect.LASER
-                    );
-                    // Manually set Laser specific props that factory might not expose fully in generic config
-                    p.angle = fireAngle;
-                    p.isCharging = true;
-                    p.chargeProgress = 0;
-                    projectilesRef.current.push(p);
-
-                } else {
-                    // STANDARD (PLASMA / MISSILE / RAILGUN / FLAK)
-                    const angles = isOmni ? [-0.3, 0, 0.3] : [0];
-
-                    angles.forEach(spreadAngle => {
-                        const currentAngle = fireAngle + spreadAngle;
-
-                        if (pStats.weaponType === WeaponType.PLASMA) {
-                            const spacing = 15;
-                            const startOffset = -(pStats.bulletCount - 1) * spacing / 2;
-                            for (let i = 0; i < pStats.bulletCount; i++) {
-                                const offset = startOffset + i * spacing;
-                                const px = playerPosRef.current.x + Math.cos(currentAngle + Math.PI / 2) * offset;
-                                const py = playerPosRef.current.y + Math.sin(currentAngle + Math.PI / 2) * offset;
-
-                                const dir = { x: Math.cos(currentAngle), y: Math.sin(currentAngle) };
-
-                                const p = ProjectileFactory.createPlayerProjectile(
-                                    { x: px, y: py },
-                                    dir,
-                                    { ...baseStats, color: '#22d3ee', radius: 8 },
-                                    time
-                                );
-                                projectilesRef.current.push(p);
-                            }
-                        } else if (pStats.weaponType === WeaponType.MISSILE) {
-                            const dir = { x: Math.cos(currentAngle), y: Math.sin(currentAngle) };
-                            const p = ProjectileFactory.createPlayerProjectile(
-                                { x: playerPosRef.current.x, y: playerPosRef.current.y },
-                                dir,
-                                { ...baseStats, color: '#fb923c', radius: 14, damage: baseStats.damage * 1.5 }, // Missiles hit harder
-                                time,
-                                'player',
-                                WeaponEffect.EXPLOSIVE
-                            );
-                            projectilesRef.current.push(p);
-                        } else if (pStats.weaponType === WeaponType.RAILGUN) {
-                            // RAILGUN: Single high-damage piercing shot
-                            const dir = { x: Math.cos(currentAngle), y: Math.sin(currentAngle) };
-                            const p = ProjectileFactory.createPlayerProjectile(
-                                { x: playerPosRef.current.x, y: playerPosRef.current.y },
-                                dir,
-                                { ...baseStats, color: '#60a5fa', radius: 6, pierce: 999, duration: 1500, weaponType: WeaponType.RAILGUN },
-                                time
-                            );
-                            projectilesRef.current.push(p);
-                        } else if (pStats.weaponType === WeaponType.FLAK_CANNON) {
-                            // FLAK CANNON: pellets in spread (~7° per pellet, scales with count)
-                            const pelletCount = pStats.bulletCount;
-                            // Spread scales: ~6.9° per pellet (8 = 55°, 16 = 110°)
-                            const spreadAngle = pelletCount * (Math.PI / 26);
-                            const startAngle = currentAngle - spreadAngle / 2;
-                            const angleStep = pelletCount > 1 ? spreadAngle / (pelletCount - 1) : 0;
-
-                            for (let i = 0; i < pelletCount; i++) {
-                                const pAngle = startAngle + i * angleStep;
-                                const dir = { x: Math.cos(pAngle), y: Math.sin(pAngle) };
-                                const p = ProjectileFactory.createPlayerProjectile(
-                                    { x: playerPosRef.current.x, y: playerPosRef.current.y },
-                                    dir,
-                                    { ...baseStats, color: '#fbbf24', radius: 5, duration: 560 }, // Reduced range -30%
-                                    time
-                                );
-                                projectilesRef.current.push(p);
-                            }
-                        }
-                    });
-                }
+                // Fire weapon and add projectiles
+                const newProjectiles = behavior.fire(fireCtx);
+                projectilesRef.current.push(...newProjectiles);
             }
         }
     }, [autoAttack, playerPosRef, statsRef, onShotFired]);
@@ -194,43 +123,35 @@ export const useProjectiles = (
 
         // --- BURST PROCESSING (Swarm Launcher) ---
         if (burstQueueRef.current.count > 0 && time >= burstQueueRef.current.nextShotTime) {
-            const angle = burstQueueRef.current.angle;
-            const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+            const swarmBehavior = getWeaponBehavior(WeaponType.SWARM_LAUNCHER);
 
-            const swarmStats = {
-                damage: pStats.damage * 0.7, // Swarm individual weaker
-                speed: pStats.bulletSpeed,
-                color: '#e879f9',
-                radius: 10,
-                pierce: 1,
-                critChance: pStats.critChance,
-                critMult: pStats.critMultiplier,
-                duration: 3000 // 3s lifetime
-            };
+            if (swarmBehavior) {
+                const burstCtx: FireContext = {
+                    playerPos: { x: playerPosRef.current.x, y: playerPosRef.current.y },
+                    fireAngle: burstQueueRef.current.angle,
+                    stats: pStats,
+                    time,
+                    isOmni: false,
+                    isPierce: false
+                };
 
-            const p = ProjectileFactory.createPlayerProjectile(
-                { x: playerPosRef.current.x, y: playerPosRef.current.y },
-                dir,
-                swarmStats,
-                time,
-                'player',
-                WeaponEffect.HOMING
-            );
+                const rockets = swarmBehavior.fire(burstCtx);
 
-            // Homing init
-            p.turnRate = pStats.swarmAgility || 1.5;
+                // Find initial target for homing
+                let nearest: Entity | null = null;
+                let minDist = 800;
+                targets.forEach(t => {
+                    const d = Math.hypot(t.pos.x - playerPosRef.current.x, t.pos.y - playerPosRef.current.y);
+                    if (d < minDist) { minDist = d; nearest = t; }
+                });
 
-            // Find initial target
-            let nearest: Entity | null = null;
-            let minDist = 800;
-            targets.forEach(t => {
-                const d = Math.hypot(t.pos.x - p.pos.x, t.pos.y - p.pos.y);
-                if (d < minDist) { minDist = d; nearest = t; }
-            });
-            if (nearest) p.targetId = nearest.id;
+                rockets.forEach(p => {
+                    if (nearest) p.targetId = nearest.id;
+                    projectilesRef.current.push(p);
+                });
 
-            projectilesRef.current.push(p);
-            onShotFired();
+                onShotFired();
+            }
 
             burstQueueRef.current.count--;
             if (burstQueueRef.current.count <= 0) {
