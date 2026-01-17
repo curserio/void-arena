@@ -3,7 +3,7 @@
  * Types for enemy system: types, tiers, definitions, modifiers
  */
 
-import { Vector2D } from './entities';
+import { Vector2D } from './core';
 
 // ============================================================================
 // Enemy Types & Tiers

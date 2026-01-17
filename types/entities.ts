@@ -7,21 +7,11 @@ import { WeaponType, PowerUpId, ModuleType } from './player';
 import { ShipType } from './ships';
 import { EnemyType, EnemyTier } from './enemies';
 
-export enum EntityType {
-    PLAYER = 'PLAYER',
-    ASTEROID = 'ASTEROID',
-    BULLET = 'BULLET', // Legacy, prefer specifics
-    PLAYER_BULLET = 'PLAYER_BULLET', // Added for ProjectileType alignment
-    ENEMY_BULLET = 'ENEMY_BULLET',
-    XP_GEM = 'XP_GEM',
-    POWERUP = 'POWERUP',
-    CREDIT = 'CREDIT',
-    EXPLOSION = 'EXPLOSION',
-    DAMAGE_NUMBER = 'DAMAGE_NUMBER',
-    SPAWN_FLASH = 'SPAWN_FLASH'
-}
-
-export type Vector2D = { x: number; y: number };
+// Re-export core types for backwards compatibility
+export type { Vector2D } from './core';
+export { EntityType } from './core';
+import type { Vector2D } from './core';
+import { EntityType } from './core';
 
 // ============================================================================
 // Base Entity Interfaces

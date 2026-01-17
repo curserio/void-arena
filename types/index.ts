@@ -3,6 +3,7 @@
  * Re-exports all type definitions
  */
 
+export * from './core';
 export * from './entities';
 export * from './enemies';
 export * from './projectiles';
