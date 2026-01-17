@@ -173,13 +173,45 @@ export const useGameLogic = (
     // Main Update Loop
     const update = useCallback((time: number, dt: number) => {
         if (gameState !== GameState.PLAYING || isPaused) return;
-        gameTimeRef.current += dt;
 
-        // 1. Update Player
+        // --- TIME WARP LOGIC ---
+        // Check if Time Warp is active in any slot
+        // Power = "Slow Factor" directly (e.g. 0.5 = 50% speed). No, let's assume power is "Multiplier". 
+        // Logic in usePlayer: "power = 0.5". Upgrades add to power.
+        // If power 0.5 = half speed. If power 0.6 = 60% speed? 
+        // Wait, typical "Slow" means "Speed reduced BY X%". 
+        // If power is 0.5, speed should be 0.5.
+        // If upgrade adds 0.05, power becomes 0.55. Speed should be 0.55? Or 0.45?
+        // Let's assume 'Power' is speed multiplier. 0.5 is default.
+        // Wait, upgrades description: "-5% Enemy Speed (Stronger Slow)". 
+        // So we want result to go LOWER.
+        // usePlayer logic: "power = 0.5 + moduleMods.power". 
+        // If upgrade adds 0.05, power = 0.55. 
+        // If we treat power as "Time Scale", then 0.55 is FASTER than 0.5. That's wrong.
+        // So upgrades should subtract from Time Scale? or Add to "Slow Amount".
+        // Let's interpret Power as "Time Scale". 
+        // Upgrade needs to REDUCE Time Scale. "operation: 'add', perLevel: -0.05".
+        // Let's verify upgrades.ts.
+        // "perLevel: 0.05". 
+        // So I'll treat 'Power' as "Slow Amount" (0.5 = 50% slow). 
+        // TimeScale = 1.0 - Power. (1.0 - 0.5 = 0.5).
+        // If upgrade adds 0.05 -> Power = 0.55. TimeScale = 0.45. Perfect.
+
+        let enemyTimeScale = 1.0;
+        const timeWarpSlot = statsRef.current.moduleSlots.find(s => s.type === 'TIME_WARP' as any && time < s.activeUntil);
+        if (timeWarpSlot) {
+            enemyTimeScale = Math.max(0.1, 1.0 - timeWarpSlot.power);
+        }
+
+        const enemyDt = dt * enemyTimeScale;
+
+        gameTimeRef.current += enemyDt; // Slow down game time too? Yes, for spawning pacing.
+
+        // 1. Update Player (Player moves at normal speed always)
         updatePlayer(dt, time);
         handleShieldRegen(dt, time);
 
-        // 2. Firing Logic
+        // 2. Firing Logic (Player shoots at normal speed)
         const isOverdrive = powerUpManager.isBuffActive(statsRef.current, 'OVERDRIVE', time);
         const isOmni = powerUpManager.isBuffActive(statsRef.current, 'OMNI', time);
         const isPierce = powerUpManager.isBuffActive(statsRef.current, 'PIERCE', time);
@@ -190,21 +222,23 @@ export const useGameLogic = (
         fireWeapon(time, isOverdrive, isOmni, isPierce, enemiesRef.current, aimDir, isFiring);
 
         // 3. Update Sub-systems
-        const { enemyBulletsToSpawn } = updateEnemies(dt, time, gameTimeRef.current);
+        // Update Enemies with SCALED DT
+        const { enemyBulletsToSpawn } = updateEnemies(enemyDt, time, gameTimeRef.current);
         if (enemyBulletsToSpawn.length > 0) addProjectiles(enemyBulletsToSpawn);
 
         // Pass aim to updateProjectiles so lasers can rotate while charging
-        const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDir);
+        // Pass enemyTimeScale to updateProjectiles so it can slow enemy bullets
+        const { newExplosions } = updateProjectiles(dt, time, enemiesRef.current, aimDir, enemyTimeScale);
         // Handle expirations/timeouts from projectiles (e.g. Swarm Missiles timing out)
         if (newExplosions && newExplosions.length > 0) {
             newExplosions.forEach(exp => spawnExplosion(exp.pos, exp.radius, exp.color));
         }
 
-        updatePickups(dt);
+        updatePickups(dt); // Pickups animate normally? Yes, keeps UX fluid.
         updateParticles(dt);
 
         // 4. Collisions
-        checkCollisions(time, dt);
+        checkCollisions(time, dt); // Collision checks happen at full speed (physics step), but entities moved less. Correct.
 
     }, [gameState, isPaused, updatePlayer, handleShieldRegen, fireWeapon, updateEnemies, addProjectiles, updateProjectiles, updatePickups, updateParticles, checkCollisions, spawnExplosion]);
 

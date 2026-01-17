@@ -80,6 +80,16 @@ export const usePlayer = (
                 duration = 2000;
                 cooldown = 25000;
                 power = 0;
+            } else if (moduleType === ModuleType.TIME_WARP) {
+                // Base: 4s duration, 40s CD, 0.5 slow power (50%)
+                duration = 4000 + moduleMods.duration;
+                cooldown = Math.max(15000, 40000 + moduleMods.cooldown);
+                power = 0.5 + moduleMods.power; // 0.5 base + upgrades (e.g. +0.05 = 0.55 slow factor? No, power is applied as speed multiplier usually. Or slow strength?)
+                // If power is "Speed Multiplier": 0.5 means half speed.
+                // Upgrades usually ADD to power. "Viscosity" adds 0.05.
+                // If we want stronger slow, we need LOWER multiplier?
+                // Or we define power as "Slow Amount". 0.5 = 50% slow. 0.55 = 55% slow.
+                // Then speedMult = 1.0 - power.
             }
 
             return {

@@ -117,7 +117,7 @@ export const useProjectiles = (
         }
     }, [autoAttack, playerPosRef, statsRef, onShotFired]);
 
-    const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[], aimDir: Vector2D) => {
+    const updateProjectiles = useCallback((dt: number, time: number, targets: Entity[], aimDir: Vector2D, enemyTimeScale: number = 1.0) => {
         const pStats = statsRef.current;
         const newExplosions: { pos: Vector2D, radius: number, color: string }[] = [];
 
@@ -172,6 +172,7 @@ export const useProjectiles = (
             playerStats: {
                 laserDuration: pStats.laserDuration,
             },
+            enemyTimeScale // Pass to context
         };
 
         const { alive, explosions } = projectileBehaviorManager.updateAll(

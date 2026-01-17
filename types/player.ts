@@ -5,7 +5,8 @@ export enum ModuleType {
     NONE = 'NONE',
     AFTERBURNER = 'AFTERBURNER',
     SHIELD_BURST = 'SHIELD_BURST',
-    PHASE_SHIFT = 'PHASE_SHIFT'
+    PHASE_SHIFT = 'PHASE_SHIFT',
+    TIME_WARP = 'TIME_WARP'
 }
 
 /**

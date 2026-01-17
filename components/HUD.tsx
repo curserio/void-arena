@@ -93,6 +93,7 @@ const MODULE_ICONS: Record<ModuleType, string> = {
   [ModuleType.AFTERBURNER]: 'fa-forward-fast',
   [ModuleType.SHIELD_BURST]: 'fa-shield-heart',
   [ModuleType.PHASE_SHIFT]: 'fa-ghost',
+  [ModuleType.TIME_WARP]: 'fa-clock',
 };
 
 const ModuleButton: React.FC<{
@@ -282,9 +283,17 @@ const HUD: React.FC<HUDProps> = ({ stats, score, autoAttack, setAutoAttack, tota
             </button>
 
             {/* Credits (Compacted) */}
-            <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-xl p-2 flex items-center gap-2 shadow-2xl min-w-[110px] w-fit">
-              <i className="fa-solid fa-coins text-amber-400 text-xs" />
-              <span className="text-amber-400 font-black text-sm leading-none drop-shadow-[0_0_10px_rgba(251,191,36,0.6)]">{formatCredits(totalCredits)}</span>
+            <div className="bg-slate-900/80 backdrop-blur-md border border-amber-500/40 rounded-xl p-2 flex flex-col gap-0.5 shadow-2xl min-w-[110px] w-fit">
+              <div className="flex items-center gap-2">
+                <i className="fa-solid fa-coins text-amber-400 text-xs" />
+                <span className="text-amber-400 font-black text-sm leading-none">{formatCredits(stats.credits)}</span>
+                <span className="text-[9px] text-amber-500/60 font-bold uppercase">EARNED</span>
+              </div>
+              <div className="flex items-center gap-2 border-t border-amber-500/20 pt-0.5 mt-0.5">
+                <i className="fa-solid fa-wallet text-slate-500 text-[10px]" />
+                <span className="text-slate-400 font-bold text-xs leading-none">{formatCredits(totalCredits)}</span>
+                <span className="text-[8px] text-slate-600 font-bold uppercase">TOTAL</span>
+              </div>
             </div>
 
             {/* Active Power-ups */}

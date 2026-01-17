@@ -17,9 +17,10 @@ export interface ProjectileBehaviorContext {
     targets: Entity[];
     aimDir: Vector2D;
     autoAttack: boolean;
-    playerStats?: {
-        laserDuration?: number;
+    playerStats: {
+        laserDuration: number;
     };
+    enemyTimeScale?: number;
 }
 
 // ============================================================================

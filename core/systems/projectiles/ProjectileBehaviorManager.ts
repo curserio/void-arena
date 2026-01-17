@@ -5,6 +5,7 @@
 
 import { BaseProjectile } from '../../entities/projectiles/BaseProjectile';
 import { WeaponEffect } from '../../../types/projectiles';
+import { EntityType } from '../../../types';
 import {
     IProjectileBehavior,
     ProjectileBehaviorContext,
@@ -66,11 +67,18 @@ export class ProjectileBehaviorManager {
             const p = projectiles[i];
 
             // Base update (movement, lifetime)
-            p.update(ctx.dt, ctx.time);
+            // Apply Time Warp if applicable
+            let stepDt = ctx.dt;
+            if (p.type === EntityType.ENEMY_BULLET && ctx.enemyTimeScale !== undefined) {
+                stepDt *= ctx.enemyTimeScale;
+            }
+
+            p.update(stepDt, ctx.time);
 
             // Behavior-specific update
             if (p.isAlive) {
-                this.updateProjectile(p, ctx);
+                // Pass the SCALED dt to behavior context
+                this.updateProjectile(p, { ...ctx, dt: stepDt });
             }
 
             // Check for death and collect explosions

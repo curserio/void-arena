@@ -30,6 +30,12 @@ const MODULES = [
         icon: 'fa-ghost',
         description: 'Phase through attacks. Pure invulnerability, no healing.'
     },
+    {
+        type: ModuleType.TIME_WARP,
+        name: 'Time Warp',
+        icon: 'fa-clock',
+        description: 'Slows time for all enemies and projectiles by 50%.'
+    },
 ];
 
 export const ModuleSelector: React.FC = () => {

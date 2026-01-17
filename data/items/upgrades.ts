@@ -327,4 +327,9 @@ export const META_UPGRADES: MetaUpgrade[] = [
     { id: 'meta_flame_dur', name: 'Pressure Tank', description: '+10% Flame Range (Duration).', icon: 'fa-ruler-horizontal', maxLevel: 25, costBase: 1200, costFactor: 1.3, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'duration', perLevel: 0.10, operation: 'addPercent' }] },
     { id: 'meta_flame_area', name: 'Wide Nozzle', description: '+10% Flame Width.', icon: 'fa-vector-square', maxLevel: 20, costBase: 2000, costFactor: 1.4, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'explosionRadius', perLevel: 0.10, operation: 'addPercent' }] },
     { id: 'meta_flame_rate', name: 'Turbo Pump', description: '+5% Fire Rate.', icon: 'fa-gauge-high', maxLevel: 40, costBase: 1500, costFactor: 1.25, weaponType: WeaponType.FLAMETHROWER, effects: [{ stat: 'fireRate', perLevel: 0.05, operation: 'addPercent' }] },
+
+    // --- MODULE: TIME WARP ---
+    { id: 'meta_warp_dur', name: 'Chronosphere', description: '+0.5s Duration.', icon: 'fa-clock', maxLevel: 6, costBase: 3000, costFactor: 1.4, moduleType: ModuleType.TIME_WARP, effects: [{ stat: 'duration', perLevel: 500, operation: 'add' }] },
+    { id: 'meta_warp_slow', name: 'Viscosity', description: '-5% Enemy Speed (Stronger Slow).', icon: 'fa-hourglass', maxLevel: 10, costBase: 4000, costFactor: 1.5, moduleType: ModuleType.TIME_WARP, effects: [{ stat: 'power', perLevel: 0.05, operation: 'add' }] },
+    { id: 'meta_warp_cd', name: 'Flux Capacitor', description: '-2s Cooldown.', icon: 'fa-rotate', maxLevel: 10, costBase: 3500, costFactor: 1.35, moduleType: ModuleType.TIME_WARP, effects: [{ stat: 'cooldown', perLevel: -2000, operation: 'add' }] },
 ];
