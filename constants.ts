@@ -1,17 +1,24 @@
+/**
+ * Master Constants Export
+ * 
+ * Single import point for all game data and configuration.
+ * Example: import { SHIPS, UPGRADES, WAVE_CONFIG } from '../constants';
+ */
 
-// Re-export constants from new modular locations
-// This maintains backward compatibility while we migrate imports
+// Core Configuration
+export * from './data/config';
 
-export * from './data/config/game_settings';
-export * from './data/config/difficulty';
-export * from './data/weapons/stats';
-export * from './data/items/upgrades';
-export * from './data/items/prices';
-export * from './data/items/ships';
+// Enemy Data
+export * from './data/enemies';
 
-export const DEBUG_CONFIG = {
-    enableManualLevelUp: true,
-    infiniteHealth: false,
-    showHitboxes: false
-};
+// Items (ships, upgrades, prices)
+export * from './data/items';
 
+// Weapon Stats
+export * from './data/weapons';
+
+// Power-ups
+export * from './data/powerups';
+
+// Wave Spawning
+export * from './data/spawning';
